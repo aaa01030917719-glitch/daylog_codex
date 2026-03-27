@@ -118,7 +118,7 @@ export default function OnboardingPage() {
                   marginBottom: "1.25rem",
                 }}
               >
-                워크스페이스 설정
+                워크스페이스 설정1
               </h2>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
