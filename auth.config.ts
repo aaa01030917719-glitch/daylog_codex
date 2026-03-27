@@ -12,8 +12,17 @@ export const authConfig: NextAuthConfig = {
   providers: [],
   callbacks: {
     authorized({ auth }) {
-      // JWT가 존재하면 인증된 것으로 판단 (세부 리다이렉트는 미들웨어에서)
       return !!auth;
+    },
+    // JWT token → session.user 매핑 (DB 접근 없음, Edge-safe)
+    // 미들웨어에서 req.auth.user.workspaceId를 읽으려면 반드시 필요
+    async session({ session, token }) {
+      if (token && session.user) {
+        session.user.id = (token.id as string) ?? "";
+        session.user.role = (token.role as string) ?? "MEMBER";
+        session.user.workspaceId = token.workspaceId as string | undefined;
+      }
+      return session;
     },
   },
 };
