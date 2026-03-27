@@ -15,5 +15,6 @@ declare module "next-auth/jwt" {
     id: string;
     role: string;
     workspaceId?: string;
+    workspaceLoaded?: boolean;
   }
 }
