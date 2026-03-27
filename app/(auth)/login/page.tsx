@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -32,8 +30,8 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/");
-      router.refresh();
+      // 쿠키 반영 보장을 위해 하드 내비게이션 사용
+      window.location.href = "/";
     } finally {
       setLoading(false);
     }

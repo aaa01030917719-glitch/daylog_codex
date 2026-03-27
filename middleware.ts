@@ -3,32 +3,45 @@ import { authConfig } from "./auth.config";
 import { NextResponse } from "next/server";
 import type { NextAuthRequest } from "next-auth";
 
-// Edge Runtime 호환: authConfig만 사용 (Node.js 모듈 없음)
 const { auth } = NextAuth(authConfig);
+
+// 인증 없이 접근 가능한 경로
+const PUBLIC_PATHS = ["/login", "/register"];
+
+// 워크스페이스 없어도 접근 가능한 경로 (로그인은 필요)
+const NO_WORKSPACE_PATHS = ["/onboarding"];
 
 export default auth((req: NextAuthRequest) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
 
-  const isAuthPage =
-    pathname.startsWith("/login") || pathname.startsWith("/register");
-  const isOnboarding = pathname.startsWith("/onboarding");
+  const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
+  const isNoWorkspace = NO_WORKSPACE_PATHS.some((p) => pathname.startsWith(p));
 
-  // 비로그인 → 로그인 페이지로
-  if (!session && !isAuthPage) {
+  // 비로그인 + 공개 경로 → 통과
+  if (isPublic) {
+    // 이미 로그인된 상태면 대시보드로
+    if (session) {
+      if (!session.user?.workspaceId) {
+        return NextResponse.redirect(new URL("/onboarding", req.url));
+      }
+      return NextResponse.redirect(new URL("/", req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 비로그인 + 비공개 경로 → 로그인으로
+  if (!session) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // 로그인 상태에서 인증 페이지 접근
-  if (session && isAuthPage) {
-    if (!session.user?.workspaceId) {
-      return NextResponse.redirect(new URL("/onboarding", req.url));
-    }
-    return NextResponse.redirect(new URL("/", req.url));
+  // 로그인 + 워크스페이스 없음 + onboarding은 통과
+  if (isNoWorkspace) {
+    return NextResponse.next();
   }
 
-  // 로그인 상태인데 워크스페이스 없음 → 온보딩으로
-  if (session && !session.user?.workspaceId && !isOnboarding) {
+  // 로그인 + 워크스페이스 없음 + 일반 경로 → 온보딩으로
+  if (!session.user?.workspaceId) {
     return NextResponse.redirect(new URL("/onboarding", req.url));
   }
 
@@ -36,5 +49,5 @@ export default auth((req: NextAuthRequest) => {
 });
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|sw.js).*)"],
 };
