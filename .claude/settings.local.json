@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir=no --import-alias=\"@/*\" --no-git --yes)",
+      "Bash(npx create-next-app@14 . --typescript --tailwind --eslint --app --src-dir=no --import-alias=\"@/*\" --no-git --yes --force)",
+      "Bash(cd /tmp)",
+      "Bash(npx create-next-app@14 daylog-setup --typescript --tailwind --eslint --app --src-dir=no --import-alias=\"@/*\" --no-git --yes)",
+      "Bash(npx create-next-app@14 daylog-setup --typescript --tailwind --eslint --app --no-src-dir --import-alias=\"@/*\" --no-git 2)",
+      "Bash(1:*)",
+      "Bash(npm install:*)",
+      "Bash(npx prisma:*)",
+      "Bash(node -e \"const { PrismaClient } = require\\(''@prisma/client''\\); console.log\\(''PrismaClient ok:'', typeof PrismaClient\\);\")",
+      "Bash(timeout 15 npm run dev)"
+    ]
+  }
+}

@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --white: #FFFFFF;
+  --bg-light: #FAF7EE;
+  --table-header: #F5EED5;
+  --border: #E8E0C8;
+  --text-title: #0D0D0D;
+  --text-sub-title: #2D2D2D;
+  --text-body: #555555;
+  --text-sub: #999999;
+  --accent: #F56B23;
+  --accent-dark: #D4581A;
+  --sidebar-bg: #1C1A17;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: 'Noto Sans KR', sans-serif;
+}
+
+body {
+  color: var(--text-body);
+  background: var(--bg-light);
+  font-family: 'Noto Sans KR', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Noto Serif KR', serif;
+  color: var(--text-title);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .font-serif {
+    font-family: 'Noto Serif KR', serif;
+  }
+
+  .font-sans {
+    font-family: 'Noto Sans KR', sans-serif;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

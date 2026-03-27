@@ -1,0 +1,409 @@
+generator client {
+  provider   = "prisma-client-js"
+  engineType = "library"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── 사용자
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String?
+  image         String?
+  phone         String?
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+
+  accounts          Account[]
+  sessions          Session[]
+  members           WorkspaceMember[]
+  assignedTasks     Task[]            @relation("AssignedTo")
+  createdTasks      Task[]            @relation("CreatedBy")
+  comments          Comment[]
+  mentions          Mention[]
+  events            Event[]
+  pages             Page[]
+  attendances       Attendance[]
+  approvals         Approval[]        @relation("RequestedBy")
+  approvalDecisions Approval[]        @relation("DecidedBy")
+  notifications     Notification[]
+  boardPosts        BoardPost[]
+  boardLikes        BoardLike[]
+  boardReads        BoardRead[]
+  pushSubscriptions PushSubscription[]
+}
+
+// ── 워크스페이스
+model Workspace {
+  id         String   @id @default(cuid())
+  name       String
+  slug       String   @unique
+  inviteCode String   @unique @default(cuid())
+  logoUrl    String?
+  createdAt  DateTime @default(now())
+
+  workStartTime   String @default("09:00")
+  workEndTime     String @default("18:00")
+  workHoursPerDay Float  @default(8.0)
+
+  members     WorkspaceMember[]
+  projects    Project[]
+  events      Event[]
+  pages       Page[]
+  boardPosts  BoardPost[]
+}
+
+model WorkspaceMember {
+  id          String   @id @default(cuid())
+  role        Role     @default(MEMBER)
+  joinedAt    DateTime @default(now())
+  userId      String
+  workspaceId String
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+// ── 프로젝트
+model Project {
+  id          String        @id @default(cuid())
+  name        String
+  description String?
+  color       String        @default("#F56B23")
+  status      ProjectStatus @default(ACTIVE)
+  budget      Float?
+  createdAt   DateTime      @default(now())
+  workspaceId String
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  tasks     Task[]
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+// ── 태스크
+model Task {
+  id               String     @id @default(cuid())
+  title            String
+  description      String?
+  status           TaskStatus @default(TODO)
+  priority         Priority   @default(MEDIUM)
+  requiresApproval Boolean    @default(false)
+  budget           Float?
+  dueDate          DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  projectId        String
+  assigneeId       String?
+  creatorId        String
+
+  project   Project   @relation(fields: [projectId], references: [id])
+  assignee  User?     @relation("AssignedTo", fields: [assigneeId], references: [id])
+  creator   User      @relation("CreatedBy", fields: [creatorId], references: [id])
+  comments  Comment[]
+  tags      Tag[]
+  approvals Approval[]
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  IN_REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+// ── 일정
+model Event {
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  startAt          DateTime
+  endAt            DateTime
+  allDay           Boolean  @default(false)
+  color            String   @default("#F56B23")
+  isImportant      Boolean  @default(false)
+  requiresApproval Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  workspaceId      String
+  creatorId        String
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id])
+  creator   User       @relation(fields: [creatorId], references: [id])
+  approvals Approval[]
+}
+
+// ── 문서
+model Page {
+  id          String   @id @default(cuid())
+  title       String   @default("제목 없음")
+  content     Json?
+  emoji       String?
+  isPublic    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  parentId    String?
+  workspaceId String
+  authorId    String
+
+  parent    Page?     @relation("PageTree", fields: [parentId], references: [id])
+  children  Page[]    @relation("PageTree")
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  author    User      @relation(fields: [authorId], references: [id])
+  comments  Comment[]
+}
+
+// ── 댓글 + 멘션
+model Comment {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  authorId  String
+  taskId    String?
+  pageId    String?
+
+  author   User      @relation(fields: [authorId], references: [id])
+  task     Task?     @relation(fields: [taskId], references: [id])
+  page     Page?     @relation(fields: [pageId], references: [id])
+  mentions Mention[]
+}
+
+model Mention {
+  id        String   @id @default(cuid())
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  userId    String
+  commentId String
+
+  user    User    @relation(fields: [userId], references: [id])
+  comment Comment @relation(fields: [commentId], references: [id])
+}
+
+// ── 출퇴근
+model Attendance {
+  id          String           @id @default(cuid())
+  date        DateTime
+  checkIn     DateTime?
+  checkOut    DateTime?
+  workMinutes Int?
+  status      AttendanceStatus @default(NORMAL)
+  memo        String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  userId      String
+  workspaceId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+}
+
+enum AttendanceStatus {
+  NORMAL
+  LATE
+  EARLY_LEAVE
+  OVERTIME
+  ABSENT
+  HOLIDAY
+}
+
+// ── 대표 컨펌
+model Approval {
+  id           String         @id @default(cuid())
+  type         ApprovalType
+  title        String
+  description  String?
+  status       ApprovalStatus @default(PENDING)
+  decidedAt    DateTime?
+  decisionNote String?
+  createdAt    DateTime       @default(now())
+
+  requesterId String
+  deciderId   String?
+  taskId      String?
+  eventId     String?
+  leaveType   LeaveType?
+  leaveStart  DateTime?
+  leaveEnd    DateTime?
+
+  requester User   @relation("RequestedBy", fields: [requesterId], references: [id])
+  decider   User?  @relation("DecidedBy", fields: [deciderId], references: [id])
+  task      Task?  @relation(fields: [taskId], references: [id])
+  event     Event? @relation(fields: [eventId], references: [id])
+}
+
+enum ApprovalType {
+  LEAVE_REQUEST
+  IMPORTANT_EVENT
+  DEADLINE_CHANGE
+  BUDGET_TASK
+  PROJECT_REVIEW
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeaveType {
+  FULL_DAY
+  HALF_AM
+  HALF_PM
+}
+
+// ── 알림
+model Notification {
+  id        String           @id @default(cuid())
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+  userId    String
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+enum NotificationType {
+  MENTION
+  TASK_DUE
+  APPROVAL_REQUEST
+  APPROVAL_RESULT
+  ATTENDANCE_REMINDER
+  OVERTIME_ALERT
+}
+
+// NextAuth 필수
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  color String @default("#F56B23")
+  tasks Task[]
+}
+
+// ── 팀 보드
+model BoardPost {
+  id          String           @id @default(cuid())
+  type        BoardPostType
+  title       String?
+  content     String
+  tags        String[]
+  status      BoardPostStatus?
+  workspaceId String
+  authorId    String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  author    User        @relation(fields: [authorId], references: [id])
+  workspace Workspace   @relation(fields: [workspaceId], references: [id])
+  likes     BoardLike[]
+  reads     BoardRead[]
+}
+
+model BoardLike {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime  @default(now())
+
+  post BoardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model BoardRead {
+  id        String    @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime  @default(now())
+
+  post BoardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+enum BoardPostType {
+  NOTICE
+  IDEA
+  CEO_MESSAGE
+}
+
+enum BoardPostStatus {
+  REVIEW
+  ADOPTED
+  HOLD
+}
+
+// ── 푸시 구독
+model PushSubscription {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique
+  auth      String
+  p256dh    String
+  createdAt DateTime @default(now())
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
