@@ -2,15 +2,10 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  // Credentials-only 앱에서는 PrismaAdapter 불필요 (JWT 전략과 충돌)
-  session: { strategy: "jwt" },
-  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
-  trustHost: true,
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       name: "credentials",
@@ -50,13 +45,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
-      // 최초 로그인 시 user 객체가 있음
       if (user) {
         token.id = user.id as string;
         token.workspaceLoaded = false;
       }
 
-      // 워크스페이스 조회: 최초 로그인 또는 세션 갱신 요청 시에만
       if (user || trigger === "update" || !token.workspaceLoaded) {
         const userId = (user?.id ?? token.id) as string;
         if (userId) {
