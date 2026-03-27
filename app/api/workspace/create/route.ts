@@ -14,18 +14,23 @@ function toSlug(name: string) {
 export async function POST(req: NextRequest) {
   try {
     const session = await auth();
-    console.log("[WORKSPACE CREATE] session:", JSON.stringify(session?.user));
+    console.log("[WORKSPACE CREATE] session user:", session?.user?.id);
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
     }
 
-    // 이미 워크스페이스에 속해 있으면 거부
+    // 이미 워크스페이스에 속해 있으면 → 기존 워크스페이스 반환 (에러 아님)
     const existing = await prisma.workspaceMember.findFirst({
       where: { userId: session.user.id },
+      orderBy: { joinedAt: "asc" },
     });
     if (existing) {
-      return NextResponse.json({ error: "이미 워크스페이스에 속해 있습니다." }, { status: 409 });
+      console.log("[WORKSPACE CREATE] already member of:", existing.workspaceId);
+      return NextResponse.json(
+        { workspaceId: existing.workspaceId, alreadyExists: true },
+        { status: 200 }
+      );
     }
 
     const { name } = await req.json();
@@ -53,7 +58,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    console.log("[WORKSPACE CREATE] success:", workspace.id);
+    console.log("[WORKSPACE CREATE] created:", workspace.id);
     return NextResponse.json({ workspaceId: workspace.id }, { status: 201 });
   } catch (error) {
     console.error("[WORKSPACE CREATE] error:", error);

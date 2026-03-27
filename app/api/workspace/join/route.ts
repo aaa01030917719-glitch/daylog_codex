@@ -3,20 +3,25 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
-  }
-
-  // 이미 워크스페이스에 속해 있으면 거부
-  const existing = await prisma.workspaceMember.findFirst({
-    where: { userId: session.user.id },
-  });
-  if (existing) {
-    return NextResponse.json({ error: "이미 워크스페이스에 속해 있습니다." }, { status: 409 });
-  }
-
   try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    }
+
+    // 이미 워크스페이스에 속해 있으면 → 기존 워크스페이스 반환
+    const existing = await prisma.workspaceMember.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { joinedAt: "asc" },
+    });
+    if (existing) {
+      return NextResponse.json(
+        { workspaceId: existing.workspaceId, alreadyExists: true },
+        { status: 200 }
+      );
+    }
+
     const { inviteCode } = await req.json();
     if (!inviteCode?.trim()) {
       return NextResponse.json({ error: "초대 코드를 입력해주세요." }, { status: 400 });

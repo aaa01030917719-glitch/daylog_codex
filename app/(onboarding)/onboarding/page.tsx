@@ -1,19 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { Building2, Users, ChevronRight, ArrowLeft } from "lucide-react";
 
 type Mode = "select" | "create" | "join";
 
 export default function OnboardingPage() {
-  const { update } = useSession();
 
   const [mode, setMode] = useState<Mode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // JWT 쿠키를 서버에서 강제 갱신 후 홈으로 이동
+  async function refreshAndRedirect() {
+    await fetch("/api/auth/refresh");
+    window.location.href = "/";
+  }
 
   async function handleCreate() {
     if (!workspaceName.trim()) return;
@@ -30,9 +34,8 @@ export default function OnboardingPage() {
         setError(data.error ?? "워크스페이스 생성 중 오류가 발생했습니다.");
         return;
       }
-      // JWT 세션 갱신 후 하드 내비게이션 (soft navigation은 쿠키 업데이트 전에 실행될 수 있음)
-      await update();
-      window.location.href = "/";
+      // 성공(201) 또는 이미 소속(200 + alreadyExists) 모두 홈으로
+      await refreshAndRedirect();
     } catch (err) {
       console.error("[ONBOARDING] create error:", err);
       setError("워크스페이스 생성 중 오류가 발생했습니다.");
@@ -56,8 +59,7 @@ export default function OnboardingPage() {
         setError(data.error ?? "참여 중 오류가 발생했습니다.");
         return;
       }
-      await update();
-      window.location.href = "/";
+      await refreshAndRedirect();
     } catch (err) {
       console.error("[ONBOARDING] join error:", err);
       setError("워크스페이스 참여 중 오류가 발생했습니다.");

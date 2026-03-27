@@ -45,12 +45,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   callbacks: {
     async jwt({ token, user, trigger }) {
+      // 로그인 시 user.id를 토큰에 저장
       if (user) {
         token.id = user.id as string;
-        token.workspaceLoaded = false;
       }
 
-      if (user || trigger === "update" || !token.workspaceLoaded) {
+      // 워크스페이스 조회 조건:
+      // - 최초 로그인(user 있음)
+      // - 명시적 세션 갱신(trigger === "update")
+      // - 토큰에 workspaceId가 없음 (DB에 생겼을 수 있으므로 항상 재조회)
+      const needsWorkspaceLookup =
+        !!user || trigger === "update" || !token.workspaceId;
+
+      if (needsWorkspaceLookup) {
         const userId = (user?.id ?? token.id) as string;
         if (userId) {
           try {
@@ -59,12 +66,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               orderBy: { joinedAt: "asc" },
             });
             token.role = member?.role ?? "MEMBER";
-            token.workspaceId = member?.workspaceId;
-            token.workspaceLoaded = true;
+            token.workspaceId = member?.workspaceId ?? undefined;
           } catch (err) {
             console.error("[AUTH] jwt workspace lookup error:", err);
-            token.role = token.role ?? "MEMBER";
-            token.workspaceLoaded = true;
+            // 오류 시 기존 값 유지
           }
         }
       }
@@ -73,8 +78,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = (token.id as string) ?? "";
+        session.user.role = (token.role as string) ?? "MEMBER";
         session.user.workspaceId = token.workspaceId as string | undefined;
       }
       return session;
