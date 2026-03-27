@@ -2,14 +2,12 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Building2, Users, ChevronRight, ArrowLeft } from "lucide-react";
 
 type Mode = "select" | "create" | "join";
 
 export default function OnboardingPage() {
   const { update } = useSession();
-  const router = useRouter();
 
   const [mode, setMode] = useState<Mode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -32,10 +30,12 @@ export default function OnboardingPage() {
         setError(data.error ?? "워크스페이스 생성 중 오류가 발생했습니다.");
         return;
       }
-      // JWT 세션 갱신 후 대시보드로
+      // JWT 세션 갱신 후 하드 내비게이션 (soft navigation은 쿠키 업데이트 전에 실행될 수 있음)
       await update();
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
+    } catch (err) {
+      console.error("[ONBOARDING] create error:", err);
+      setError("워크스페이스 생성 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -57,8 +57,10 @@ export default function OnboardingPage() {
         return;
       }
       await update();
-      router.push("/");
-      router.refresh();
+      window.location.href = "/";
+    } catch (err) {
+      console.error("[ONBOARDING] join error:", err);
+      setError("워크스페이스 참여 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
