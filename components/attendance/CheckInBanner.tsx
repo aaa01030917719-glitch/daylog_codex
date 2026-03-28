@@ -7,13 +7,6 @@ interface AttendanceData {
   status: string;
 }
 
-
-
-
-
-
-
-
 interface CheckInBannerProps {
   initialAttendance: AttendanceData | null;
 }
