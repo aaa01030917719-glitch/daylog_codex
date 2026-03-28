@@ -1,8 +1,8 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { DocEditor } from "@/app/components/docs/DocEditor";
-import { CommentSection } from "@/app/components/docs/CommentSection";
+import { DocEditor } from "@/components/docs/DocEditor";
+import { CommentSection } from "@/components/docs/CommentSection";
 
 export default async function DocDetailPage({ params }: { params: { id: string } }) {
   const session = await auth();

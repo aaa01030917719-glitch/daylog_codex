@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { AttendanceClientPage } from "@/app/components/attendance/AttendanceClientPage";
+import { AttendanceClientPage } from "@/components/attendance/AttendanceClientPage";
 
 export default async function AttendancePage() {
   const session = await auth();

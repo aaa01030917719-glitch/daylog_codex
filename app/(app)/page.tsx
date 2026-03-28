@@ -1,12 +1,12 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
-import { CheckInBanner } from "@/app/components/attendance/CheckInBanner";
-import { StatCards } from "@/app/components/dashboard/StatCards";
-import { MyTasks } from "@/app/components/dashboard/MyTasks";
-import { MiniCalendar } from "@/app/components/dashboard/MiniCalendar";
-import { QuickAdd } from "@/app/components/dashboard/QuickAdd";
-import { TeamBoard, type BoardPostData } from "@/app/components/dashboard/TeamBoard";
+import { CheckInBanner } from "@/components/attendance/CheckInBanner";
+import { StatCards } from "@/components/dashboard/StatCards";
+import { MyTasks } from "@/components/dashboard/MyTasks";
+import { MiniCalendar } from "@/components/dashboard/MiniCalendar";
+import { QuickAdd } from "@/components/dashboard/QuickAdd";
+import { TeamBoard, type BoardPostData } from "@/components/dashboard/TeamBoard";
 
 export default async function DashboardPage() {
   const session = await auth();

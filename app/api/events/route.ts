@@ -84,7 +84,7 @@ export async function POST(req: Request) {
           type: "APPROVAL_REQUEST" as const,
           title: "중요 일정 컨펌 요청이 도착했습니다.",
           body: title,
-          link: "/admin/dashboard",
+          link: "/dashboard",
         })),
       });
     }

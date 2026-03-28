@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ProjectsClientPage } from "@/app/components/projects/ProjectsClientPage";
+import { ProjectsClientPage } from "@/components/projects/ProjectsClientPage";
 
 export default async function ProjectsPage() {
   const session = await auth();

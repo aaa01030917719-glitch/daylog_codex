@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { CalendarClientPage } from "@/app/components/calendar/CalendarClientPage";
+import { CalendarClientPage } from "@/components/calendar/CalendarClientPage";
 
 export default async function CalendarPage() {
   const session = await auth();

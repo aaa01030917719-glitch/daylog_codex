@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
             type: "APPROVAL_REQUEST",
             title: "컨펌 요청이 도착했습니다.",
             body: title,
-            link: "/admin/dashboard",
+            link: "/dashboard",
           })),
         });
       }

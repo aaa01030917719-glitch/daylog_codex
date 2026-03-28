@@ -2,8 +2,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { ApprovalStatus } from "@prisma/client";
 import { redirect } from "next/navigation";
-import { ApprovalActionsPanel } from "@/app/components/dashboard/ApprovalActionsPanel";
-import { InviteCodePanel } from "@/app/components/dashboard/InviteCodePanel";
+import { ApprovalActionsPanel } from "@/components/dashboard/ApprovalActionsPanel";
+import { InviteCodePanel } from "@/components/dashboard/InviteCodePanel";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 

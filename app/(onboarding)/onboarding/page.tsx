@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Building2, Users, ChevronRight, ArrowLeft } from "lucide-react";
 
 type Mode = "select" | "create" | "join";
 
 export default function OnboardingPage() {
+  const { update } = useSession();
 
   const [mode, setMode] = useState<Mode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -13,9 +15,9 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // JWT 쿠키를 서버에서 강제 갱신 후 홈으로 이동
+  // JWT 쿠키를 갱신(trigger:"update" → DB에서 workspaceId 재조회) 후 홈으로 이동
   async function refreshAndRedirect() {
-    await fetch("/api/auth/refresh");
+    await update();
     window.location.href = "/";
   }
 

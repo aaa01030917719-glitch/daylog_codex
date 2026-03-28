@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { DocsClientPage } from "@/app/components/docs/DocsClientPage";
+import { DocsClientPage } from "@/components/docs/DocsClientPage";
 
 export default async function DocsPage() {
   const session = await auth();

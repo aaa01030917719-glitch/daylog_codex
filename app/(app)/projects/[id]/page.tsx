@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { KanbanBoard } from "@/app/components/tasks/KanbanBoard";
+import { KanbanBoard } from "@/components/tasks/KanbanBoard";
 
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
   const session = await auth();

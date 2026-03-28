@@ -10,7 +10,14 @@
       "Bash(npm install:*)",
       "Bash(npx prisma:*)",
       "Bash(node -e \"const { PrismaClient } = require\\(''@prisma/client''\\); console.log\\(''PrismaClient ok:'', typeof PrismaClient\\);\")",
-      "Bash(timeout 15 npm run dev)"
-    ]
+      "Bash(timeout 15 npm run dev)",
+      "Bash(curl -v --connect-timeout 5 \"https://aws-1-ap-south-1.pooler.supabase.com\")",
+      "Bash(node:*)",
+      "Bash(curl:*)",
+      "Bash(printf '{\"\"\"\"name\"\"\"\":\"\"\"\"testuser\"\"\"\",\"\"\"\"email\"\"\"\":\"\"\"\"test2@daylog.com\"\"\"\",\"\"\"\"password\"\"\"\":\"\"\"\"Test1234!\"\"\"\"}')",
+      "Skill(update-config)",
+      "Bash(claude --dangerously-skip-permissions)"
+    ],
+    "defaultMode": "bypassPermissions"
   }
 }

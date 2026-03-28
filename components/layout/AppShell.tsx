@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { MobileSidebar } from "@/components/layout/mobile-sidebar";
-import { CheckOutPopup } from "@/app/components/attendance/CheckOutPopup";
+import { CheckOutPopup } from "@/components/attendance/CheckOutPopup";
 import { usePushNotification } from "@/hooks/usePushNotification";
 
 export function AppShell({ children }: { children: React.ReactNode }) {

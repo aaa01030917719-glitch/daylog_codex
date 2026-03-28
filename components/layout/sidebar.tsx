@@ -72,7 +72,7 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
           {isAdmin && (
             <li className="mt-4 pt-4 border-t border-white/10">
               <Link
-                href="/admin/dashboard"
+                href="/dashboard"
                 className={cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
                   pathname.startsWith("/admin")

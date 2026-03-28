@@ -1,6 +1,6 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { NotificationsClientPage } from "@/app/components/notifications/NotificationsClientPage";
+import { NotificationsClientPage } from "@/components/notifications/NotificationsClientPage";
 
 export default async function NotificationsPage() {
   const session = await auth();
