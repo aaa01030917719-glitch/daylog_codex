@@ -9,14 +9,20 @@ export default async function ProjectsPage() {
   const workspaceId = session.user.workspaceId ?? "";
   const isAdmin = session.user.role === "ADMIN" || session.user.role === "OWNER";
 
-  const rawProjects = await prisma.project.findMany({
-    where: { workspaceId },
-    include: {
-      _count: { select: { tasks: true } },
-      tasks: { select: { status: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [rawProjects, members] = await Promise.all([
+    prisma.project.findMany({
+      where: { workspaceId },
+      include: {
+        _count: { select: { tasks: true } },
+        tasks: { select: { status: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      select: { user: { select: { id: true, name: true, image: true } } },
+    }),
+  ]);
 
   const projects = rawProjects.map((p) => ({
     ...p,
@@ -28,6 +34,7 @@ export default async function ProjectsPage() {
     <ProjectsClientPage
       initialProjects={projects}
       isAdmin={isAdmin}
+      members={members.map((m) => m.user)}
     />
   );
 }

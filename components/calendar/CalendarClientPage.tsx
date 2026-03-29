@@ -7,7 +7,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { EventClickArg } from "@fullcalendar/core";
 import { Plus, X } from "lucide-react";
-import { EventCreateModal } from "./EventCreateModal";
+import { EventCreateModal } from "@/components/modals/EventCreateModal";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
