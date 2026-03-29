@@ -8,12 +8,20 @@ const { auth } = NextAuth(authConfig);
 // 인증 없이 접근 가능한 경로
 const PUBLIC_PATHS = ["/login", "/register"];
 
+// 로그인 여부 관계없이 항상 통과 (초대 링크 등)
+const ALWAYS_PUBLIC_PATHS = ["/invite"];
+
 // 워크스페이스 없어도 접근 가능한 경로 (로그인은 필요)
 const NO_WORKSPACE_PATHS = ["/onboarding"];
 
 export default auth((req: NextAuthRequest) => {
   const { pathname } = req.nextUrl;
   const session = req.auth;
+
+  // 로그인 상태와 무관하게 항상 통과 (초대 링크)
+  if (ALWAYS_PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+    return NextResponse.next();
+  }
 
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
   const isNoWorkspace = NO_WORKSPACE_PATHS.some((p) => pathname.startsWith(p));

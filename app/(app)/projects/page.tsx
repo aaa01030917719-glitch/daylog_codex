@@ -7,7 +7,7 @@ export default async function ProjectsPage() {
   if (!session?.user?.id) return null;
 
   const workspaceId = session.user.workspaceId ?? "";
-  const isAdmin = session.user.role === "ADMIN" || session.user.role === "OWNER";
+  const isAdmin = true; // MEMBER 포함 전체 프로젝트 생성 허용
 
   const [rawProjects, members] = await Promise.all([
     prisma.project.findMany({

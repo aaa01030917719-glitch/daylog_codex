@@ -36,15 +36,18 @@ export function CheckoutConfirmModal({ checkInTime, onConfirm, onClose }: Props)
 
   async function handleConfirm() {
     setLoading(true);
-    await onConfirm();
-    setLoading(false);
+    try {
+      await onConfirm();
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
       <DialogContent style={{ maxWidth: "22rem" }}>
         <DialogHeader>
-          <DialogTitle style={{ fontFamily: "Noto Serif KR, serif", color: "#0D0D0D" }}>
+          <DialogTitle style={{ fontFamily: "Noto Serif KR, serif", color: "#0D0D0D", fontWeight: 500 }}>
             퇴근 처리할까요?
           </DialogTitle>
         </DialogHeader>

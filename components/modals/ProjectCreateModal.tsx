@@ -56,6 +56,7 @@ export function ProjectCreateModal({ members, onCreated, onClose }: Props) {
   const [endDate, setEndDate] = useState(today);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const allSelected = members.length > 0 && assigneeIds.length === members.length;
 
@@ -73,6 +74,7 @@ export function ProjectCreateModal({ members, onCreated, onClose }: Props) {
     e.preventDefault();
     if (!name.trim()) return;
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
@@ -84,10 +86,14 @@ export function ProjectCreateModal({ members, onCreated, onClose }: Props) {
           budget: null,
         }),
       });
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         onCreated(data.project);
+      } else {
+        setError(data.error ?? "프로젝트 생성에 실패했습니다.");
       }
+    } catch {
+      setError("네트워크 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
@@ -114,6 +120,11 @@ export function ProjectCreateModal({ members, onCreated, onClose }: Props) {
 
         {/* 폼 */}
         <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+          {error && (
+            <div style={{ background: "#FDECEA", border: "1px solid #fca5a5", borderRadius: "0.5rem", padding: "0.75rem 1rem", fontSize: "0.875rem", color: "#D93025" }}>
+              {error}
+            </div>
+          )}
           {/* 1. 프로젝트 이름 */}
           <div>
             <label style={labelStyle}>

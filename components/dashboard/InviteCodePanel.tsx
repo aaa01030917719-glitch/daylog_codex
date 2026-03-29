@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, Link } from "lucide-react";
 
 interface Props {
   inviteCode: string;
@@ -11,8 +11,12 @@ interface Props {
 export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
   const [copied, setCopied] = useState(false);
 
+  function getInviteUrl() {
+    return `${window.location.origin}/invite/${inviteCode}`;
+  }
+
   async function handleCopy() {
-    await navigator.clipboard.writeText(inviteCode);
+    await navigator.clipboard.writeText(getInviteUrl());
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -39,7 +43,7 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
         워크스페이스 설정
       </h2>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1rem" }}>
-        새 구성원이 <strong style={{ color: "#0D0D0D" }}>{workspaceName}</strong>에 참여할 수 있도록 초대 코드를 공유하세요.
+        새 구성원이 <strong style={{ color: "#0D0D0D" }}>{workspaceName}</strong>에 참여할 수 있도록 초대 링크를 공유하세요.
       </p>
 
       <div
@@ -53,21 +57,24 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
           padding: "0.75rem 1rem",
         }}
       >
+        <Link size={16} style={{ color: "#999", flexShrink: 0 }} />
         <code
           style={{
             flex: 1,
-            fontSize: "0.9375rem",
+            fontSize: "0.8125rem",
             fontFamily: "monospace",
-            letterSpacing: "0.08em",
-            color: "#0D0D0D",
+            color: "#555",
             wordBreak: "break-all",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
           }}
         >
-          {inviteCode}
+          {typeof window !== "undefined" ? `${window.location.origin}/invite/${inviteCode}` : `/invite/${inviteCode}`}
         </code>
         <button
           onClick={handleCopy}
-          title="복사"
+          title="링크 복사"
           style={{
             display: "flex",
             alignItems: "center",
@@ -85,12 +92,12 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
           }}
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? "복사됨" : "복사"}
+          {copied ? "복사됨" : "링크 복사"}
         </button>
       </div>
 
       <p style={{ fontSize: "0.8125rem", color: "#999", marginTop: "0.625rem" }}>
-        회원가입 후 온보딩 화면에서 이 코드를 입력하면 팀에 합류할 수 있습니다.
+        링크를 클릭하면 회원가입 후 바로 팀에 합류할 수 있습니다.
       </p>
     </section>
   );

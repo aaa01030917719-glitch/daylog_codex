@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Building2, Users, ChevronRight, ArrowLeft } from "lucide-react";
+import { Building2, Users, ChevronRight, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { WorkspaceSuccessModal } from "@/components/modals/WorkspaceSuccessModal";
 
 type Mode = "select" | "create" | "join";
@@ -12,8 +12,51 @@ interface CreatedWorkspace {
   inviteCode: string;
 }
 
+// 단계 인디케이터 (select/create/join 모드에서 현재 단계 표시)
+function StepIndicator({ currentStep }: { currentStep: 1 | 2 | 3 }) {
+  const steps = [
+    { n: 1, label: "워크스페이스" },
+    { n: 2, label: "팀원 초대" },
+    { n: 3, label: "시작!" },
+  ];
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0", marginBottom: "1.75rem" }}>
+      {steps.map((step, idx) => (
+        <div key={step.n} style={{ display: "flex", alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+            <div
+              style={{
+                width: "2rem",
+                height: "2rem",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.8125rem",
+                fontWeight: 700,
+                background: step.n < currentStep ? "#2A8C50" : step.n === currentStep ? "#F56B23" : "#E8E0C8",
+                color: step.n <= currentStep ? "#fff" : "#999",
+                transition: "all 0.2s",
+              }}
+            >
+              {step.n < currentStep ? "✓" : step.n}
+            </div>
+            <span style={{ fontSize: "0.6875rem", color: step.n === currentStep ? "#F56B23" : "#999", fontWeight: step.n === currentStep ? 600 : 400 }}>
+              {step.label}
+            </span>
+          </div>
+          {idx < steps.length - 1 && (
+            <div style={{ width: "3rem", height: "2px", background: step.n < currentStep ? "#2A8C50" : "#E8E0C8", marginBottom: "1rem", transition: "background 0.2s" }} />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function OnboardingPage() {
-  const { update } = useSession();
+  const { data: session, update } = useSession();
+  const alreadyHasWorkspace = !!(session?.user as { workspaceId?: string } | undefined)?.workspaceId;
 
   const [mode, setMode] = useState<Mode>("select");
   const [workspaceName, setWorkspaceName] = useState("");
@@ -115,6 +158,55 @@ export default function OnboardingPage() {
             </p>
           </div>
 
+          {/* 이미 워크스페이스가 있는 경우 안내 */}
+          {alreadyHasWorkspace && (
+            <div
+              style={{
+                background: "#fff",
+                border: "1px solid #BBF7D0",
+                borderRadius: "1rem",
+                padding: "2rem",
+                boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
+                <CheckCircle2 size={48} style={{ color: "#2A8C50" }} />
+              </div>
+              <h2
+                style={{
+                  fontFamily: "Noto Serif KR, serif",
+                  fontSize: "1.25rem",
+                  fontWeight: 600,
+                  color: "#0D0D0D",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                이미 워크스페이스가 있어요!
+              </h2>
+              <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1.5rem" }}>
+                지금 바로 팀과 함께 시작할 수 있습니다.
+              </p>
+              <button
+                onClick={() => { window.location.href = "/"; }}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  background: "#F56B23",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "0.5rem",
+                  fontSize: "0.9375rem",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                대시보드로 이동
+              </button>
+            </div>
+          )}
+
+          {!alreadyHasWorkspace && (
           <div
             style={{
               background: "#fff",
@@ -124,6 +216,8 @@ export default function OnboardingPage() {
               boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
             }}
           >
+            <StepIndicator currentStep={mode === "select" ? 1 : 2} />
+
             {/* 모드 선택 */}
             {mode === "select" && (
               <div>
@@ -294,7 +388,7 @@ export default function OnboardingPage() {
                     value={workspaceName}
                     onChange={(e) => setWorkspaceName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && !loading && handleCreate()}
-                    placeholder="예: 우리 팀 daylog"
+                    placeholder="팀 이름이나 회사 이름을 입력하세요"
                     style={{
                       width: "100%",
                       border: "1px solid #E8E0C8",
@@ -434,6 +528,7 @@ export default function OnboardingPage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
     </>

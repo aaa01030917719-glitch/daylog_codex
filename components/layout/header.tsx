@@ -48,14 +48,30 @@ export function Header({ onMenuClick, title }: HeaderProps) {
       <div className="flex items-center gap-2">
         <Link
           href="/notifications"
-          className="relative flex items-center justify-center rounded-md p-2 text-[var(--text-sub)] hover:bg-[var(--bg-light)]"
+          className="relative flex items-center justify-center"
           aria-label="알림"
+          style={{
+            width: "38px",
+            height: "38px",
+            borderRadius: "10px",
+            background: "#FEF0E8",
+            color: "#F56B23",
+            flexShrink: 0,
+          }}
         >
           <Bell size={20} />
           {unreadCount > 0 && (
             <span
-              className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold text-white"
-              style={{ background: "#F56B23", minWidth: "1rem" }}
+              className="absolute flex items-center justify-center text-[10px] font-bold text-white"
+              style={{
+                top: "2px",
+                right: "2px",
+                background: "#e53e3e",
+                borderRadius: "8px",
+                minWidth: "16px",
+                height: "16px",
+                padding: "0 3px",
+              }}
             >
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>

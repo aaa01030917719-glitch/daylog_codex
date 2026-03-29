@@ -36,10 +36,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
 
-  if (session.user.role !== "ADMIN" && session.user.role !== "OWNER") {
-    return NextResponse.json({ error: "관리자만 프로젝트를 생성할 수 있습니다." }, { status: 403 });
-  }
-
   const workspaceId = session.user.workspaceId;
   if (!workspaceId) return NextResponse.json({ error: "워크스페이스 없음" }, { status: 400 });
 
@@ -60,7 +56,7 @@ export async function POST(req: NextRequest) {
       include: { _count: { select: { tasks: true } } },
     });
 
-    return NextResponse.json({ project }, { status: 201 });
+    return NextResponse.json({ project: { ...project, doneTasks: 0 } }, { status: 201 });
   } catch (error) {
     console.error("[PROJECT CREATE]", error);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });

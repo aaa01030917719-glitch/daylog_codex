@@ -106,11 +106,19 @@ export function TaskCreateModal({ projectId: initialProjectId, defaultStatus = "
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center"
+      style={{ background: "rgba(0,0,0,0.4)" }}
       onClick={onClose}
     >
       <div
-        style={{ background: "#fff", borderRadius: "0.75rem", padding: "1.5rem", maxWidth: "26rem", width: "calc(100% - 2rem)", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}
+        className="w-full sm:mx-auto sm:rounded-xl"
+        style={{
+          background: "#fff",
+          borderRadius: "1.25rem 1.25rem 0 0",
+          padding: "1.5rem",
+          maxWidth: "26rem",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ marginBottom: "1rem" }}>

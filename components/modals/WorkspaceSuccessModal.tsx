@@ -18,11 +18,12 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
   }
 
   async function handleCopyInvite() {
+    const url = `${window.location.origin}/invite/${inviteCode}`;
     try {
-      await navigator.clipboard.writeText(inviteCode);
+      await navigator.clipboard.writeText(url);
     } catch {
       const el = document.createElement("textarea");
-      el.value = inviteCode;
+      el.value = url;
       document.body.appendChild(el);
       el.select();
       document.execCommand("copy");

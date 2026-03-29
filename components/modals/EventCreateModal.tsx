@@ -2,7 +2,14 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { X } from "lucide-react";
+import { X, Check } from "lucide-react";
+
+const COLOR_PALETTE = [
+  "#F87171", "#FB923C", "#FBBF24",
+  "#A3E635", "#34D399", "#2DD4BF",
+  "#38BDF8", "#60A5FA", "#A78BFA",
+  "#F472B6", "#FB7185", "#94A3B8",
+];
 
 interface EventData {
   id: string;
@@ -61,6 +68,7 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
   const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
   const [isImportant, setIsImportant] = useState(false);
   const [description, setDescription] = useState("");
+  const [color, setColor] = useState("#60A5FA");
   const [loading, setLoading] = useState(false);
 
   const allSelected = members.length > 0 && attendeeIds.length === members.length;
@@ -89,7 +97,7 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
           startAt: `${date}T${startTime}:00`,
           endAt: `${date}T${endTime}:00`,
           allDay: false,
-          color: "#F56B23",
+          color,
           isImportant,
           attendeeIds,
         }),
@@ -235,7 +243,38 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
             </div>
           )}
 
-          {/* 5. 중요 일정 */}
+          {/* 5. 색상 선택 */}
+          <div>
+            <label style={labelStyle}>색상</label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {COLOR_PALETTE.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setColor(c)}
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "50%",
+                    background: c,
+                    border: color === c ? "2px solid #0D0D0D" : "2px solid transparent",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 0,
+                    outline: "none",
+                    flexShrink: 0,
+                  }}
+                  aria-label={c}
+                >
+                  {color === c && <Check size={11} style={{ color: "#fff" }} strokeWidth={3} />}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* 6. 중요 일정 */}
           <div>
             <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
               <input
@@ -253,7 +292,7 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
             )}
           </div>
 
-          {/* 6. 내용 */}
+          {/* 7. 내용 */}
           <div>
             <label style={labelStyle}>내용 (선택)</label>
             <textarea

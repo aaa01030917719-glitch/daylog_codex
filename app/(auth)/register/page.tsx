@@ -123,6 +123,13 @@ export default function RegisterPage() {
                 로그인
               </Link>
             </p>
+
+            <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--bg-light)] px-4 py-3 text-center">
+              <p className="text-xs text-[var(--text-sub)]">
+                팀에 합류하려면 관리자에게{" "}
+                <span className="font-medium text-[var(--text-title)]">초대 링크</span>를 요청하세요.
+              </p>
+            </div>
           </div>
         </div>
       </div>

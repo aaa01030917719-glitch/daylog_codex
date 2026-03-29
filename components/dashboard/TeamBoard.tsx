@@ -21,6 +21,8 @@ export interface BoardPostData {
 
 interface TeamBoardProps {
   posts: BoardPostData[];
+  /** 지정 시 해당 타입만 단일 전체너비 섹션으로 렌더링 */
+  filterType?: "NOTICE" | "IDEA" | "CEO_MESSAGE";
 }
 
 const STATUS_LABEL: Record<string, { label: string; bg: string; color: string }> = {
@@ -142,7 +144,7 @@ function BoardWidget({ title, children }: { title: string; children: React.React
   );
 }
 
-export function TeamBoard({ posts }: TeamBoardProps) {
+export function TeamBoard({ posts, filterType }: TeamBoardProps) {
   const [localPosts, setLocalPosts] = useState<BoardPostData[]>(posts);
 
   const notices = localPosts.filter((p) => p.type === "NOTICE");
@@ -177,6 +179,44 @@ export function TeamBoard({ posts }: TeamBoardProps) {
     });
   }
 
+  // filterType 지정 시: 단일 타입 전체너비 렌더링 (OWNER 레이아웃용)
+  if (filterType === "NOTICE") {
+    return (
+      <BoardWidget title="📢 팀 공지">
+        {notices.length === 0 ? (
+          <p className="text-xs py-4 text-center" style={{ color: "#999" }}>공지가 없습니다.</p>
+        ) : (
+          notices.map((p) => <NoticeCard key={p.id} post={p} onRead={handleRead} />)
+        )}
+      </BoardWidget>
+    );
+  }
+
+  if (filterType === "IDEA") {
+    return (
+      <BoardWidget title="💡 아이디어 보드">
+        {ideas.length === 0 ? (
+          <p className="text-xs py-4 text-center" style={{ color: "#999" }}>등록된 아이디어가 없습니다.</p>
+        ) : (
+          ideas.map((p) => <IdeaCard key={p.id} post={p} onLike={handleLike} />)
+        )}
+      </BoardWidget>
+    );
+  }
+
+  if (filterType === "CEO_MESSAGE") {
+    return (
+      <BoardWidget title="📬 직원 전달사항">
+        {ceoMsgs.length === 0 ? (
+          <p className="text-xs py-4 text-center" style={{ color: "#999" }}>전달된 내용이 없습니다.</p>
+        ) : (
+          ceoMsgs.map((p) => <CeoCard key={p.id} post={p} />)
+        )}
+      </BoardWidget>
+    );
+  }
+
+  // 기본: 3열 그리드 (직원/관리자 레이아웃)
   return (
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <BoardWidget title="📢 팀 공지">
@@ -195,7 +235,7 @@ export function TeamBoard({ posts }: TeamBoardProps) {
         )}
       </BoardWidget>
 
-      <BoardWidget title="📬 대표님께 전달함">
+      <BoardWidget title="📬 직원 전달사항">
         {ceoMsgs.length === 0 ? (
           <p className="text-xs py-4 text-center" style={{ color: "#999" }}>전달된 내용이 없습니다.</p>
         ) : (

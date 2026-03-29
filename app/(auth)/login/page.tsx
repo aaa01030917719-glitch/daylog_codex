@@ -139,6 +139,20 @@ export default function LoginPage() {
               회원가입
             </Link>
           </p>
+
+          <p className="mt-3 text-center text-sm text-[var(--text-sub)]">
+            초대받으셨나요?{" "}
+            <span
+              className="font-medium cursor-pointer"
+              style={{ color: "#F56B23" }}
+              onClick={() => {
+                const url = prompt("초대 링크를 붙여넣으세요");
+                if (url) window.location.href = url;
+              }}
+            >
+              초대 링크로 가입하기
+            </span>
+          </p>
         </div>
       </div>
     </div>
