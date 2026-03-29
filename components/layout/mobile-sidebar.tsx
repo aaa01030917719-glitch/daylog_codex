@@ -58,7 +58,9 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
         )}
       >
         <div className="flex h-16 items-center justify-between px-6 border-b border-white/10">
-          <span className="font-serif text-xl font-bold text-white">daylog</span>
+          <Link href="/" className="cursor-pointer opacity-100 hover:opacity-80 transition-opacity">
+            <span className="font-serif text-xl font-bold text-white">daylog</span>
+          </Link>
           <button
             onClick={onClose}
             className="p-1 text-white/60 hover:text-white"

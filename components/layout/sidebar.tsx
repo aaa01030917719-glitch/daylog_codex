@@ -39,9 +39,11 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
     <aside className="flex h-screen w-60 flex-col bg-[var(--sidebar-bg)] text-white">
       {/* 로고 */}
       <div className="flex h-16 items-center px-6 border-b border-white/10">
-        <span className="font-serif text-xl font-bold text-white tracking-tight">
-          daylog
-        </span>
+        <Link href="/" className="cursor-pointer opacity-100 hover:opacity-80 transition-opacity">
+          <span className="font-serif text-xl font-bold text-white tracking-tight">
+            daylog
+          </span>
+        </Link>
       </div>
 
       {/* 네비게이션 */}
