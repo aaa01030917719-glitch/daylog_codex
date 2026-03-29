@@ -90,8 +90,8 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
       </nav>
 
       {/* 유저 프로필 + 로그아웃 */}
-      <div className="border-t border-white/10 p-4">
-        <div className="flex items-center gap-3 mb-3">
+      <div className="border-t border-white/10 bg-black/20 p-4 space-y-2">
+        <div className="flex items-center gap-3">
           <div className="h-8 w-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-sm font-bold text-white shrink-0">
             {userName?.[0]?.toUpperCase() ?? "U"}
           </div>
@@ -106,7 +106,7 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
         </div>
         <button
           onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-red-500/15 hover:text-red-400 transition-colors"
         >
           <LogOut size={16} />
           로그아웃
