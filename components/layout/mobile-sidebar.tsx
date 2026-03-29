@@ -94,10 +94,10 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
             {isAdmin && (
               <li className="mt-4 pt-4 border-t border-white/10">
                 <Link
-                  href="/dashboard"
+                  href="/admin/dashboard"
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-150",
-                    pathname === "/dashboard"
+                    pathname.startsWith("/admin")
                       ? "bg-[#F56B23] text-white"
                       : "text-[#999999] hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
                   )}

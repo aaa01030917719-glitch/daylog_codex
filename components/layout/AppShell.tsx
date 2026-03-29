@@ -6,7 +6,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 import { MobileSidebar } from "@/components/layout/mobile-sidebar";
-import { CheckOutPopup } from "@/components/attendance/CheckOutPopup";
+import { QuickAddFAB } from "@/components/ui/QuickAddFAB";
 import { usePushNotification } from "@/hooks/usePushNotification";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -44,7 +44,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <MobileTabBar />
-      <CheckOutPopup />
+      <QuickAddFAB />
     </div>
   );
 }

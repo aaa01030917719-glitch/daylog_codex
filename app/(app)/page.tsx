@@ -21,10 +21,11 @@ export default async function DashboardPage() {
   const monthEnd = endOfMonth(now);
 
   // 출근 상태
-  const todayAttendance = userId
+  const userRole = session?.user?.role;
+  const todayAttendance = userId && userRole !== "OWNER"
     ? await prisma.attendance.findUnique({
         where: { userId_date: { userId, date: today } },
-        select: { checkIn: true, status: true },
+        select: { checkIn: true, checkOut: true, status: true },
       })
     : null;
 
@@ -122,7 +123,11 @@ export default async function DashboardPage() {
   }));
 
   const initialAttendance = todayAttendance?.checkIn
-    ? { checkIn: todayAttendance.checkIn.toISOString(), status: todayAttendance.status }
+    ? {
+        checkIn: todayAttendance.checkIn.toISOString(),
+        checkOut: todayAttendance.checkOut ? todayAttendance.checkOut.toISOString() : null,
+        status: todayAttendance.status,
+      }
     : null;
 
   return (
@@ -135,8 +140,10 @@ export default async function DashboardPage() {
         <p className="mt-1 text-sm" style={{ color: "#999" }}>오늘도 좋은 하루 되세요.</p>
       </div>
 
-      {/* 출근 배너 */}
-      <CheckInBanner initialAttendance={initialAttendance} />
+      {/* 출근 배너 (OWNER는 미표시) */}
+      {userRole !== "OWNER" && (
+        <CheckInBanner initialAttendance={initialAttendance} />
+      )}
 
       {/* 통계 카드 */}
       <StatCards
