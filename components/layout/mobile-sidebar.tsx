@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Calendar, Clock, FolderKanban,
-  FileText, Bell, Shield, LogOut, X,
+  FileText, Bell, Shield, LogOut, X, ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -108,8 +108,9 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
           </ul>
         </nav>
 
-        <div className="border-t border-white/10 bg-black/20 p-4 space-y-2">
-          <div className="flex items-center gap-3">
+        <div className="border-t border-white/10 bg-black/20 px-4 py-3">
+          {/* 프로필 행 */}
+          <div className="flex items-center gap-3 mb-2">
             <div className="h-8 w-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-sm font-bold text-white shrink-0">
               {userName?.[0]?.toUpperCase() ?? "U"}
             </div>
@@ -118,12 +119,14 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
               <p className="text-xs text-white/50 capitalize">{userRole?.toLowerCase() ?? "member"}</p>
             </div>
           </div>
+          {/* 로그아웃 버튼 — 이름 아래 들여쓰기 */}
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white/70 hover:bg-red-500/15 hover:text-red-400 transition-colors"
+            className="ml-11 flex items-center gap-1 text-xs text-white/50 hover:text-red-400 transition-colors group"
           >
-            <LogOut size={16} />
+            <LogOut size={13} />
             로그아웃
+            <ArrowRight size={11} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
           </button>
         </div>
       </aside>
