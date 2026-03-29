@@ -1,22 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const SAVED_ID_KEY = "savedId";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [saveId, setSaveId] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // 저장된 아이디 불러오기
+  useEffect(() => {
+    const saved = localStorage.getItem(SAVED_ID_KEY);
+    if (saved) {
+      setEmail(saved);
+      setSaveId(true);
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
+
+    // 아이디 저장 처리
+    if (saveId) {
+      localStorage.setItem(SAVED_ID_KEY, email);
+    } else {
+      localStorage.removeItem(SAVED_ID_KEY);
+    }
 
     try {
       const result = await signIn("credentials", {
@@ -81,6 +100,21 @@ export default function LoginPage() {
                 required
                 autoComplete="current-password"
               />
+            </div>
+
+            {/* 아이디 저장 + 비밀번호 찾기 */}
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={saveId}
+                  onChange={(e) => setSaveId(e.target.checked)}
+                  className="rounded"
+                  style={{ accentColor: "#F56B23", width: "1rem", height: "1rem" }}
+                />
+                <span className="text-sm text-[var(--text-sub)]">아이디 저장</span>
+              </label>
+              <span className="text-sm text-[var(--text-sub)]">비밀번호를 잊으셨나요?</span>
             </div>
 
             {error && (

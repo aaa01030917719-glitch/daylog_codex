@@ -179,7 +179,7 @@ export function ProjectsClientPage({ initialProjects, isAdmin }: Props) {
                     {s?.label ?? p.status}
                   </span>
                   <span style={{ fontSize: "0.8125rem", color: "#999" }}>
-                    태스크 {p._count.tasks}개
+                    프로젝트 {p._count.tasks}개
                   </span>
                 </div>
               </div>

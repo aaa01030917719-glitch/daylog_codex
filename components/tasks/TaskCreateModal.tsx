@@ -57,8 +57,8 @@ export function TaskCreateModal({ projectId: initialProjectId, defaultStatus = "
   const hasProjectStep = !!projects && !initialProjectId;
   const totalSteps = hasProjectStep ? 4 : 3;
   const stepLabels = hasProjectStep
-    ? ["태스크 이름", "프로젝트 선택", "마감일 및 우선순위", "담당자 및 확인"]
-    : ["태스크 이름", "마감일 및 우선순위", "담당자 및 확인"];
+    ? ["프로젝트 이름", "프로젝트 선택", "마감일 및 우선순위", "담당자 및 확인"]
+    : ["프로젝트 이름", "마감일 및 우선순위", "담당자 및 확인"];
 
   const [step, setStep] = useState(1);
   const [title, setTitle] = useState("");
@@ -129,7 +129,7 @@ export function TaskCreateModal({ projectId: initialProjectId, defaultStatus = "
         {step === 1 && (
           <div>
             <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "#555", marginBottom: "0.5rem" }}>
-              태스크 이름 <span style={{ color: "#F56B23" }}>*</span>
+              프로젝트 이름 <span style={{ color: "#F56B23" }}>*</span>
             </label>
             <input
               autoFocus
@@ -229,7 +229,7 @@ export function TaskCreateModal({ projectId: initialProjectId, defaultStatus = "
           ) : (
             <button onClick={handleCreate} disabled={loading || !resolvedProjectId}
               style={{ flex: 1, padding: "0.625rem", border: "none", borderRadius: "0.5rem", background: "#F56B23", color: "#fff", cursor: loading ? "not-allowed" : "pointer", fontSize: "0.875rem", fontWeight: 600, opacity: loading ? 0.7 : 1 }}>
-              {loading ? "생성 중..." : "태스크 만들기"}
+              {loading ? "생성 중..." : "프로젝트 만들기"}
             </button>
           )}
         </div>

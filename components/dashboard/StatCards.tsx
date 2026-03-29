@@ -41,7 +41,7 @@ function StatCard({ label, value, max, unit, icon }: StatCardData) {
 
 export function StatCards({ inProgress, weekDone, monthEvents }: StatCardsProps) {
   const cards: StatCardData[] = [
-    { label: "진행중 태스크", value: inProgress, max: Math.max(inProgress, 10), unit: "개", icon: "🔄" },
+    { label: "진행중 프로젝트", value: inProgress, max: Math.max(inProgress, 10), unit: "개", icon: "🔄" },
     { label: "이번주 완료", value: weekDone, max: Math.max(weekDone, 10), unit: "개", icon: "✅" },
     { label: "이번달 일정", value: monthEvents, max: Math.max(monthEvents, 20), unit: "건", icon: "📅" },
   ];

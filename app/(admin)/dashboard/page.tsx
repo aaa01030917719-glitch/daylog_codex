@@ -130,7 +130,7 @@ export default async function AdminDashboardPage() {
     { label: "전체 사용자", value: totalUsers, unit: "명" },
     { label: "대기중 승인", value: pendingApprovals, unit: "건" },
     { label: "오늘 출근", value: todayAttendanceCount, unit: "명" },
-    { label: "이번 주 완료 태스크", value: weekDoneTasks, unit: "개" },
+    { label: "이번 주 완료 프로젝트", value: weekDoneTasks, unit: "개" },
   ];
 
   return (

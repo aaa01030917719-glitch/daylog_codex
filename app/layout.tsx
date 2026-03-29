@@ -4,7 +4,7 @@ import { SessionProvider } from "next-auth/react";
 
 export const metadata: Metadata = {
   title: "daylog — 팀 업무 관리",
-  description: "팀 일정, 태스크, 출퇴근을 한 곳에서 관리하세요.",
+  description: "팀 일정, 프로젝트, 출퇴근을 한 곳에서 관리하세요.",
 };
 
 export default function RootLayout({

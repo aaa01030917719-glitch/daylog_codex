@@ -18,7 +18,7 @@ function QuickAddModal({ type, onClose }: QuickAddModalProps) {
   const config = {
     idea: { title: "💡 아이디어 올리기", postType: "IDEA", placeholder: "아이디어를 자유롭게 적어주세요." },
     ceo: { title: "📬 대표님께 전달", postType: "CEO_MESSAGE", placeholder: "대표님께 전달할 내용을 적어주세요." },
-    task: { title: "✅ 태스크 추가", postType: null, placeholder: "태스크 내용을 입력하세요." },
+    task: { title: "✅ 프로젝트 추가", postType: null, placeholder: "프로젝트 내용을 입력하세요." },
   }[type ?? "idea"];
 
   async function handleSubmit(e: React.FormEvent) {
@@ -98,7 +98,7 @@ function QuickAddModal({ type, onClose }: QuickAddModalProps) {
 const BUTTONS = [
   { key: "idea" as ModalType, label: "💡 아이디어 올리기" },
   { key: "ceo" as ModalType, label: "📬 대표님께 전달" },
-  { key: "task" as ModalType, label: "✅ 태스크 추가" },
+  { key: "task" as ModalType, label: "✅ 프로젝트 추가" },
 ];
 
 export function QuickAdd() {

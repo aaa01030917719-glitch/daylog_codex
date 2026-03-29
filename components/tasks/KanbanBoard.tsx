@@ -268,7 +268,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                         }}
                       >
                         <Plus size={14} />
-                        태스크 추가
+                        프로젝트 추가
                       </button>
                     </div>
                   )}

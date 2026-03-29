@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard, Calendar, Clock, FolderKanban,
-  FileText, Bell, Shield, LogOut, X, ArrowRight,
+  FileText, Bell, Shield, LogOut, X, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -77,10 +77,10 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
                   <Link
                     href={href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-150",
                       isActive
-                        ? "bg-[var(--accent)] text-white"
-                        : "text-white/60 hover:bg-white/10 hover:text-white"
+                        ? "bg-[#F56B23] text-white"
+                        : "text-[#999999] hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
                     )}
                   >
                     <Icon size={18} />
@@ -94,39 +94,47 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
                 <Link
                   href="/dashboard"
                   className={cn(
-                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors",
-                    pathname.startsWith("/admin")
-                      ? "bg-[var(--accent)] text-white"
-                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                    "flex items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium transition-colors duration-150",
+                    pathname === "/dashboard"
+                      ? "bg-[#F56B23] text-white"
+                      : "text-[#999999] hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
                   )}
                 >
                   <Shield size={18} />
                   관리자
+                  <ChevronRight size={14} className="ml-auto" />
                 </Link>
               </li>
             )}
           </ul>
         </nav>
 
-        <div className="border-t border-white/10 bg-black/20 px-4 py-3">
-          {/* 프로필 행 */}
-          <div className="flex items-center gap-3 mb-2">
-            <div className="h-8 w-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-sm font-bold text-white shrink-0">
-              {userName?.[0]?.toUpperCase() ?? "U"}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-white truncate">{userName ?? "사용자"}</p>
-              <p className="text-xs text-white/50 capitalize">{userRole?.toLowerCase() ?? "member"}</p>
-            </div>
+        {/* 유저 프로필 + 로그아웃 (B) */}
+        <div
+          className="flex items-center gap-3 px-4 py-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
+        >
+          <div className="h-8 w-8 rounded-full bg-[#F56B23] flex items-center justify-center text-sm font-bold text-white shrink-0">
+            {userName?.[0]?.toUpperCase() ?? "U"}
           </div>
-          {/* 로그아웃 버튼 — 이름 아래 들여쓰기 */}
+          <p className="text-sm font-medium text-white truncate flex-1 min-w-0">
+            {userName ?? "사용자"}
+          </p>
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
-            className="ml-11 flex items-center gap-1 text-xs text-white/50 hover:text-red-400 transition-colors group"
+            className="p-1.5 rounded-md transition-colors shrink-0"
+            style={{ color: "#888" }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "#888";
+              e.currentTarget.style.background = "transparent";
+            }}
+            aria-label="로그아웃"
           >
-            <LogOut size={13} />
-            로그아웃
-            <ArrowRight size={11} className="opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+            <LogOut size={16} />
           </button>
         </div>
       </aside>

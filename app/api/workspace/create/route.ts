@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
     });
 
     console.log("[WORKSPACE CREATE] created:", workspace.id);
-    return NextResponse.json({ workspaceId: workspace.id }, { status: 201 });
+    return NextResponse.json({ workspaceId: workspace.id, name: workspace.name, inviteCode: workspace.inviteCode }, { status: 201 });
   } catch (error) {
     console.error("[WORKSPACE CREATE] error:", error);
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });

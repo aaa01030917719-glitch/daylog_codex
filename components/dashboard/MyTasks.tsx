@@ -45,8 +45,8 @@ export function MyTasks({ tasks }: MyTasksProps) {
   if (tasks.length === 0) {
     return (
       <div className="rounded-xl bg-white p-6" style={{ border: "1px solid #E8E0C8" }}>
-        <h2 className="font-serif text-lg font-semibold mb-4" style={{ color: "#0D0D0D" }}>내 태스크</h2>
-        <p className="text-sm text-center py-8" style={{ color: "#999" }}>배정된 태스크가 없습니다.</p>
+        <h2 className="font-serif text-lg font-semibold mb-4" style={{ color: "#0D0D0D" }}>내 프로젝트</h2>
+        <p className="text-sm text-center py-8" style={{ color: "#999" }}>배정된 프로젝트가 없습니다.</p>
       </div>
     );
   }
@@ -54,13 +54,13 @@ export function MyTasks({ tasks }: MyTasksProps) {
   return (
     <div className="rounded-xl bg-white overflow-hidden" style={{ border: "1px solid #E8E0C8" }}>
       <div className="px-6 py-4">
-        <h2 className="font-serif text-lg font-semibold" style={{ color: "#0D0D0D" }}>내 태스크</h2>
+        <h2 className="font-serif text-lg font-semibold" style={{ color: "#0D0D0D" }}>내 프로젝트</h2>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr style={{ background: "#F5EED5" }}>
-              <th className="px-4 py-2.5 text-left font-medium" style={{ color: "#2D2D2D" }}>태스크명</th>
+              <th className="px-4 py-2.5 text-left font-medium" style={{ color: "#2D2D2D" }}>프로젝트명</th>
               <th className="px-4 py-2.5 text-left font-medium" style={{ color: "#2D2D2D" }}>상태</th>
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell" style={{ color: "#2D2D2D" }}>우선순위</th>
               <th className="px-4 py-2.5 text-left font-medium hidden sm:table-cell" style={{ color: "#2D2D2D" }}>담당자</th>
