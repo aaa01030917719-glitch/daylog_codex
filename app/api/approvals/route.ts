@@ -117,6 +117,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
   }
 
+  const workspaceId = session.user.workspaceId;
+  if (!workspaceId) {
+    return NextResponse.json(
+      { error: "워크스페이스 정보가 없습니다." },
+      { status: 400 }
+    );
+  }
+
   try {
     const body = await req.json();
     const type = normalizeText(body.type);
@@ -125,16 +133,6 @@ export async function POST(req: NextRequest) {
     const leaveType = normalizeText(body.leaveType);
     const leaveStart = parseDateInput(body.leaveStart);
     const leaveEnd = parseDateInput(body.leaveEnd);
-
-    const workspaceId = session.user.workspaceId; /*
-      return NextResponse.json({ error: "type과 title은 필수입니다." }, { status: 400 });
-    */
-    if (!workspaceId) {
-      return NextResponse.json(
-        { error: "워크스페이스 정보가 없습니다." },
-        { status: 400 }
-      );
-    }
 
     const isLeaveRequest =
       type === "LEAVE_REQUEST" ||
@@ -159,43 +157,6 @@ export async function POST(req: NextRequest) {
           taskId: normalizeText(body.taskId),
           eventId: normalizeText(body.eventId),
         });
-/*
-      data: {
-        type,
-        title,
-        description: description ?? null,
-        requesterId: session.user.id,
-        taskId: taskId ?? null,
-        eventId: eventId ?? null,
-      },
-      include: {
-        requester: { select: { id: true, name: true } },
-        task: { select: { id: true, title: true } },
-      },
-    });
-
-    // ADMIN/OWNER에게 알림 발송
-    if (session.user.workspaceId) {
-      const admins = await prisma.workspaceMember.findMany({
-        where: {
-          workspaceId: session.user.workspaceId,
-          role: { in: ["ADMIN", "OWNER"] },
-          userId: { not: session.user.id },
-        },
-        select: { userId: true },
-      });
-      if (admins.length > 0) {
-        await prisma.notification.createMany({
-          data: admins.map((a) => ({
-            userId: a.userId,
-            type: "APPROVAL_REQUEST",
-            title: "컨펌 요청이 도착했습니다.",
-            body: title,
-            link: "/dashboard",
-          })),
-        });
-      }
-    } */
 
     const admins = await prisma.workspaceMember.findMany({
       where: {
@@ -228,7 +189,10 @@ export async function POST(req: NextRequest) {
     }
 
     console.error("[APPROVAL CREATE]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json(
+      { error: "서버 오류가 발생했습니다." },
+      { status: 500 }
+    );
   }
 }
 
