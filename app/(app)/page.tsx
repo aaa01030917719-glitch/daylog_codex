@@ -58,7 +58,7 @@ export default async function DashboardPage() {
           where: { assigneeId: userId, status: "IN_PROGRESS" },
           select: { id: true, title: true, dueDate: true },
           orderBy: { dueDate: "asc" },
-          take: 5,
+          take: 20,
         })
       : Promise.resolve([]),
     userId
@@ -70,7 +70,7 @@ export default async function DashboardPage() {
           },
           select: { id: true, title: true, updatedAt: true },
           orderBy: { updatedAt: "desc" },
-          take: 5,
+          take: 20,
         })
       : Promise.resolve([]),
   ]);
@@ -150,10 +150,10 @@ export default async function DashboardPage() {
           name: true,
           color: true,
           _count: { select: { tasks: true } },
-          tasks: { where: { status: "DONE" }, select: { id: true } },
+          tasks: { select: { id: true, title: true, status: true } },
         },
         orderBy: { createdAt: "desc" },
-        take: 5,
+        take: 20,
       })
     : [];
 
@@ -184,13 +184,13 @@ export default async function DashboardPage() {
 
   // 인사말 랜덤 문구 (날짜 기준 하루 고정)
   const phrases = [
-    "오늘도 작은 한 걸음이 큰 변화를 만들어요 🌱",
-    "집중하면 못 할 일이 없어요. 오늘도 파이팅! 💪",
-    "좋은 하루의 시작은 좋은 마음가짐에서 시작해요 ☀️",
-    "오늘 하루도 팀과 함께라면 든든해요 🤝",
-    "작은 완료가 쌓여 큰 성과가 돼요. 오늘도 하나씩! ✅",
-    "어제보다 오늘이 조금 더 나아지고 있어요 📈",
-    "오늘 해야 할 일, 오늘 다 해버려요! 🚀",
+    "🌱 오늘도 작은 한 걸음이 큰 변화를 만들어요",
+    "집중하면 못 할 일이 없어요. 💪 오늘도 파이팅! ",
+    "☀️ 좋은 하루의 시작은 좋은 마음가짐에서 시작해요 ",
+    "🤝 오늘 하루도 팀과 함께라면 든든해요",
+    "작은 완료가 쌓여 큰 성과가 돼요. ✅ 오늘도 하나씩!",
+    "📈 어제보다 오늘이 조금 더 나아지고 있어요 ",
+    "🚀 오늘 해야 할 일, 오늘 다 해버려요!",
   ];
   const todayPhrase = phrases[new Date().getDate() % phrases.length];
 
@@ -213,12 +213,88 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {/* 1. 등록된 일정 */}
-        <section className="rounded-xl bg-white overflow-hidden" style={{ border: "1px solid #E8E0C8" }}>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        
+        {/* 1. 프로젝트 */}
+        <section className="rounded-xl bg-white overflow-hidden h-full flex flex-col" style={{ border: "1px solid #E8E0C8" }}>
           <div className="px-5 py-3" style={{ background: "#F5EED5" }}>
-            <h3 className="font-serif text-sm font-semibold" style={{ color: "#0D0D0D" }}>📅 등록된 일정</h3>
+            <h3 className="font-serif text-sm font-semibold" style={{ color: "#0D0D0D" }}>📁 진행 프로젝트</h3>
           </div>
-          <div className="px-5 py-3 divide-y" style={{ borderColor: "#F0EBE0" }}>
+          <div className="px-5 py-3 divide-y overflow-y-auto custom-scroll"
+          style={{ borderColor: "#F0EBE0", height: "220px" }}>
+            {activeProjects.length === 0 ? (
+              <p className="text-xs py-3" style={{ color: "#999" }}>진행중인 프로젝트가 없어요</p>
+            ) : (
+              activeProjects.map((p) => {
+                const done = p.tasks.length;
+                const total = p._count.tasks;
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                return (
+                  <div key={p.id} className="py-3">
+                      <div className="flex items-center gap-2">
+                        {/* dot */}
+                        <div
+                          style={{
+                            width: "10px",
+                            height: "10px",
+                            borderRadius: "50%",
+                            background: p.color,
+                            flexShrink: 0,
+                          }}
+                        />
+
+                        {/* 프로젝트명 + 태스크 */}
+                        <span className="text-sm flex-1 truncate" style={{ color: "#0D0D0D" }}>
+                          <span className="font-medium">{p.name}</span>
+                          <span style={{ color: "#999" }}>
+                            {" · "}
+                            {p.tasks.length > 0
+                              ? p.tasks.slice(0, 1).map((t) => t.title).join(", ")
+                              : "태스크 없음"}
+                          </span>
+                        </span>
+
+                        {/* 🔥 짧은 프로그레스바 */}
+                        <div
+                          style={{
+                            width: "60px",
+                            height: "6px",
+                            background: "#F5EED5",
+                            borderRadius: "9999px",
+                            overflow: "hidden",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <div
+                            style={{
+                              width: `${pct}%`,
+                              height: "100%",
+                              background: "#F56B23",
+                            }}
+                          />
+                        </div>
+
+                        {/* 퍼센트 */}
+                        <span
+                          className="text-xs font-semibold flex-shrink-0"
+                          style={{ color: "#F56B23", width: "32px", textAlign: "right" }}
+                        >
+                          {pct}%
+                        </span>
+                      </div>
+                    </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+            {/* 2. 등록된 일정 */}
+        <section className="rounded-xl bg-white overflow-hidden h-full flex flex-col" style={{ border: "1px solid #E8E0C8" }}>
+          <div className="px-5 py-3" style={{ background: "#F5EED5" }}>
+            <h3 className="font-serif text-sm font-semibold" style={{ color: "#0D0D0D" }}>📅 일정</h3>
+          </div>
+          <div className="px-5 py-3 divide-y overflow-y-auto custom-scroll" style={{ borderColor: "#F0EBE0", height: "220px" }}>
             {upcomingEvents.length === 0 ? (
               <p className="text-xs py-3" style={{ color: "#999" }}>등록된 항목이 없어요</p>
             ) : (
@@ -235,38 +311,10 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        {/* 2. 프로젝트 */}
-        <section className="rounded-xl bg-white overflow-hidden" style={{ border: "1px solid #E8E0C8" }}>
-          <div className="px-5 py-3" style={{ background: "#F5EED5" }}>
-            <h3 className="font-serif text-sm font-semibold" style={{ color: "#0D0D0D" }}>📁 프로젝트</h3>
-          </div>
-          <div className="px-5 py-3 divide-y" style={{ borderColor: "#F0EBE0" }}>
-            {activeProjects.length === 0 ? (
-              <p className="text-xs py-3" style={{ color: "#999" }}>진행중인 프로젝트가 없어요</p>
-            ) : (
-              activeProjects.map((p) => {
-                const done = p.tasks.length;
-                const total = p._count.tasks;
-                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-                return (
-                  <div key={p.id} className="py-3">
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: p.color, flexShrink: 0 }} />
-                      <span className="text-sm font-medium flex-1 truncate" style={{ color: "#0D0D0D" }}>{p.name}</span>
-                      <span className="text-xs flex-shrink-0" style={{ color: "#999" }}>{done}/{total}개</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "#F5EED5" }}>
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "#F56B23" }} />
-                      </div>
-                      <span className="text-xs flex-shrink-0" style={{ color: "#999" }}>{pct}%</span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </section>
+
+
+      </div>
+
 
         {/* 3. 팀 공지 */}
         <TeamBoard posts={noticePosts} filterType="NOTICE" />

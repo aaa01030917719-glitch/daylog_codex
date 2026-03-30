@@ -84,7 +84,7 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
           {isOwner ? (
             <NavItem href="/attendance" icon={Clock} label="출퇴근 관리" />
           ) : (
-            <NavItem href="/attendance" icon={Clock} label="출퇴근" />
+            <NavItem href="/attendance" icon={Clock} label="출퇴근11" />
           )}
         </ul>
 

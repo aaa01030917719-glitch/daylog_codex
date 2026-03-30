@@ -97,8 +97,7 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
                 borderRadius: "9999px",
                 fontSize: "0.875rem",
                 fontWeight: 600,
-                border: "1px solid rgba(245,107,35,0.3)",
-              }}
+                             }}
             >
               {workspaceName}
             </span>
