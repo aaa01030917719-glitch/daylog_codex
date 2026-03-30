@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-export default function DocsPage() {
-  return <div>Docs page</div>
-}
+
 
 export default async function DocsPage() {
   const session = await auth();
@@ -35,21 +33,5 @@ export default async function DocsPage() {
       : Promise.resolve([]),
   ]);
 
-  return (
-    <DocsHubClientPage
-      initialPages={pages.map((page) => ({
-        ...page,
-        updatedAt: page.updatedAt.toISOString(),
-      }))}
-      initialApprovals={approvals.map((approval) => ({
-        ...approval,
-        createdAt: approval.createdAt.toISOString(),
-        decidedAt: approval.decidedAt?.toISOString() ?? null,
-        leaveStart: approval.leaveStart?.toISOString() ?? null,
-        leaveEnd: approval.leaveEnd?.toISOString() ?? null,
-      }))}
-      currentUserId={session.user.id}
-      isAdmin={isAdmin}
-    />
-  );
+  return <div>Docs page</div>;
 }
