@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { DocsHubClientPage } from "@/components/docs/DocsHubClientPage";
+export default function DocsPage() {
+  return <div>Docs page</div>
+}
 
 export default async function DocsPage() {
   const session = await auth();
