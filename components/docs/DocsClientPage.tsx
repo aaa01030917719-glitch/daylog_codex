@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, FileText, ChevronRight } from "lucide-react";
+import { ChevronRight, FileText, Plus } from "lucide-react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
@@ -30,14 +30,14 @@ export function DocsClientPage({ initialPages }: Props) {
   const [newEmoji, setNewEmoji] = useState("");
   const [creating, setCreating] = useState(false);
 
-  const topLevelPages = pages.filter((p) => !p.parentId);
-  const childPages = (parentId: string) => pages.filter((p) => p.parentId === parentId);
+  const topLevelPages = pages.filter((page) => !page.parentId);
+  const childPages = (parentId: string) => pages.filter((page) => page.parentId === parentId);
 
   async function handleCreate() {
     if (!newTitle.trim()) return;
     setCreating(true);
     try {
-      const res = await fetch("/api/pages", {
+      const response = await fetch("/api/pages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -45,9 +45,9 @@ export function DocsClientPage({ initialPages }: Props) {
           emoji: newEmoji.trim() || null,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setPages((prev) => [data.page, ...prev]);
+      if (response.ok) {
+        const data = await response.json();
+        setPages((previous) => [data.page, ...previous]);
         setShowCreate(false);
         setNewTitle("");
         setNewEmoji("");
@@ -59,273 +59,167 @@ export function DocsClientPage({ initialPages }: Props) {
   }
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem" }}>
-        <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.5rem", fontWeight: 700, color: "#0D0D0D" }}>
-          문서
-        </h1>
-        <button
-          onClick={() => setShowCreate(true)}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.375rem",
-            background: "#F56B23",
-            color: "#fff",
-            border: "none",
-            borderRadius: "0.5rem",
-            padding: "0.5rem 1rem",
-            fontSize: "0.875rem",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          <Plus size={16} />
-          새 문서
-        </button>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "240px 1fr", gap: "1rem" }}>
-        {/* Left tree panel */}
-        <div style={{ background: "#FAF7EE", border: "1px solid #E8E0C8", borderRadius: "0.75rem", padding: "0.875rem", height: "fit-content" }}>
-          <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "#999", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.75rem" }}>
-            페이지 목록
-          </p>
+    <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
+      <section className="card-panel h-fit">
+        <div className="card-header card-header--compact">
+          <div>
+            <h3 className="card-title">문서 트리</h3>
+            
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="secondary-button h-10 shrink-0 whitespace-nowrap px-3 py-2 text-xs"
+          >
+            <Plus size={14} />
+            새 문서
+          </button>
+        </div>
+        <div className="card-body space-y-2 p-4">
           {topLevelPages.length === 0 ? (
-            <p style={{ fontSize: "0.8125rem", color: "#999" }}>문서가 없습니다.</p>
+            <div className="empty-panel min-h-[180px]">
+              <p className="empty-panel__title">문서가 없습니다.</p>
+              <p className="empty-panel__description">새 문서를 만들면 이 영역에 구조가 표시됩니다.</p>
+            </div>
           ) : (
             topLevelPages.map((page) => (
-              <div key={page.id}>
+              <div key={page.id} className="space-y-1">
                 <button
+                  type="button"
                   onClick={() => router.push(`/docs/${page.id}`)}
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                    padding: "0.375rem 0.5rem",
-                    borderRadius: "0.375rem",
-                    border: "none",
-                    background: "transparent",
-                    cursor: "pointer",
-                    fontSize: "0.875rem",
-                    color: "#2D2D2D",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "#F5EED5")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  className="flex w-full items-center gap-3 rounded-[10px] px-3 py-3 text-left text-sm font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-2)]"
                 >
-                  <span>{page.emoji ?? <FileText size={14} />}</span>
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {page.title}
+                  <span className="flex h-9 w-9 items-center justify-center rounded-[10px] bg-[var(--surface-2)] text-base">
+                    {page.emoji ?? <FileText size={16} />}
                   </span>
-                  {page._count.children > 0 && (
-                    <span style={{ fontSize: "0.6875rem", color: "#999" }}>{page._count.children}</span>
-                  )}
+                  <span className="min-w-0 flex-1 truncate">{page.title}</span>
+                  {page._count.children > 0 ? (
+                    <span className="status-badge status-badge--neutral">{page._count.children}</span>
+                  ) : null}
                 </button>
 
-                {/* Children */}
                 {childPages(page.id).map((child) => (
                   <button
                     key={child.id}
+                    type="button"
                     onClick={() => router.push(`/docs/${child.id}`)}
-                    style={{
-                      width: "100%",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "0.5rem",
-                      padding: "0.375rem 0.5rem",
-                      paddingLeft: "1.5rem",
-                      borderRadius: "0.375rem",
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      fontSize: "0.8125rem",
-                      color: "#555",
-                      textAlign: "left",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#F5EED5")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                    className="ml-6 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-[10px] px-3 py-2.5 text-left text-sm text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-2)]"
                   >
-                    <ChevronRight size={12} style={{ flexShrink: 0, color: "#999" }} />
-                    <span>{child.emoji ?? ""}</span>
-                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {child.title}
-                    </span>
+                    <ChevronRight size={14} className="text-[var(--text-muted)]" />
+                    <span>{child.emoji ?? "📄"}</span>
+                    <span className="min-w-0 flex-1 truncate">{child.title}</span>
                   </button>
                 ))}
               </div>
             ))
           )}
         </div>
+      </section>
 
-        {/* Right list */}
-        <div style={{ background: "#fff", border: "1px solid #E8E0C8", borderRadius: "0.75rem", overflow: "hidden" }}>
-          {topLevelPages.length === 0 ? (
-            <div style={{ padding: "3rem", textAlign: "center", color: "#999" }}>
-              <FileText size={48} style={{ margin: "0 auto 1rem", color: "#E8E0C8" }} />
-              <p style={{ fontSize: "0.875rem" }}>아직 문서가 없습니다.</p>
-              <button
-                onClick={() => setShowCreate(true)}
-                style={{ marginTop: "0.75rem", color: "#F56B23", background: "none", border: "none", cursor: "pointer", fontSize: "0.875rem", fontWeight: 600 }}
-              >
+      <section className="card-panel overflow-hidden">
+        <div className="card-header">
+          <div>
+            <div className="subtle-label">Document List</div>
+            <h3 className="card-title mt-2">문서 목록</h3>
+           
+          </div>
+          <button type="button" onClick={() => setShowCreate(true)} className="primary-button">
+            <Plus size={16} />
+            문서 작성
+          </button>
+        </div>
+
+        {topLevelPages.length === 0 ? (
+          <div className="card-body">
+            <div className="empty-panel min-h-[260px]">
+              <FileText size={44} className="text-[var(--text-muted)]" />
+              <p className="empty-panel__title">문서를 아직 만들지 않았습니다.</p>
+              <p className="empty-panel__description">새 문서를 추가하면 최신 순서대로 이 영역에 표시됩니다.</p>
+              <button type="button" onClick={() => setShowCreate(true)} className="text-button">
                 첫 문서 만들기
               </button>
             </div>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          </div>
+        ) : (
+          <div className="table-shell border-0 shadow-none rounded-none">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: "#F5EED5" }}>
-                  {["제목", "작성자", "최종 수정"].map((h) => (
-                    <th
-                      key={h}
-                      style={{
-                        padding: "0.75rem 1rem",
-                        textAlign: "left",
-                        fontSize: "0.8125rem",
-                        fontWeight: 600,
-                        color: "#555",
-                        borderBottom: "1px solid #E8E0C8",
-                      }}
-                    >
-                      {h}
-                    </th>
+                <tr>
+                  {["제목", "작성자", "최근 수정"].map((heading) => (
+                    <th key={heading}>{heading}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {topLevelPages.map((page, idx) => (
-                  <tr
-                    key={page.id}
-                    onClick={() => router.push(`/docs/${page.id}`)}
-                    style={{
-                      background: idx % 2 === 0 ? "#fff" : "#FAF7EE",
-                      cursor: "pointer",
-                      borderBottom: "1px solid #E8E0C8",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "#FEF0E8")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = idx % 2 === 0 ? "#fff" : "#FAF7EE")}
-                  >
-                    <td style={{ padding: "0.875rem 1rem" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                        <span style={{ fontSize: "1rem" }}>{page.emoji ?? "📄"}</span>
-                        <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#0D0D0D" }}>{page.title}</span>
-                        {page._count.children > 0 && (
-                          <span style={{ fontSize: "0.6875rem", color: "#999", background: "#F0F0F0", borderRadius: "9999px", padding: "0.125rem 0.375rem" }}>
-                            +{page._count.children}
-                          </span>
-                        )}
+                {topLevelPages.map((page) => (
+                  <tr key={page.id} className="cursor-pointer" onClick={() => router.push(`/docs/${page.id}`)}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-[var(--surface-2)] text-base">
+                          {page.emoji ?? "📄"}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="truncate font-semibold text-[var(--text-primary)]">{page.title}</div>
+                          {page._count.children > 0 ? (
+                            <div className="mt-1 text-xs text-[var(--text-muted)]">하위 문서 {page._count.children}개</div>
+                          ) : null}
+                        </div>
                       </div>
                     </td>
-                    <td style={{ padding: "0.875rem 1rem", fontSize: "0.8125rem", color: "#555" }}>
-                      {page.author.name}
-                    </td>
-                    <td style={{ padding: "0.875rem 1rem", fontSize: "0.8125rem", color: "#999" }}>
-                      {format(new Date(page.updatedAt), "MM/dd HH:mm", { locale: ko })}
-                    </td>
+                    <td>{page.author.name}</td>
+                    <td>{format(new Date(page.updatedAt), "MM/dd HH:mm", { locale: ko })}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          )}
-        </div>
-      </div>
+          </div>
+        )}
+      </section>
 
-      {/* Create dialog */}
-      {showCreate && (
-        <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={() => setShowCreate(false)}
-        >
-          <div
-            style={{ background: "#fff", borderRadius: "0.75rem", padding: "1.5rem", maxWidth: "24rem", width: "calc(100% - 2rem)", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 style={{ fontSize: "1.125rem", fontWeight: 600, color: "#0D0D0D", marginBottom: "1rem" }}>
-              새 문서 만들기
-            </h2>
-
-            <div style={{ marginBottom: "0.875rem" }}>
-              <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "#555", marginBottom: "0.375rem" }}>
-                이모지 (선택)
-              </label>
-              <input
-                value={newEmoji}
-                onChange={(e) => setNewEmoji(e.target.value)}
-                placeholder="예: 📝"
-                maxLength={2}
-                style={{
-                  width: "4rem",
-                  border: "1px solid #E8E0C8",
-                  borderRadius: "0.5rem",
-                  padding: "0.5rem",
-                  fontSize: "1.25rem",
-                  textAlign: "center",
-                  outline: "none",
-                }}
-              />
+      {showCreate ? (
+        <div className="modal-shell" onClick={() => setShowCreate(false)}>
+          <div className="modal-overlay" />
+          <div className="modal-card modal-card--form" onClick={(event) => event.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title">문서 작성</h2>
+                <p className="modal-subtitle">문서 제목과 이모지를 입력하고 새 문서를 시작하세요.</p>
+              </div>
             </div>
-
-            <div style={{ marginBottom: "1.25rem" }}>
-              <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 500, color: "#555", marginBottom: "0.375rem" }}>
-                제목 <span style={{ color: "#F56B23" }}>*</span>
-              </label>
-              <input
-                autoFocus
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && newTitle.trim() && handleCreate()}
-                placeholder="예: 팀 운영 가이드"
-                style={{
-                  width: "100%",
-                  border: "1px solid #E8E0C8",
-                  borderRadius: "0.5rem",
-                  padding: "0.625rem 0.75rem",
-                  fontSize: "0.875rem",
-                  outline: "none",
-                  boxSizing: "border-box",
-                }}
-              />
+            <div className="modal-body space-y-4">
+              <div className="field">
+                <label className="field-label" htmlFor="doc-emoji">이모지</label>
+                <input
+                  id="doc-emoji"
+                  value={newEmoji}
+                  onChange={(event) => setNewEmoji(event.target.value)}
+                  placeholder="📄"
+                  maxLength={2}
+                  className="form-input w-20 text-center text-xl"
+                />
+              </div>
+              <div className="field">
+                <label className="field-label" htmlFor="doc-title">제목</label>
+                <input
+                  id="doc-title"
+                  autoFocus
+                  value={newTitle}
+                  onChange={(event) => setNewTitle(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && newTitle.trim() && void handleCreate()}
+                  placeholder="예: 4월 운영 가이드"
+                  className="form-input"
+                />
+              </div>
             </div>
-
-            <div style={{ display: "flex", gap: "0.5rem" }}>
-              <button
-                onClick={() => setShowCreate(false)}
-                style={{
-                  flex: 1,
-                  padding: "0.625rem",
-                  border: "1px solid #E8E0C8",
-                  borderRadius: "0.5rem",
-                  background: "#fff",
-                  cursor: "pointer",
-                  fontSize: "0.875rem",
-                  color: "#555",
-                }}
-              >
-                취소
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={creating || !newTitle.trim()}
-                style={{
-                  flex: 1,
-                  padding: "0.625rem",
-                  border: "none",
-                  borderRadius: "0.5rem",
-                  background: "#F56B23",
-                  color: "#fff",
-                  cursor: creating || !newTitle.trim() ? "default" : "pointer",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  opacity: creating || !newTitle.trim() ? 0.5 : 1,
-                }}
-              >
-                {creating ? "생성 중..." : "만들기"}
+            <div className="modal-footer">
+              <button type="button" onClick={() => setShowCreate(false)} className="secondary-button">취소</button>
+              <button type="button" onClick={() => void handleCreate()} disabled={creating || !newTitle.trim()} className="primary-button">
+                {creating ? "생성 중..." : "문서 만들기"}
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

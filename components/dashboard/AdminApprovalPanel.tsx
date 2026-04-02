@@ -1,8 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-type ApprovalType = "LEAVE_REQUEST" | "IMPORTANT_EVENT" | "DEADLINE_CHANGE" | "BUDGET_TASK" | "PROJECT_REVIEW";
+type ApprovalType =
+  | "LEAVE_REQUEST"
+  | "IMPORTANT_EVENT"
+  | "DEADLINE_CHANGE"
+  | "BUDGET_TASK"
+  | "PROJECT_REVIEW";
 type FilterTab = "ALL" | ApprovalType;
 
 interface Approval {
@@ -19,29 +24,42 @@ interface Props {
   initialApprovals: any[];
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  LEAVE_REQUEST: "휴가·반차",
+const TYPE_LABELS: Record<ApprovalType, string> = {
+  LEAVE_REQUEST: "연차/반차",
   IMPORTANT_EVENT: "일정",
-  DEADLINE_CHANGE: "마감변경",
+  DEADLINE_CHANGE: "마감 변경",
   BUDGET_TASK: "예산",
-  PROJECT_REVIEW: "완성본검토",
+  PROJECT_REVIEW: "프로젝트 검토",
 };
 
-const TYPE_ICON: Record<string, string> = {
-  LEAVE_REQUEST: "🏖️",
+const TYPE_ICONS: Record<ApprovalType, string> = {
+  LEAVE_REQUEST: "🗓️",
   IMPORTANT_EVENT: "📅",
   DEADLINE_CHANGE: "⏰",
   BUDGET_TASK: "💰",
-  PROJECT_REVIEW: "📝",
+  PROJECT_REVIEW: "📁",
 };
 
 const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "ALL", label: "전체" },
-  { key: "LEAVE_REQUEST", label: "휴가·반차" },
+  { key: "LEAVE_REQUEST", label: "연차/반차" },
   { key: "IMPORTANT_EVENT", label: "일정" },
-  { key: "DEADLINE_CHANGE", label: "마감변경" },
+  { key: "DEADLINE_CHANGE", label: "마감 변경" },
   { key: "BUDGET_TASK", label: "예산" },
 ];
+
+async function readError(response: Response) {
+  try {
+    const data = await response.json();
+    if (typeof data?.error === "string") {
+      return data.error;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
 
 export function AdminApprovalPanel({ initialApprovals }: Props) {
   const [approvals, setApprovals] = useState<Approval[]>(initialApprovals);
@@ -49,37 +67,68 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
   const [rejectModal, setRejectModal] = useState<string | null>(null);
   const [decisionNote, setDecisionNote] = useState("");
   const [loading, setLoading] = useState<string | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const filtered = activeFilter === "ALL" ? approvals : approvals.filter((a) => a.type === activeFilter);
+  useEffect(() => {
+    setApprovals(initialApprovals);
+  }, [initialApprovals]);
+
+  const filtered =
+    activeFilter === "ALL" ? approvals : approvals.filter((approval) => approval.type === activeFilter);
+
+  function showFeedback(message: string) {
+    setFeedbackMessage(message);
+    window.setTimeout(() => setFeedbackMessage(""), 2000);
+  }
 
   async function handleApprove(id: string) {
     setLoading(id);
+    setErrorMessage("");
+
     try {
-      const res = await fetch(`/api/approvals/${id}/decide`, {
+      const response = await fetch(`/api/approvals/${id}/decide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "APPROVED" }),
       });
-      if (res.ok) setApprovals((prev) => prev.filter((a) => a.id !== id));
+
+      if (!response.ok) {
+        setErrorMessage((await readError(response)) ?? "승인 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      setApprovals((previous) => previous.filter((approval) => approval.id !== id));
+      showFeedback("승인되었습니다.");
     } finally {
       setLoading(null);
     }
   }
 
   async function handleReject() {
-    if (!rejectModal) return;
+    if (!rejectModal) {
+      return;
+    }
+
     setLoading(rejectModal);
+    setErrorMessage("");
+
     try {
-      const res = await fetch(`/api/approvals/${rejectModal}/decide`, {
+      const response = await fetch(`/api/approvals/${rejectModal}/decide`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "REJECTED", decisionNote }),
       });
-      if (res.ok) {
-        setApprovals((prev) => prev.filter((a) => a.id !== rejectModal));
-        setRejectModal(null);
-        setDecisionNote("");
+
+      if (!response.ok) {
+        setErrorMessage((await readError(response)) ?? "거절 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
       }
+
+      setApprovals((previous) => previous.filter((approval) => approval.id !== rejectModal));
+      setRejectModal(null);
+      setDecisionNote("");
+      showFeedback("거절되었습니다.");
     } finally {
       setLoading(null);
     }
@@ -87,12 +136,39 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
 
   return (
     <div>
-      {/* 탭 필터 */}
-      <div style={{ display: "flex", borderBottom: "1.5px solid #E8E0C8", marginBottom: "1rem", gap: "0", overflowX: "auto" }}>
+      {feedbackMessage ? (
+        <p style={{ marginBottom: "0.75rem", fontSize: "12px", fontWeight: 600, color: "#2A8C50" }}>
+          {feedbackMessage}
+        </p>
+      ) : null}
+
+      {errorMessage ? (
+        <p style={{ marginBottom: "0.75rem", fontSize: "12px", fontWeight: 600, color: "#D93025" }}>
+          {errorMessage}
+        </p>
+      ) : null}
+
+      <div
+        style={{
+          display: "flex",
+          borderBottom: "1.5px solid #E8E0C8",
+          marginBottom: "1rem",
+          gap: "0",
+          overflowX: "auto",
+        }}
+      >
         {FILTER_TABS.map((tab) => {
-          const count = tab.key === "ALL" ? approvals.length : approvals.filter((a) => a.type === tab.key).length;
-          if (tab.key !== "ALL" && count === 0) return null;
+          const count =
+            tab.key === "ALL"
+              ? approvals.length
+              : approvals.filter((approval) => approval.type === tab.key).length;
+
+          if (tab.key !== "ALL" && count === 0) {
+            return null;
+          }
+
           const isActive = activeFilter === tab.key;
+
           return (
             <button
               key={tab.key}
@@ -110,22 +186,23 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
                 marginBottom: "-1.5px",
               }}
             >
-              {tab.label}{count > 0 ? ` (${count})` : ""}
+              {tab.label}
+              {count > 0 ? ` (${count})` : ""}
             </button>
           );
         })}
       </div>
 
-      {/* 카드 목록 */}
       <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-        {filtered.length === 0 && (
+        {filtered.length === 0 ? (
           <p style={{ fontSize: "13px", color: "#999", textAlign: "center", padding: "1rem 0" }}>
             해당 항목이 없습니다.
           </p>
-        )}
-        {filtered.map((a) => (
+        ) : null}
+
+        {filtered.map((approval) => (
           <div
-            key={a.id}
+            key={approval.id}
             style={{
               display: "flex",
               alignItems: "center",
@@ -136,30 +213,44 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
               background: "#fff",
             }}
           >
-            {/* 아이콘 */}
-            <div style={{
-              width: "36px", height: "36px", borderRadius: "8px",
-              background: "#FEF0E8", display: "flex", alignItems: "center",
-              justifyContent: "center", flexShrink: 0, fontSize: "16px",
-            }}>
-              {TYPE_ICON[a.type] ?? "📋"}
+            <div
+              style={{
+                width: "36px",
+                height: "36px",
+                borderRadius: "8px",
+                background: "#FEF0E8",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                fontSize: "16px",
+              }}
+            >
+              {TYPE_ICONS[approval.type] ?? "📄"}
             </div>
 
-            {/* 텍스트 */}
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: "13px", fontWeight: 600, color: "#0D0D0D", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {a.title}
+              <div
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: "#0D0D0D",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {approval.title}
               </div>
               <div style={{ fontSize: "11px", color: "#888", marginTop: "2px" }}>
-                {a.requester.name} · {TYPE_LABELS[a.type] ?? a.type}
+                {approval.requester.name ?? "이름 없음"} · {TYPE_LABELS[approval.type] ?? approval.type}
               </div>
             </div>
 
-            {/* 버튼 */}
             <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
               <button
-                onClick={() => handleApprove(a.id)}
-                disabled={loading === a.id}
+                onClick={() => handleApprove(approval.id)}
+                disabled={loading === approval.id}
                 style={{
                   background: "#FEF0E8",
                   color: "#C05621",
@@ -169,14 +260,17 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
                   fontSize: "11px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  opacity: loading === a.id ? 0.7 : 1,
+                  opacity: loading === approval.id ? 0.7 : 1,
                 }}
               >
                 승인
               </button>
               <button
-                onClick={() => { setRejectModal(a.id); setDecisionNote(""); }}
-                disabled={loading === a.id}
+                onClick={() => {
+                  setRejectModal(approval.id);
+                  setDecisionNote("");
+                }}
+                disabled={loading === approval.id}
                 style={{
                   background: "#F1EFE8",
                   color: "#888",
@@ -186,7 +280,7 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
                   fontSize: "11px",
                   fontWeight: 600,
                   cursor: "pointer",
-                  opacity: loading === a.id ? 0.7 : 1,
+                  opacity: loading === approval.id ? 0.7 : 1,
                 }}
               >
                 거절
@@ -196,39 +290,70 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
         ))}
       </div>
 
-      {/* 거절 모달 */}
-      {rejectModal && (
+      {rejectModal ? (
         <div
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center" }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.4)",
+            zIndex: 50,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
           onClick={() => setRejectModal(null)}
         >
           <div
-            style={{ background: "#fff", borderRadius: "12px", padding: "1.5rem", maxWidth: "24rem", width: "calc(100% - 2rem)", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}
-            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              borderRadius: "12px",
+              padding: "1.5rem",
+              maxWidth: "24rem",
+              width: "calc(100% - 2rem)",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+            }}
+            onClick={(event) => event.stopPropagation()}
           >
-            <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "#0D0D0D", marginBottom: "0.75rem" }}>
+            <h3
+              style={{ fontSize: "1rem", fontWeight: 600, color: "#0D0D0D", marginBottom: "0.75rem" }}
+            >
               거절 사유 입력
             </h3>
             <textarea
               value={decisionNote}
-              onChange={(e) => setDecisionNote(e.target.value)}
-              placeholder="거절 사유를 입력하세요 (선택)"
+              onChange={(event) => setDecisionNote(event.target.value)}
+              placeholder="거절 사유를 입력해 주세요. (선택)"
               rows={4}
               style={{
-                width: "100%", border: "1px solid #E8E0C8", borderRadius: "7px",
-                padding: "9px 12px", fontSize: "13px", outline: "none",
-                resize: "none", marginBottom: "1rem", boxSizing: "border-box",
+                width: "100%",
+                border: "1px solid #E8E0C8",
+                borderRadius: "7px",
+                padding: "9px 12px",
+                fontSize: "13px",
+                outline: "none",
+                resize: "none",
+                marginBottom: "1rem",
+                boxSizing: "border-box",
               }}
-              onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-              onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
+              onFocus={(event) => {
+                event.target.style.borderColor = "#F56B23";
+              }}
+              onBlur={(event) => {
+                event.target.style.borderColor = "#E8E0C8";
+              }}
             />
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button
                 onClick={() => setRejectModal(null)}
                 style={{
-                  flex: 1, padding: "0.625rem", border: "1px solid #E8E0C8",
-                  borderRadius: "7px", background: "#fff", cursor: "pointer",
-                  fontSize: "13px", color: "#555",
+                  flex: 1,
+                  padding: "0.625rem",
+                  border: "1px solid #E8E0C8",
+                  borderRadius: "7px",
+                  background: "#fff",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  color: "#555",
                 }}
               >
                 취소
@@ -237,9 +362,15 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
                 onClick={handleReject}
                 disabled={loading === rejectModal}
                 style={{
-                  flex: 1, padding: "0.625rem", border: "none",
-                  borderRadius: "7px", background: "#F56B23", color: "#fff",
-                  cursor: "pointer", fontSize: "13px", fontWeight: 600,
+                  flex: 1,
+                  padding: "0.625rem",
+                  border: "none",
+                  borderRadius: "7px",
+                  background: "#F56B23",
+                  color: "#fff",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontWeight: 600,
                   opacity: loading === rejectModal ? 0.7 : 1,
                 }}
               >
@@ -248,7 +379,7 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

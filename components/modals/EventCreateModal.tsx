@@ -1,15 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { X, Check } from "lucide-react";
-
-const COLOR_PALETTE = [
-  "#F87171", "#FB923C", "#FBBF24",
-  "#A3E635", "#34D399", "#2DD4BF",
-  "#38BDF8", "#60A5FA", "#A78BFA",
-  "#F472B6", "#FB7185", "#94A3B8",
-];
+import { useMemo, useState } from "react";
 
 interface EventData {
   id: string;
@@ -38,313 +29,276 @@ interface Props {
   onClose: () => void;
 }
 
-const today = format(new Date(), "yyyy-MM-dd");
+const COLOR_OPTIONS = [
+  "#4f7cff",
+  "#34d399",
+  "#f59e0b",
+  "#f97316",
+  "#ef4444",
+  "#8b5cf6",
+];
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid #E8E0C8",
-  borderRadius: "0.5rem",
-  padding: "0.625rem 0.75rem",
-  fontSize: "0.875rem",
-  outline: "none",
-  boxSizing: "border-box",
-  color: "#0D0D0D",
-  background: "#fff",
-};
+function getTodayValue() {
+  return new Date().toISOString().slice(0, 10);
+}
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "0.875rem",
-  fontWeight: 500,
-  color: "#2D2D2D",
-  marginBottom: "0.375rem",
-};
+async function readError(response: Response) {
+  try {
+    const data = await response.json();
+    if (typeof data?.error === "string") {
+      return data.error;
+    }
+  } catch {
+    return "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  }
+
+  return "일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
 
 export function EventCreateModal({ members, onCreated, onClose }: Props) {
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(today);
-  const [startTime, setStartTime] = useState("10:00");
-  const [endTime, setEndTime] = useState("11:00");
-  const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
-  const [isImportant, setIsImportant] = useState(false);
+  const [date, setDate] = useState(getTodayValue());
+  const [allDay, setAllDay] = useState(false);
+  const [startTime, setStartTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("10:00");
   const [description, setDescription] = useState("");
-  const [color, setColor] = useState("#60A5FA");
+  const [color, setColor] = useState(COLOR_OPTIONS[0]);
+  const [isImportant, setIsImportant] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const allSelected = members.length > 0 && attendeeIds.length === members.length;
+  const schedulePreview = useMemo(() => {
+    if (allDay) {
+      return `${date} · 종일 일정`;
+    }
 
-  function toggleAll() {
-    setAttendeeIds(allSelected ? [] : members.map((m) => m.id));
-  }
+    return `${date} ${startTime} - ${endTime}`;
+  }, [allDay, date, endTime, startTime]);
 
-  function toggleAttendee(id: string) {
-    setAttendeeIds((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
-    );
-  }
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setError("일정 제목을 입력해 주세요.");
+      return;
+    }
+
+    if (!allDay && endTime <= startTime) {
+      setError("종료 시간은 시작 시간보다 늦어야 합니다.");
+      return;
+    }
+
     setLoading(true);
+    setError(null);
+
     try {
-      const res = await fetch("/api/events", {
+      const startAt = allDay ? `${date}T00:00:00` : `${date}T${startTime}:00`;
+      const endAt = allDay ? `${date}T23:59:59` : `${date}T${endTime}:00`;
+
+      const response = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: title.trim(),
           description: description.trim() || null,
-          startAt: `${date}T${startTime}:00`,
-          endAt: `${date}T${endTime}:00`,
-          allDay: false,
+          startAt,
+          endAt,
+          allDay,
           color,
           isImportant,
-          attendeeIds,
         }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        onCreated(data.event);
+
+      if (!response.ok) {
+        setError(await readError(response));
+        return;
       }
+
+      const data = (await response.json()) as { event?: EventData };
+      if (!data.event) {
+        setError("일정 저장 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
+        return;
+      }
+
+      onCreated(data.event);
+    } catch (createError) {
+      console.error("[EVENT_CREATE_MODAL]", createError);
+      setError("일정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: "#fff", borderRadius: "0.875rem", width: "100%", maxWidth: "42rem", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 헤더 */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 1.5rem", borderBottom: "1px solid #E8E0C8" }}>
-          <h2 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.125rem", fontWeight: 700, color: "#0D0D0D", margin: 0 }}>
-            새 일정 등록
-          </h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#999", padding: "0.25rem", borderRadius: "0.25rem", display: "flex" }}>
-            <X size={20} />
+    <div className="modal-shell" onClick={onClose}>
+      <div className="modal-overlay" />
+      <div className="modal-card modal-card--form" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <h2 className="modal-title">새 일정 등록</h2>
+            <p className="modal-subtitle">
+              일정 제목, 날짜, 시간을 입력해 캘린더에 바로 등록하세요.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="icon-button" aria-label="새 일정 모달 닫기">
+            ×
           </button>
         </div>
 
-        {/* 폼 */}
-        <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {/* 1. 일정 제목 */}
-          <div>
-            <label style={labelStyle}>
-              일정 제목 <span style={{ color: "#F56B23" }}>*</span>
-            </label>
-            <input
-              autoFocus
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="예) 주간 팀 미팅, 클라이언트 미팅"
-              required
-              style={inputStyle}
-              onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-              onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-            />
-          </div>
-
-          {/* 2. 날짜 */}
-          <div>
-            <label style={labelStyle}>
-              날짜 <span style={{ color: "#F56B23" }}>*</span>
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              required
-              style={inputStyle}
-              onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-              onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-            />
-          </div>
-
-          {/* 3. 시작 / 종료 시간 */}
-          <div>
-            <label style={labelStyle}>시간</label>
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-                  onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-                />
-              </div>
-              <span style={{ color: "#999", fontSize: "0.875rem", flexShrink: 0 }}>~</span>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-                  onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-                />
-              </div>
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body space-y-5">
+            <div className="field">
+              <label className="field-label" htmlFor="event-title">
+                일정 제목
+              </label>
+              <input
+                id="event-title"
+                type="text"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="form-input"
+                placeholder="예: 주간 운영 회의"
+                autoFocus
+                required
+              />
             </div>
-          </div>
 
-          {/* 4. 참석자 */}
-          {members.length > 0 && (
-            <div>
-              <label style={labelStyle}>참석자</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                {/* 전체 버튼 */}
-                <button
-                  type="button"
-                  onClick={toggleAll}
-                  style={{
-                    padding: "0.375rem 0.875rem",
-                    borderRadius: "9999px",
-                    border: `1px solid ${allSelected ? "#fcd9c2" : "#E8E0C8"}`,
-                    background: allSelected ? "#FEF0E8" : "#FAF7EE",
-                    color: allSelected ? "#D4581A" : "#555555",
-                    fontSize: "0.8125rem",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  전체
-                </button>
-                {members.map((m) => {
-                  const selected = attendeeIds.includes(m.id);
+            <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
+              <div className="field">
+                <label className="field-label" htmlFor="event-date">
+                  날짜
+                </label>
+                <input
+                  id="event-date"
+                  type="date"
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                  className="form-input"
+                  required
+                />
+              </div>
+              <label className="inline-flex h-[46px] items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 text-sm font-medium text-[var(--text-primary)]">
+                <input
+                  type="checkbox"
+                  checked={allDay}
+                  onChange={(event) => setAllDay(event.target.checked)}
+                />
+                종일 일정
+              </label>
+            </div>
+
+            {!allDay ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="field">
+                  <label className="field-label" htmlFor="event-start-time">
+                    시작 시간
+                  </label>
+                  <input
+                    id="event-start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(event) => setStartTime(event.target.value)}
+                    className="form-input"
+                    required
+                  />
+                </div>
+                <div className="field">
+                  <label className="field-label" htmlFor="event-end-time">
+                    종료 시간
+                  </label>
+                  <input
+                    id="event-end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(event) => setEndTime(event.target.value)}
+                    className="form-input"
+                    required
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            <div className="field">
+              <span className="field-label">대표 색상</span>
+              <div className="flex flex-wrap gap-3">
+                {COLOR_OPTIONS.map((option) => {
+                  const selected = color === option;
+
                   return (
                     <button
-                      key={m.id}
+                      key={option}
                       type="button"
-                      onClick={() => toggleAttendee(m.id)}
+                      onClick={() => setColor(option)}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 transition-transform hover:-translate-y-0.5"
                       style={{
-                        padding: "0.375rem 0.875rem",
-                        borderRadius: "9999px",
-                        border: `1px solid ${selected ? "#fcd9c2" : "#E8E0C8"}`,
-                        background: selected ? "#FEF0E8" : "#FAF7EE",
-                        color: selected ? "#D4581A" : "#555555",
-                        fontSize: "0.8125rem",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        transition: "all 0.15s",
+                        background: option,
+                        borderColor: selected ? "#0f172a" : "rgba(255,255,255,0.92)",
+                        boxShadow: selected ? "0 0 0 4px rgba(79,124,255,0.14)" : "var(--shadow-sm)",
                       }}
+                      aria-label={`색상 ${option}`}
                     >
-                      {m.name ?? "알 수 없음"}
+                      {selected ? <span className="text-sm font-bold text-white">✓</span> : null}
                     </button>
                   );
                 })}
               </div>
             </div>
-          )}
 
-          {/* 5. 색상 선택 */}
-          <div>
-            <label style={labelStyle}>색상</label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {COLOR_PALETTE.map((c) => (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setColor(c)}
-                  style={{
-                    width: "24px",
-                    height: "24px",
-                    borderRadius: "50%",
-                    background: c,
-                    border: color === c ? "2px solid #0D0D0D" : "2px solid transparent",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    padding: 0,
-                    outline: "none",
-                    flexShrink: 0,
-                  }}
-                  aria-label={c}
-                >
-                  {color === c && <Check size={11} style={{ color: "#fff" }} strokeWidth={3} />}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 6. 중요 일정 */}
-          <div>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-              <input
-                type="checkbox"
-                checked={isImportant}
-                onChange={(e) => setIsImportant(e.target.checked)}
-                style={{ accentColor: "#F56B23", width: "1rem", height: "1rem" }}
+            <div className="field">
+              <label className="field-label" htmlFor="event-description">
+                일정 설명
+              </label>
+              <textarea
+                id="event-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="form-textarea min-h-[140px]"
+                placeholder="회의 안건이나 공유 메모를 입력해 주세요"
               />
-              <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "#2D2D2D" }}>⭐ 중요 일정으로 표시</span>
+            </div>
+
+            <label className="choice-card cursor-pointer">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={isImportant}
+                  onChange={(event) => setIsImportant(event.target.checked)}
+                  className="mt-1"
+                />
+                <div>
+                  <div className="text-sm font-semibold text-[var(--text-primary)]">중요 일정으로 등록</div>
+                  <div className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
+                    중요 일정은 등록과 함께 결재 요청이 생성됩니다.
+                  </div>
+                </div>
+              </div>
             </label>
-            {isImportant && (
-              <p style={{ marginTop: "0.375rem", fontSize: "0.8125rem", color: "#F56B23", paddingLeft: "1.5rem" }}>
-                대표 컨펌이 요청됩니다
-              </p>
-            )}
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 text-sm text-[var(--text-secondary)]">
+              저장 예정 일정: <span className="font-semibold text-[var(--text-primary)]">{schedulePreview}</span>
+              {members.length > 0 ? (
+                <span className="block pt-2 text-xs text-[var(--text-muted)]">
+                  워크스페이스 멤버 {members.length}명과 함께 일정 공유가 가능합니다.
+                </span>
+              ) : null}
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-[#fecaca] bg-[var(--danger-light)] px-4 py-3 text-sm font-medium text-[#b42318]">
+                {error}
+              </div>
+            ) : null}
           </div>
 
-          {/* 7. 내용 */}
-          <div>
-            <label style={labelStyle}>내용 (선택)</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="예) 3분기 성과 리뷰 및 4분기 목표 설정 논의. 자료는 사전에 공유 예정."
-              rows={3}
-              style={{ ...inputStyle, resize: "vertical" }}
-              onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-              onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-            />
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="secondary-button" disabled={loading}>
+              취소
+            </button>
+            <button type="submit" className="primary-button" disabled={loading}>
+              {loading ? "저장 중..." : "일정 등록"}
+            </button>
           </div>
         </form>
-
-        {/* 하단 버튼 */}
-        <div style={{ display: "flex", gap: "0.5rem", padding: "1rem 1.5rem", borderTop: "1px solid #E8E0C8" }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: "0.625rem",
-              border: "1px solid #E8E0C8",
-              borderRadius: "0.5rem",
-              background: "#fff",
-              color: "#555555",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-              fontWeight: 500,
-            }}
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !title.trim()}
-            style={{
-              flex: 2,
-              padding: "0.625rem",
-              border: "none",
-              borderRadius: "0.5rem",
-              background: "#F56B23",
-              color: "#fff",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              cursor: loading || !title.trim() ? "not-allowed" : "pointer",
-              opacity: loading || !title.trim() ? 0.6 : 1,
-            }}
-          >
-            {loading ? "등록 중..." : "등록"}
-          </button>
-        </div>
       </div>
     </div>
   );

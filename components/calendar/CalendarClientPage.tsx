@@ -1,15 +1,15 @@
-"use client";
+﻿"use client";
 
-import { useState, useRef } from "react";
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import timeGridPlugin from "@fullcalendar/timegrid";
-import interactionPlugin from "@fullcalendar/interaction";
-import { EventClickArg } from "@fullcalendar/core";
-import { Plus, X } from "lucide-react";
-import { EventCreateModal } from "@/components/modals/EventCreateModal";
+import { useRef, useState } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { EventClickArg } from "@fullcalendar/core";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import { Plus, X } from "lucide-react";
+import { EventCreateModal } from "@/components/modals/EventCreateModal";
 
 interface Event {
   id: string;
@@ -37,6 +37,19 @@ interface Props {
   members: Member[];
 }
 
+async function readError(response: Response) {
+  try {
+    const data = await response.json();
+    if (typeof data?.error === "string") {
+      return data.error;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 export function CalendarClientPage({ initialEvents, members }: Props) {
   const calendarRef = useRef<FullCalendar>(null);
   const [events, setEvents] = useState<Event[]>(initialEvents);
@@ -44,52 +57,71 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
 
-  function toCalendarEvent(e: Event) {
+  function toCalendarEvent(event: Event) {
     return {
-      id: e.id,
-      title: e.isImportant ? `★ ${e.title}` : e.title,
-      start: new Date(e.startAt).toISOString(),
-      end: new Date(e.endAt).toISOString(),
-      allDay: e.allDay,
-      backgroundColor: e.color,
-      borderColor: e.color,
-      extendedProps: { event: e },
+      id: event.id,
+      title: event.isImportant ? `★ ${event.title}` : event.title,
+      start: new Date(event.startAt).toISOString(),
+      end: new Date(event.endAt).toISOString(),
+      allDay: event.allDay,
+      backgroundColor: event.color,
+      borderColor: event.color,
+      extendedProps: { event },
     };
   }
 
   function handleEventClick(info: EventClickArg) {
     const rect = info.el.getBoundingClientRect();
+
     setPopoverPos({
       top: rect.bottom + window.scrollY + 8,
       left: Math.min(rect.left + window.scrollX, window.innerWidth - 300),
     });
-    const extProps = info.event.extendedProps as { event: Event };
-    setSelectedEvent(extProps.event);
+
+    const extendedProps = info.event.extendedProps as { event: Event };
+    setSelectedEvent(extendedProps.event);
   }
 
   async function handleEventCreated(event: Event) {
-    setEvents((prev) => [...prev, event]);
+    setEvents((previous) => [...previous, event]);
     setShowCreate(false);
-
-    // Also fetch wider range if event falls outside current view
-    const api = calendarRef.current?.getApi();
-    if (api) {
-      api.refetchEvents();
-    }
+    calendarRef.current?.getApi().refetchEvents();
   }
 
   async function handleDeleteEvent(eventId: string) {
-    const res = await fetch(`/api/events/${eventId}`, { method: "DELETE" });
-    if (res.ok) {
-      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+    try {
+      const response = await fetch(`/api/events/${eventId}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        window.alert((await readError(response)) ?? "일정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      setEvents((previous) => previous.filter((event) => event.id !== eventId));
       setSelectedEvent(null);
+    } catch {
+      window.alert("일정을 삭제하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     }
   }
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.25rem" }}>
-        <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.5rem", fontWeight: 700, color: "#0D0D0D" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "1.25rem",
+        }}
+      >
+        <h1
+          style={{
+            fontFamily: "Noto Serif KR, serif",
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            color: "#0D0D0D",
+          }}
+        >
           일정 캘린더
         </h1>
         <button
@@ -113,7 +145,15 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
         </button>
       </div>
 
-      <div style={{ background: "#fff", border: "1px solid #E8E0C8", borderRadius: "0.75rem", padding: "1rem", overflow: "hidden" }}>
+      <div
+        style={{
+          background: "#fff",
+          border: "1px solid #E8E0C8",
+          borderRadius: "0.75rem",
+          padding: "1rem",
+          overflow: "hidden",
+        }}
+      >
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -138,13 +178,9 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
         />
       </div>
 
-      {/* Event detail popover */}
-      {selectedEvent && (
+      {selectedEvent ? (
         <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 39 }}
-            onClick={() => setSelectedEvent(null)}
-          />
+          <div style={{ position: "fixed", inset: 0, zIndex: 39 }} onClick={() => setSelectedEvent(null)} />
           <div
             style={{
               position: "fixed",
@@ -159,11 +195,20 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
               boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
             }}
           >
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "0.75rem" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                marginBottom: "0.75rem",
+              }}
+            >
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
-                  {selectedEvent.isImportant && <span style={{ color: "#F56B23" }}>★</span>}
-                  <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "#0D0D0D" }}>{selectedEvent.title}</h3>
+                  {selectedEvent.isImportant ? <span style={{ color: "#F56B23" }}>★</span> : null}
+                  <h3 style={{ fontSize: "1rem", fontWeight: 600, color: "#0D0D0D" }}>
+                    {selectedEvent.title}
+                  </h3>
                 </div>
                 <div
                   style={{
@@ -179,17 +224,17 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
               </div>
               <button
                 onClick={() => setSelectedEvent(null)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#999", padding: "0" }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#999", padding: 0 }}
               >
                 <X size={16} />
               </button>
             </div>
 
-            {selectedEvent.description && (
+            {selectedEvent.description ? (
               <p style={{ fontSize: "0.875rem", color: "#555", marginBottom: "0.75rem" }}>
                 {selectedEvent.description}
               </p>
-            )}
+            ) : null}
 
             <div style={{ fontSize: "0.8125rem", color: "#555" }}>
               <p style={{ marginBottom: "0.25rem" }}>
@@ -198,7 +243,7 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
               <p style={{ marginBottom: "0.25rem" }}>
                 종료: {format(new Date(selectedEvent.endAt), "MM/dd (E) HH:mm", { locale: ko })}
               </p>
-              <p style={{ color: "#999" }}>작성자: {selectedEvent.creator.name}</p>
+              <p style={{ color: "#999" }}>작성자: {selectedEvent.creator.name ?? "이름 없음"}</p>
             </div>
 
             <button
@@ -219,16 +264,15 @@ export function CalendarClientPage({ initialEvents, members }: Props) {
             </button>
           </div>
         </>
-      )}
+      ) : null}
 
-      {/* Event create modal */}
-      {showCreate && (
+      {showCreate ? (
         <EventCreateModal
           members={members}
           onCreated={handleEventCreated}
           onClose={() => setShowCreate(false)}
         />
-      )}
+      ) : null}
     </div>
   );
 }

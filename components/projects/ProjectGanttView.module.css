@@ -1,0 +1,585 @@
+.pageShell {
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --surface-2: #fafaf9;
+  --text-0: #1a1a1a;
+  --text-1: #3d3d3d;
+  --text-2: #7a7a7a;
+  --text-3: #ababab;
+  --border: #ebebeb;
+  --border-light: #f2f2f0;
+  --accent: #4f7cff;
+  --accent-soft: #eef2ff;
+  --st-done: #5bb98c;
+  --st-done-bg: #edfaf3;
+  --st-prog: #4f7cff;
+  --st-prog-bg: #eef2ff;
+  --st-review: #e8a838;
+  --st-review-bg: #fef6e4;
+  --st-hold: #9ea8b3;
+  --st-hold-bg: #f2f4f6;
+  --st-todo: #a78bfa;
+  --st-todo-bg: #f3f0ff;
+  --bar-done: #7ecfa8;
+  --bar-prog: #7ba7ff;
+  --bar-review: #f0bc65;
+  --bar-hold: #c4cdd6;
+  --bar-todo: #c4b5fd;
+  --today-line: #ff6b6b;
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-pill: 100px;
+  width: 100%;
+  font-family:
+    "Pretendard",
+    "Noto Sans KR",
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filterPill {
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.filterPill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.filterPillActive {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.filterSep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  margin: 0 4px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legendDotDone {
+  background: var(--bar-done);
+}
+
+.legendDotProg {
+  background: var(--bar-prog);
+}
+
+.legendDotReview {
+  background: var(--bar-review);
+}
+
+.legendDotHold {
+  background: var(--bar-hold);
+}
+
+.legendDotTodo {
+  background: var(--bar-todo);
+}
+
+.todayLegendLine {
+  width: 12px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--today-line);
+  opacity: 0.6;
+}
+
+.ganttWrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-xs);
+  overflow: hidden;
+}
+
+.ganttScroll {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.ganttScroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.ganttScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ganttScroll::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.ganttScroll::-webkit-scrollbar-thumb:hover {
+  background: #d0d0ce;
+}
+
+.ganttTable {
+  display: grid;
+  grid-template-columns: 36px 260px 1fr;
+}
+
+.ganttHeader {
+  display: contents;
+}
+
+.ganttHeaderCell {
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 0;
+}
+
+.ghCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid var(--border-light);
+  position: sticky;
+  left: 0;
+  top: 0;
+  z-index: 10;
+}
+
+.ghTask {
+  padding: 10px 16px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-right: 1px solid var(--border);
+  position: sticky;
+  left: 36px;
+  top: 0;
+  z-index: 10;
+}
+
+.ganttDates {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.dateMonthRow {
+  display: flex;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.dateMonthCell {
+  flex: none;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-2);
+  letter-spacing: 0.03em;
+  border-right: 1px solid var(--border-light);
+}
+
+.dateDayRow {
+  display: flex;
+}
+
+.dateDayCell {
+  flex: none;
+  text-align: center;
+  padding: 4px 0;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-3);
+  border-right: 1px solid var(--border-light);
+  position: relative;
+}
+
+.dateDayToday {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.dateDayWeekend {
+  color: var(--text-3);
+  opacity: 0.6;
+}
+
+.ganttRow {
+  display: contents;
+}
+
+.ganttRow:hover .grCheck,
+.ganttRow:hover .grInfo,
+.ganttRow:hover .grTimeline {
+  background: #fafaf9;
+}
+
+.ganttGroup .grCheck,
+.ganttGroup .grInfo,
+.ganttGroup .grTimeline {
+  background: var(--surface-2);
+}
+
+.ganttGroup .taskName {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ganttGroup .ganttBar {
+  height: 4px;
+  border-radius: 2px;
+  opacity: 0.35;
+  color: transparent;
+}
+
+.isDone .taskName {
+  color: var(--text-3);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-3);
+}
+
+.isDone .ganttBar {
+  opacity: 0.55;
+}
+
+.grCheck,
+.grInfo,
+.grTimeline {
+  border-bottom: 1px solid var(--border-light);
+  transition: background 0.1s;
+}
+
+.grCheck {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-right: 1px solid var(--border-light);
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  background: var(--surface);
+}
+
+.grCheck input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: default;
+}
+
+.grInfo {
+  padding: 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-right: 1px solid var(--border);
+  min-height: 52px;
+  justify-content: center;
+  position: sticky;
+  left: 36px;
+  z-index: 5;
+  background: var(--surface);
+}
+
+.ganttGroup .grCheck,
+.ganttGroup .grInfo {
+  background: var(--surface-2);
+}
+
+.grInfoTop {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.taskName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.grInfoSub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.assignee {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.badge::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+.badgeDone {
+  background: var(--st-done-bg);
+  color: var(--st-done);
+}
+
+.badgeDone::before {
+  background: var(--st-done);
+}
+
+.badgeProg {
+  background: var(--st-prog-bg);
+  color: var(--st-prog);
+}
+
+.badgeProg::before {
+  background: var(--st-prog);
+}
+
+.badgeReview {
+  background: var(--st-review-bg);
+  color: var(--st-review);
+}
+
+.badgeReview::before {
+  background: var(--st-review);
+}
+
+.badgeHold {
+  background: var(--st-hold-bg);
+  color: var(--st-hold);
+}
+
+.badgeHold::before {
+  background: var(--st-hold);
+}
+
+.badgeTodo {
+  background: var(--st-todo-bg);
+  color: var(--st-todo);
+}
+
+.badgeTodo::before {
+  background: var(--st-todo);
+}
+
+.grTimeline {
+  position: relative;
+  height: 52px;
+  overflow: hidden;
+}
+
+.grTimeline::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent,
+    transparent 31px,
+    var(--border-light) 31px,
+    var(--border-light) 32px
+  );
+  pointer-events: none;
+}
+
+.todayLine {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1.5px;
+  background: var(--today-line);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.todayLine::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--today-line);
+}
+
+.ganttBar {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 16px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 7px;
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+  transition:
+    filter 0.12s,
+    opacity 0.12s;
+  min-width: 8px;
+  z-index: 1;
+}
+
+.ganttBar:hover {
+  filter: brightness(0.94);
+}
+
+.barDone {
+  background: var(--bar-done);
+}
+
+.barProg {
+  background: var(--bar-prog);
+}
+
+.barReview {
+  background: var(--bar-review);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.barHold {
+  background: var(--bar-hold);
+  color: rgba(0, 0, 0, 0.4);
+}
+
+.barTodo {
+  background: var(--bar-todo);
+}
+
+.ganttBar[data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-0);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+}
+
+.ganttEmpty {
+  grid-column: 1 / -1;
+  padding: 60px 0;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+.ganttFooter {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border-light);
+  background: var(--surface-2);
+}
+
+.ganttFooterStat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.ganttFooterStat strong {
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.progressMini {
+  width: 80px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progressMiniFill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .legend {
+    margin-left: 0;
+  }
+}

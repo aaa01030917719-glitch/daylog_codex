@@ -1,37 +1,35 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-type ModalType = "idea" | "ceo" | null;
+type ModalType = "ceo" | null;
 
 interface QuickAddModalProps {
-  type: ModalType;
   onClose: () => void;
 }
 
-function QuickAddModal({ type, onClose }: QuickAddModalProps) {
+function QuickAddModal({ onClose }: QuickAddModalProps) {
   const [content, setContent] = useState("");
-  const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
-  const config = {
-    idea: { title: "💡 아이디어 올리기", postType: "IDEA", placeholder: "아이디어를 자유롭게 적어주세요." },
-    ceo: { title: "📬 직원 전달사항", postType: "CEO_MESSAGE", placeholder: "전달할 내용을 적어주세요." },
-  }[type ?? "idea"];
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!content.trim()) {
+      return;
+    }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!content.trim()) return;
     setLoading(true);
     try {
-      if (config.postType) {
-        await fetch("/api/board/posts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: config.postType, title, content }),
-        });
-      }
+      await fetch("/api/board/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "CEO_MESSAGE",
+          content: content.trim(),
+        }),
+      });
       setDone(true);
       setTimeout(onClose, 800);
     } finally {
@@ -40,55 +38,50 @@ function QuickAddModal({ type, onClose }: QuickAddModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.4)" }}>
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" style={{ border: "1px solid #E8E0C8" }}>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-serif text-base font-semibold" style={{ color: "#0D0D0D" }}>{config.title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+    <div className="modal-shell" onClick={onClose}>
+      <div className="modal-overlay" />
+      <div className="modal-card max-w-xl" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <h3 className="modal-title">대표님께 전달</h3>
+            <p className="modal-subtitle">업무에 필요한 전달 사항을 간단히 남겨보세요.</p>
+          </div>
+          <button type="button" onClick={onClose} className="icon-button" aria-label="닫기">
+            ×
+          </button>
         </div>
-        {done ? (
-          <p className="text-center py-6 text-sm font-medium" style={{ color: "#2A8C50" }}>✅ 등록되었습니다!</p>
-        ) : (
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {type !== "ceo" && (
-              <input
-                type="text"
-                placeholder="제목 (선택)"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1"
-                style={{ borderColor: "#E8E0C8", color: "#0D0D0D" }}
-              />
-            )}
-            <textarea
-              placeholder={config.placeholder}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={4}
-              required
-              className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-1 resize-none"
-              style={{ borderColor: "#E8E0C8", color: "#0D0D0D" }}
-            />
-            <div className="flex justify-end gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg px-4 py-2 text-sm border transition-colors hover:bg-[#FAF7EE]"
-                style={{ borderColor: "#E8E0C8", color: "#555" }}
-              >
-                취소
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-                style={{ background: "#F56B23" }}
-              >
-                {loading ? "등록 중..." : "등록"}
-              </button>
-            </div>
-          </form>
-        )}
+        <div className="modal-body">
+          {done ? (
+            <p className="rounded-2xl border border-[#bae8c9] bg-[var(--success-light)] px-4 py-8 text-center text-sm font-semibold text-[#15803d]">
+              전달 사항이 등록되었습니다.
+            </p>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="field">
+                <label className="field-label" htmlFor="quick-add-message">
+                  전달 내용
+                </label>
+                <textarea
+                  id="quick-add-message"
+                  placeholder="대표님께 공유할 내용을 입력해 주세요."
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                  rows={4}
+                  required
+                  className="form-textarea min-h-[140px]"
+                />
+              </div>
+              <div className="modal-footer border-t-0 px-0 pb-0 pt-2">
+                <button type="button" onClick={onClose} className="secondary-button">
+                  취소
+                </button>
+                <button type="submit" disabled={loading} className="primary-button">
+                  {loading ? "등록 중..." : "전달 등록"}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -99,37 +92,45 @@ interface QuickAddProps {
 }
 
 export function QuickAdd({ userRole }: QuickAddProps) {
+  const router = useRouter();
   const [modal, setModal] = useState<ModalType>(null);
-  const isOwner = userRole === "OWNER";
+  const isOwner = userRole === "OWNER" || userRole === "ADMIN";
 
   const buttons = [
-    { key: "idea" as ModalType, label: "💡 아이디어 올리기" },
-    ...(!isOwner ? [{ key: "ceo" as ModalType, label: "📬 직원 전달사항" }] : []),
+    {
+      key: "idea" as const,
+      label: "아이디어 관리 열기",
+      description: "공유 아이디어와 개인 보관 메모를 확인합니다.",
+      onClick: () => router.push("/ideas"),
+    },
+    ...(!isOwner
+      ? [
+          {
+            key: "ceo" as const,
+            label: "대표님께 전달",
+            description: "대표 확인이 필요한 전달 사항을 바로 보냅니다.",
+            onClick: () => setModal("ceo"),
+          },
+        ]
+      : []),
   ];
 
   return (
     <>
       <div className={`grid grid-cols-1 gap-3 ${buttons.length > 1 ? "sm:grid-cols-2" : ""}`}>
-        {buttons.map(({ key, label }) => (
+        {buttons.map(({ key, label, description, onClick }) => (
           <button
             key={key}
-            onClick={() => setModal(key)}
-            className="rounded-xl py-3.5 px-4 text-sm font-medium text-left transition-all"
-            style={{ border: "1.5px dashed #E8E0C8", color: "#555", background: "#fff" }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#F56B23";
-              (e.currentTarget as HTMLButtonElement).style.color = "#F56B23";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor = "#E8E0C8";
-              (e.currentTarget as HTMLButtonElement).style.color = "#555";
-            }}
+            type="button"
+            onClick={onClick}
+            className="rounded-[18px] border border-dashed border-[var(--border)] bg-white px-4 py-4 text-left transition-all hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[var(--accent-light)]"
           >
-            {label}
+            <div className="text-sm font-semibold text-[var(--text-primary)]">{label}</div>
+            <div className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{description}</div>
           </button>
         ))}
       </div>
-      {modal && <QuickAddModal type={modal} onClose={() => setModal(null)} />}
+      {modal === "ceo" ? <QuickAddModal onClose={() => setModal(null)} /> : null}
     </>
   );
 }

@@ -1,82 +1,84 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
-import { Menu, Bell } from "lucide-react";
+import { Bell, Menu, Search, Settings } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
 interface HeaderProps {
   onMenuClick?: () => void;
   title?: string;
+  userRole?: string;
 }
 
-export function Header({ onMenuClick, title }: HeaderProps) {
+function resolvePageTitle(pathname: string, title?: string, userRole?: string) {
+  if (title) {
+    return title;
+  }
+
+  const isAdmin = userRole === "ADMIN" || userRole === "OWNER";
+
+  if (pathname.startsWith("/notices")) return "공지사항";
+  if (pathname.startsWith("/docs")) return "문서 작성";
+  if (pathname.startsWith("/memo")) return "메모";
+  if (pathname.startsWith("/projects")) return "프로젝트";
+  if (pathname.startsWith("/attendance")) return isAdmin ? "근무 관리" : "출퇴근 현황";
+  if (pathname.startsWith("/ideas")) return "아이디어";
+  if (pathname.startsWith("/notifications")) return isAdmin ? "공지사항 전달" : "전달함";
+  if (pathname.startsWith("/settings")) return "설정";
+  if (pathname.startsWith("/calendar")) return "일정";
+
+  return "내 워크스페이스";
+}
+
+export function Header({ onMenuClick, title, userRole }: HeaderProps) {
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
+  const pageTitle = resolvePageTitle(pathname, title, userRole);
+  const todayLabel = format(new Date(), "yyyy.MM.dd (eee)", { locale: ko });
 
   useEffect(() => {
     fetch("/api/notifications/unread-count")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.count != null) setUnreadCount(d.count); })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data) => {
+        if (data?.count != null) {
+          setUnreadCount(data.count);
+        }
+      })
       .catch(() => {});
   }, [pathname]);
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-[var(--border)] bg-white px-4 md:px-6">
-      {/* 모바일 햄버거 */}
-      <button
-        className="flex items-center justify-center rounded-md p-2 text-[var(--text-sub)] hover:bg-[var(--bg-light)] md:hidden"
-        onClick={onMenuClick}
-        aria-label="메뉴 열기"
-      >
-        <Menu size={22} />
-      </button>
+    <header className="border-b border-[var(--border)] bg-white px-4 py-3 md:px-6">
+      <div className="mx-auto flex w-full max-w-[var(--max-layout)] items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <button className="icon-button md:hidden" onClick={onMenuClick} aria-label="메뉴 열기">
+            <Menu size={18} />
+          </button>
+          <h1 className="app-header-title truncate">{pageTitle}</h1>
+        </div>
 
-      {/* 타이틀 (데스크톱에서만 표시) */}
-      {title && (
-        <h1 className="hidden md:block font-serif text-lg font-semibold text-[var(--text-title)]">
-          {title}
-        </h1>
-      )}
-
-      {/* 로고 (모바일) */}
-      <span className="font-serif text-lg font-bold text-[var(--text-title)] md:hidden">
-        daylog
-      </span>
-
-      {/* 우측 액션 */}
-      <div className="flex items-center gap-2">
-        <Link
-          href="/notifications"
-          className="relative flex items-center justify-center"
-          aria-label="알림"
-          style={{
-            width: "38px",
-            height: "38px",
-            borderRadius: "10px",
-            background: "#FEF0E8",
-            color: "#F56B23",
-            flexShrink: 0,
-          }}
-        >
-          <Bell size={20} />
-          {unreadCount > 0 && (
-            <span
-              className="absolute flex items-center justify-center text-[10px] font-bold text-white"
-              style={{
-                top: "2px",
-                right: "2px",
-                background: "#e53e3e",
-                borderRadius: "8px",
-                minWidth: "16px",
-                height: "16px",
-                padding: "0 3px",
-              }}
-            >
-              {unreadCount > 99 ? "99+" : unreadCount}
-            </span>
-          )}
-        </Link>
+        <div className="flex items-center gap-2">
+          <span className="hidden text-xs font-medium text-[var(--text-muted)] md:inline-flex">
+            {todayLabel}
+          </span>
+          <Link href="/notifications" className="icon-button relative" aria-label="알림">
+            <Bell size={17} />
+            {unreadCount > 0 ? (
+              <span className="absolute -right-1 -top-1 flex min-w-[18px] items-center justify-center rounded-full bg-[var(--danger)] px-1.5 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            ) : null}
+          </Link>
+          <button type="button" className="icon-button" aria-label="검색">
+            <Search size={17} />
+          </button>
+          <Link href="/settings" className="icon-button" aria-label="설정">
+            <Settings size={17} />
+          </Link>
+        </div>
       </div>
     </header>
   );

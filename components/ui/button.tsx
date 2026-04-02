@@ -4,26 +4,28 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent disabled:pointer-events-none disabled:opacity-50",
+  "inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgba(79,124,255,0.18)] disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         default:
-          "bg-accent text-white shadow hover:bg-accent-dark",
+          "border border-[var(--accent)] bg-[var(--accent)] text-white shadow-[0_12px_20px_rgba(79,124,255,0.18)] hover:border-[var(--accent-hover)] hover:bg-[var(--accent-hover)]",
         outline:
-          "border border-[var(--border)] bg-white shadow-sm hover:bg-[var(--bg-light)] text-[var(--text-body)]",
+          "border border-[var(--border)] bg-white text-[var(--text-secondary)] shadow-sm hover:border-[#d7dce4] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
         ghost:
-          "hover:bg-[var(--table-header)] text-[var(--text-body)]",
+          "bg-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]",
         link:
-          "text-accent underline-offset-4 hover:underline",
+          "px-0 text-[var(--accent)] underline-offset-4 hover:underline",
         destructive:
-          "bg-red-500 text-white shadow-sm hover:bg-red-600",
+          "border border-[#f3c1c1] bg-[var(--danger-light)] text-[#b42318] hover:bg-[#fecaca]",
+        success:
+          "border border-[#bae8c9] bg-[var(--success-light)] text-[#15803d] hover:bg-[#bbf7d0]",
       },
       size: {
-        default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
-        icon: "h-9 w-9",
+        default: "h-10 px-4 py-2",
+        sm: "h-9 px-3.5 text-xs",
+        lg: "h-11 px-6 text-sm",
+        icon: "h-10 w-10",
       },
     },
     defaultVariants: {

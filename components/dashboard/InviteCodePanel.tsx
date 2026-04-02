@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { Copy, Check, Link } from "lucide-react";
+import { createInviteUrl } from "@/lib/utils";
 
 interface Props {
   inviteCode: string;
@@ -12,7 +13,7 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
   const [copied, setCopied] = useState(false);
 
   function getInviteUrl() {
-    return `${window.location.origin}/invite/${inviteCode}`;
+    return createInviteUrl(window.location.origin, inviteCode);
   }
 
   async function handleCopy() {
@@ -40,10 +41,11 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
           marginBottom: "0.5rem",
         }}
       >
-        워크스페이스 설정
+        워크스페이스 초대
       </h2>
       <p style={{ fontSize: "0.875rem", color: "#999", marginBottom: "1rem" }}>
-        새 구성원이 <strong style={{ color: "#0D0D0D" }}>{workspaceName}</strong>에 참여할 수 있도록 초대 링크를 공유하세요.
+        구성원이 <strong style={{ color: "#0D0D0D" }}>{workspaceName}</strong>에 참여할 수 있도록
+        초대 링크를 공유해 주세요.
       </p>
 
       <div
@@ -70,11 +72,13 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
             whiteSpace: "nowrap",
           }}
         >
-          {typeof window !== "undefined" ? `${window.location.origin}/invite/${inviteCode}` : `/invite/${inviteCode}`}
+          {typeof window !== "undefined"
+            ? createInviteUrl(window.location.origin, inviteCode)
+            : `/invite/${inviteCode}`}
         </code>
         <button
           onClick={handleCopy}
-          title="링크 복사"
+          title="초대 링크 복사"
           style={{
             display: "flex",
             alignItems: "center",
@@ -97,7 +101,7 @@ export function InviteCodePanel({ inviteCode, workspaceName }: Props) {
       </div>
 
       <p style={{ fontSize: "0.8125rem", color: "#999", marginTop: "0.625rem" }}>
-        링크를 클릭하면 회원가입 후 바로 팀에 합류할 수 있습니다.
+        링크를 열면 코드 입력 없이 바로 참여할 수 있습니다.
       </p>
     </section>
   );

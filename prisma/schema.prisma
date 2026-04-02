@@ -31,6 +31,7 @@ model User {
   approvals         Approval[]        @relation("RequestedBy")
   approvalDecisions Approval[]        @relation("DecidedBy")
   notifications     Notification[]
+  notices           Notice[]
   boardPosts        BoardPost[]
   boardLikes        BoardLike[]
   boardReads        BoardRead[]
@@ -44,16 +45,59 @@ model Workspace {
   slug       String   @unique
   inviteCode String   @unique @default(cuid())
   logoUrl    String?
+  description String?
+  industry    String?
+  teamSize    String?
+  themeColor  String?
   createdAt  DateTime @default(now())
 
   workStartTime   String @default("09:00")
   workEndTime     String @default("18:00")
   workHoursPerDay Float  @default(8.0)
+  lateGraceMinutes       Int     @default(10)
+  checkoutConfirmPopup   Boolean @default(true)
+  showAttendanceMemo     Boolean @default(false)
+  excludeOwnerAttendance Boolean @default(true)
+  notifyCheckoutMissed   Boolean @default(true)
+  notifyNextDayMissing   Boolean @default(true)
+  checkoutAlertTime      String  @default("18:10")
+  missingAlertTime       String  @default("09:00")
+  weekdayCheckIn_0       String?
+  weekdayCheckOut_0      String?
+  weekdayOff_0           Boolean @default(false)
+  weekdayCheckIn_1       String?
+  weekdayCheckOut_1      String?
+  weekdayOff_1           Boolean @default(false)
+  weekdayCheckIn_2       String?
+  weekdayCheckOut_2      String?
+  weekdayOff_2           Boolean @default(false)
+  weekdayCheckIn_3       String?
+  weekdayCheckOut_3      String?
+  weekdayOff_3           Boolean @default(false)
+  weekdayCheckIn_4       String?
+  weekdayCheckOut_4      String?
+  weekdayOff_4           Boolean @default(false)
+  weekdayCheckIn_5       String?
+  weekdayCheckOut_5      String?
+  weekdayOff_5           Boolean @default(true)
+  weekdayCheckIn_6       String?
+  weekdayCheckOut_6      String?
+  weekdayOff_6           Boolean @default(true)
+  notif_confirm_request  String  @default("push")
+  notif_deadline_d1      String  @default("push")
+  notif_budget_over      String  @default("push")
+  notif_confirm_result   String  @default("badge")
+  notif_mention          String  @default("badge")
+  notif_notice_new       String  @default("badge")
+  notif_idea_like        String  @default("off")
+  notif_notice_read      String  @default("off")
 
   members     WorkspaceMember[]
+  inviteTokens InviteToken[]
   projects    Project[]
   events      Event[]
   pages       Page[]
+  notices     Notice[]
   boardPosts  BoardPost[]
 }
 
@@ -70,6 +114,21 @@ model WorkspaceMember {
   @@unique([userId, workspaceId])
 }
 
+model InviteToken {
+  id          String    @id @default(cuid())
+  token       String    @unique
+  role        Role
+  expiresAt   DateTime?
+  usedCount   Int       @default(0)
+  memo        String?
+  createdAt   DateTime  @default(now())
+  workspaceId String
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+}
+
 enum Role {
   OWNER
   ADMIN
@@ -80,10 +139,14 @@ enum Role {
 model Project {
   id          String        @id @default(cuid())
   name        String
+  subtitle    String?
   description String?
   color       String        @default("#F56B23")
   status      ProjectStatus @default(ACTIVE)
   budget      Float?
+  progress    Int?
+  startDate   DateTime?
+  endDate     DateTime?
   createdAt   DateTime      @default(now())
   workspaceId String
 
@@ -274,6 +337,32 @@ enum LeaveType {
   HALF_PM
 }
 
+model Notice {
+  id          String      @id @default(cuid())
+  title       String
+  content     String
+  badge       NoticeBadge
+  startDate   DateTime
+  endDate     DateTime
+  createdAt   DateTime    @default(now())
+  authorId    String
+  workspaceId String
+
+  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, createdAt])
+  @@index([workspaceId, endDate])
+}
+
+enum NoticeBadge {
+  SCHEDULE
+  FACILITY
+  NOTICE
+  WORK
+  OTHER
+}
+
 // ── 알림
 model Notification {
   id        String           @id @default(cuid())
@@ -349,6 +438,7 @@ model BoardPost {
   content     String
   tags        String[]
   status      BoardPostStatus?
+  visibility  BoardPostVisibility @default(SHARED)
   workspaceId String
   authorId    String
   createdAt   DateTime         @default(now())
@@ -394,6 +484,11 @@ enum BoardPostStatus {
   REVIEW
   ADOPTED
   HOLD
+}
+
+enum BoardPostVisibility {
+  SHARED
+  PRIVATE
 }
 
 // ── 푸시 구독

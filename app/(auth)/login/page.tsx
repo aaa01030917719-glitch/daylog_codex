@@ -1,11 +1,12 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { createInvitePath, normalizeInviteCode } from "@/lib/utils";
 
 const SAVED_ID_KEY = "savedId";
 
@@ -15,22 +16,24 @@ export default function LoginPage() {
   const [saveId, setSaveId] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
 
-  // 저장된 아이디 불러오기
   useEffect(() => {
     const saved = localStorage.getItem(SAVED_ID_KEY);
     if (saved) {
       setEmail(saved);
       setSaveId(true);
     }
+
+    const query = new URLSearchParams(window.location.search);
+    setInviteCode(normalizeInviteCode(query.get("inviteCode") ?? ""));
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
-    // 아이디 저장 처리
     if (saveId) {
       localStorage.setItem(SAVED_ID_KEY, email);
     } else {
@@ -49,8 +52,7 @@ export default function LoginPage() {
         return;
       }
 
-      // 쿠키 반영 보장을 위해 하드 내비게이션 사용
-      window.location.href = "/";
+      window.location.href = inviteCode ? createInvitePath(inviteCode) : "/";
     } finally {
       setLoading(false);
     }
@@ -59,21 +61,13 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[var(--bg-light)] px-4">
       <div className="w-full max-w-sm">
-        {/* 로고 */}
         <div className="mb-8 text-center">
-          <h1 className="font-serif text-3xl font-bold text-[var(--text-title)]">
-            daylog
-          </h1>
-          <p className="mt-2 text-sm text-[var(--text-sub)]">
-            팀 업무 관리 플랫폼
-          </p>
+          <h1 className="font-serif text-3xl font-bold text-[var(--text-title)]">daylog</h1>
+          <p className="mt-2 text-sm text-[var(--text-sub)]">업무 관리를 시작해 보세요.</p>
         </div>
 
-        {/* 카드 */}
         <div className="rounded-2xl border border-[var(--border)] bg-white p-8 shadow-sm">
-          <h2 className="mb-6 font-serif text-xl font-semibold text-[var(--text-title)]">
-            로그인
-          </h2>
+          <h2 className="mb-6 font-serif text-xl font-semibold text-[var(--text-title)]">로그인</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
@@ -83,7 +77,7 @@ export default function LoginPage() {
                 type="email"
                 placeholder="hello@example.com"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(event) => setEmail(event.target.value)}
                 required
                 autoComplete="email"
               />
@@ -96,19 +90,18 @@ export default function LoginPage() {
                 type="password"
                 placeholder="••••••••"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(event) => setPassword(event.target.value)}
                 required
                 autoComplete="current-password"
               />
             </div>
 
-            {/* 아이디 저장 + 비밀번호 찾기 */}
             <div className="flex items-center justify-between">
-              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <label className="flex cursor-pointer select-none items-center gap-1.5">
                 <input
                   type="checkbox"
                   checked={saveId}
-                  onChange={(e) => setSaveId(e.target.checked)}
+                  onChange={(event) => setSaveId(event.target.checked)}
                   className="rounded"
                   style={{ accentColor: "#F56B23", width: "1rem", height: "1rem" }}
                 />
@@ -117,15 +110,9 @@ export default function LoginPage() {
               <span className="text-sm text-[var(--text-sub)]">비밀번호를 잊으셨나요?</span>
             </div>
 
-            {error && (
-              <p className="text-sm text-red-500">{error}</p>
-            )}
+            {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loading}
-            >
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "로그인 중..." : "로그인"}
             </Button>
           </form>
@@ -133,26 +120,20 @@ export default function LoginPage() {
           <p className="mt-6 text-center text-sm text-[var(--text-sub)]">
             계정이 없으신가요?{" "}
             <Link
-              href="/register"
+              href={inviteCode ? `/register?inviteCode=${encodeURIComponent(inviteCode)}` : "/register"}
               className="font-medium text-[var(--accent)] hover:text-[var(--accent-dark)]"
             >
               회원가입
             </Link>
           </p>
 
-          <p className="mt-3 text-center text-sm text-[var(--text-sub)]">
-            초대받으셨나요?{" "}
-            <span
-              className="font-medium cursor-pointer"
-              style={{ color: "#F56B23" }}
-              onClick={() => {
-                const url = prompt("초대 링크를 붙여넣으세요");
-                if (url) window.location.href = url;
-              }}
-            >
-              초대 링크로 가입하기
-            </span>
-          </p>
+          <div className="mt-3 text-center text-sm text-[var(--text-sub)]">
+            {inviteCode ? (
+              <span>로그인 또는 회원가입 후 바로 참여할 수 있습니다.</span>
+            ) : (
+              <span>초대 링크로 참여하려면 전달받은 초대 링크를 직접 열어 주세요.</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

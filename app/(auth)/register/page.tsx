@@ -1,12 +1,13 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RegisterSuccessModal } from "@/components/modals/RegisterSuccessModal";
+import { createInvitePath, normalizeInviteCode } from "@/lib/utils";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -16,28 +17,38 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [registeredName, setRegisteredName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    setInviteCode(normalizeInviteCode(query.get("inviteCode") ?? ""));
+  }, []);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/register", {
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email, password }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) {
         setError(data.error ?? "회원가입 중 오류가 발생했습니다.");
         return;
       }
 
-      // 자동 로그인 후 모달 표시
       await signIn("credentials", { email, password, redirect: false });
+
+      if (inviteCode) {
+        window.location.href = createInvitePath(inviteCode);
+        return;
+      }
+
       setRegisteredName(name || email);
       setShowModal(true);
     } finally {
@@ -52,11 +63,11 @@ export default function RegisterPage() {
       <div className="flex min-h-screen items-center justify-center bg-[var(--bg-light)] px-4">
         <div className="w-full max-w-sm">
           <div className="mb-8 text-center">
-            <h1 className="font-serif text-3xl font-bold text-[var(--text-title)]">
-              daylog
-            </h1>
+            <h1 className="font-serif text-3xl font-bold text-[var(--text-title)]">daylog</h1>
             <p className="mt-2 text-sm text-[var(--text-sub)]">
-              팀 업무 관리 플랫폼
+              {inviteCode
+                ? "초대 링크를 통해 워크스페이스에 참여합니다."
+                : "업무 관리를 시작해 보세요."}
             </p>
           </div>
 
@@ -73,7 +84,7 @@ export default function RegisterPage() {
                   type="text"
                   placeholder="홍길동"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(event) => setName(event.target.value)}
                   autoComplete="name"
                 />
               </div>
@@ -85,7 +96,7 @@ export default function RegisterPage() {
                   type="email"
                   placeholder="hello@example.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
                   required
                   autoComplete="email"
                 />
@@ -98,26 +109,24 @@ export default function RegisterPage() {
                   type="password"
                   placeholder="8자 이상 입력"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(event) => setPassword(event.target.value)}
                   required
                   minLength={8}
                   autoComplete="new-password"
                 />
               </div>
 
-              {error && (
-                <p className="text-sm text-red-500">{error}</p>
-              )}
+              {error ? <p className="text-sm text-red-500">{error}</p> : null}
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "처리 중..." : "회원가입"}
+                {loading ? "처리 중..." : inviteCode ? "회원가입 후 참여하기" : "회원가입"}
               </Button>
             </form>
 
             <p className="mt-6 text-center text-sm text-[var(--text-sub)]">
               이미 계정이 있으신가요?{" "}
               <Link
-                href="/login"
+                href={inviteCode ? `/login?inviteCode=${encodeURIComponent(inviteCode)}` : "/login"}
                 className="font-medium text-[var(--accent)] hover:text-[var(--accent-dark)]"
               >
                 로그인
@@ -126,8 +135,9 @@ export default function RegisterPage() {
 
             <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--bg-light)] px-4 py-3 text-center">
               <p className="text-xs text-[var(--text-sub)]">
-                팀에 합류하려면 관리자에게{" "}
-                <span className="font-medium text-[var(--text-title)]">초대 링크</span>를 요청하세요.
+                {inviteCode
+                  ? "로그인 또는 회원가입 후 바로 참여할 수 있습니다."
+                  : "초대 링크가 있다면 전달받은 링크를 열어 바로 참여해 주세요."}
               </p>
             </div>
           </div>

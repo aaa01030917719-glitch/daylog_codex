@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Building2, LogIn, Copy, Check } from "lucide-react";
 import { useState } from "react";
+import { createInviteUrl } from "@/lib/utils";
 
 interface Props {
   open: boolean;
@@ -18,7 +19,7 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
   }
 
   async function handleCopyInvite() {
-    const url = `${window.location.origin}/invite/${inviteCode}`;
+    const url = createInviteUrl(window.location.origin, inviteCode);
     try {
       await navigator.clipboard.writeText(url);
     } catch {
@@ -40,8 +41,8 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50 }}
         />
         <DialogPrimitive.Content
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
           style={{
             position: "fixed",
             top: "50%",
@@ -57,7 +58,6 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
             boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
           }}
         >
-          {/* 아이콘 */}
           <div
             style={{
               width: "5rem",
@@ -73,7 +73,6 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
             <Building2 size={40} style={{ color: "#2A8C50" }} />
           </div>
 
-          {/* 제목 */}
           <h2
             style={{
               fontFamily: "Noto Serif KR, serif",
@@ -83,10 +82,9 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
               marginBottom: "0.75rem",
             }}
           >
-            워크스페이스가 생성되었습니다!
+            워크스페이스가 생성되었습니다
           </h2>
 
-          {/* 워크스페이스 이름 배지 */}
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "0.75rem" }}>
             <span
               style={{
@@ -97,18 +95,16 @@ export function WorkspaceSuccessModal({ open, workspaceName, inviteCode }: Props
                 borderRadius: "9999px",
                 fontSize: "0.875rem",
                 fontWeight: 600,
-                             }}
+              }}
             >
               {workspaceName}
             </span>
           </div>
 
-          {/* 본문 */}
           <p style={{ fontSize: "0.9375rem", color: "#555555", marginBottom: "1.5rem" }}>
-            팀원을 초대하고 함께 시작해보세요.
+            팀원을 초대하고 바로 협업을 시작해 보세요.
           </p>
 
-          {/* 버튼 */}
           <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
             <button
               onClick={handleEnter}

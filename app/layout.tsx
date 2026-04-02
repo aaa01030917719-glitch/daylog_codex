@@ -1,10 +1,26 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import localFont from "next/font/local";
 import { SessionProvider } from "next-auth/react";
+import "./globals.css";
+
+const geistSans = localFont({
+  src: "./fonts/GeistVF.woff",
+  variable: "--font-geist-sans",
+  weight: "100 900",
+  display: "swap",
+});
+
+const geistMono = localFont({
+  src: "./fonts/GeistMonoVF.woff",
+  variable: "--font-geist-mono",
+  weight: "100 900",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "daylog — 팀 업무 관리",
-  description: "팀 일정, 프로젝트, 출퇴근을 한 곳에서 관리하세요.",
+  title: "Daylog | 팀 업무 운영 허브",
+  description:
+    "프로젝트, 문서, 공지, 출퇴근 기록을 한 화면에서 관리하는 Daylog 업무 허브",
 };
 
 export default function RootLayout({
@@ -14,15 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="antialiased">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <SessionProvider>{children}</SessionProvider>
       </body>
     </html>

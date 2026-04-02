@@ -7,6 +7,7 @@ import { DevResetButton } from "@/components/dashboard/DevResetButton";
 import { AdminApprovalPanel } from "@/components/dashboard/AdminApprovalPanel";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { getProjectBaseSelect, hasProjectSubtitleColumn } from "@/lib/project-column-support";
 
 const APPROVAL_TYPE_LABELS: Record<string, string> = {
   LEAVE_REQUEST: "휴가·반차",
@@ -48,6 +49,7 @@ export default async function AdminDashboardPage() {
     where: { id: workspaceId },
     select: { name: true, inviteCode: true },
   });
+  const projectSubtitleEnabled = await hasProjectSubtitleColumn();
 
   const [
     allPendingApprovals,
@@ -94,7 +96,8 @@ export default async function AdminDashboardPage() {
     }),
     prisma.project.findMany({
       where: { workspaceId, status: "ACTIVE" },
-      include: {
+      select: {
+        ...getProjectBaseSelect(projectSubtitleEnabled),
         _count: { select: { tasks: true } },
         tasks: { where: { status: "DONE" }, select: { id: true } },
       },

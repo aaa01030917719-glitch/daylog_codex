@@ -3,6 +3,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const Dialog = DialogPrimitive.Root;
 const DialogTrigger = DialogPrimitive.Trigger;
@@ -14,7 +15,7 @@ const DialogOverlay = React.forwardRef<
 >(({ ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
-    style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 50 }}
+    className="modal-overlay"
     {...props}
   />
 ));
@@ -28,45 +29,16 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      style={{
-        position: "fixed",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 50,
-        pointerEvents: "none",
-      }}
+      className="modal-shell"
     >
       <div
-        style={{
-          background: "#fff",
-          borderRadius: "0.75rem",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-          padding: "1.5rem",
-          maxWidth: "32rem",
-          width: "calc(100% - 2rem)",
-          pointerEvents: "auto",
-          position: "relative",
-          maxHeight: "90vh",
-          overflowY: "auto",
-          ...style,
-        }}
+        className={cn("modal-card pointer-events-auto relative max-h-[90vh] overflow-y-auto", props.className)}
+        style={style}
         {...props}
       >
         {children}
         <DialogPrimitive.Close
-          style={{
-            position: "absolute",
-            top: "1rem",
-            right: "1rem",
-            cursor: "pointer",
-            background: "none",
-            border: "none",
-            color: "#999",
-            padding: "0.25rem",
-            borderRadius: "0.25rem",
-          }}
+          className="icon-button absolute right-5 top-5 h-10 w-10"
         >
           <X size={16} />
         </DialogPrimitive.Close>
@@ -77,11 +49,7 @@ const DialogContent = React.forwardRef<
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 function DialogHeader({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: "1rem" }}>
-      {children}
-    </div>
-  );
+  return <div className="modal-header">{children}</div>;
 }
 
 const DialogTitle = React.forwardRef<
@@ -90,7 +58,7 @@ const DialogTitle = React.forwardRef<
 >(({ ...props }, ref) => (
   <DialogPrimitive.Title
     ref={ref}
-    style={{ fontSize: "1.125rem", fontWeight: 600, color: "#0D0D0D", marginBottom: "0.25rem" }}
+    className="modal-title"
     {...props}
   />
 ));
@@ -102,18 +70,14 @@ const DialogDescription = React.forwardRef<
 >(({ ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    style={{ fontSize: "0.875rem", color: "#555555" }}
+    className="modal-subtitle"
     {...props}
   />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
 function DialogFooter({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.5rem", marginTop: "1.5rem" }}>
-      {children}
-    </div>
-  );
+  return <div className="modal-footer">{children}</div>;
 }
 
 export {

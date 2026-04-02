@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { CheckCircle2 } from "lucide-react";
@@ -17,78 +17,30 @@ export function RegisterSuccessModal({ open, name, hasWorkspace = false }: Props
   return (
     <DialogPrimitive.Root open={open}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50 }}
-        />
+        <DialogPrimitive.Overlay className="modal-overlay" />
         <DialogPrimitive.Content
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-          style={{
-            position: "fixed",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 51,
-            background: "#fff",
-            borderRadius: "1rem",
-            padding: "2rem",
-            maxWidth: "22rem",
-            width: "calc(100% - 2rem)",
-            textAlign: "center",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-          }}
+          onInteractOutside={(event) => event.preventDefault()}
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          className="modal-shell"
         >
-          {/* 아이콘 */}
-          <div
-            style={{
-              width: "5rem",
-              height: "5rem",
-              borderRadius: "50%",
-              background: "#FEF0E8",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 1.25rem",
-            }}
-          >
-            <CheckCircle2 size={48} style={{ color: "#F56B23" }} />
+          <div className="modal-card w-full max-w-[22rem] overflow-hidden">
+            <div className="modal-body px-6 py-7 text-center">
+              <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--success-light)] text-[var(--success)]">
+                <CheckCircle2 size={40} strokeWidth={2.2} />
+              </div>
+
+              <h2 className="modal-title justify-center">회원가입이 완료되었습니다</h2>
+              <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                Daylog에 오신 것을 환영합니다. <span className="font-semibold text-[var(--text-primary)]">{name}</span>님의 업무 공간을 바로 시작해 보세요.
+              </p>
+
+              <div className="mt-6">
+                <button type="button" onClick={handleStart} className="primary-button w-full">
+                  시작하기
+                </button>
+              </div>
+            </div>
           </div>
-
-          {/* 제목 */}
-          <h2
-            style={{
-              fontFamily: "Noto Serif KR, serif",
-              fontSize: "1.25rem",
-              fontWeight: 700,
-              color: "#0D0D0D",
-              marginBottom: "0.5rem",
-            }}
-          >
-            회원가입이 완료되었습니다!
-          </h2>
-
-          {/* 본문 */}
-          <p style={{ fontSize: "0.9375rem", color: "#555555", marginBottom: "1.75rem", lineHeight: 1.6 }}>
-            Daylog에 오신 것을 환영합니다, <strong style={{ color: "#0D0D0D" }}>{name}</strong>님 👋
-          </p>
-
-          {/* 버튼 */}
-          <button
-            onClick={handleStart}
-            style={{
-              width: "100%",
-              padding: "0.75rem",
-              background: "#F56B23",
-              color: "#fff",
-              border: "none",
-              borderRadius: "0.5rem",
-              fontSize: "1rem",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            시작하기
-          </button>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

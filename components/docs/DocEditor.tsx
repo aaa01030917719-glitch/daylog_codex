@@ -51,6 +51,7 @@ export function DocEditor({ page, currentUserId, isAdmin }: Props) {
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
 
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({ heading: false }),
       Heading.configure({ levels: [1, 2, 3] }),

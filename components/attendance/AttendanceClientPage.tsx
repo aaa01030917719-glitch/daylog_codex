@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import { AttendanceCalendar } from "./AttendanceCalendar";
@@ -79,8 +79,24 @@ export function AttendanceClientPage({
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.75rem" }}>
-        <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.5rem", fontWeight: 700, color: "#0D0D0D" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: "1.5rem",
+          flexWrap: "wrap",
+          gap: "0.75rem",
+        }}
+      >
+        <h1
+          style={{
+            fontFamily: "Noto Serif KR, serif",
+            fontSize: "1.5rem",
+            fontWeight: 700,
+            color: "#0D0D0D",
+          }}
+        >
           출퇴근 관리
         </h1>
         <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
@@ -97,7 +113,7 @@ export function AttendanceClientPage({
                 color: "#2D2D2D",
               }}
             >
-              <option value={currentUserId}>{currentUserName} (나)</option>
+              <option value={currentUserId}>{currentUserName} (본인)</option>
               {members
                 .filter((m) => m.id !== currentUserId)
                 .map((m) => (
@@ -108,7 +124,14 @@ export function AttendanceClientPage({
             </select>
           )}
 
-          <div style={{ display: "flex", border: "1px solid #E8E0C8", borderRadius: "0.5rem", overflow: "hidden" }}>
+          <div
+            style={{
+              display: "flex",
+              border: "1px solid #E8E0C8",
+              borderRadius: "0.5rem",
+              overflow: "hidden",
+            }}
+          >
             <button
               onClick={() => setView("calendar")}
               style={{
@@ -120,7 +143,7 @@ export function AttendanceClientPage({
                 cursor: "pointer",
               }}
             >
-              캘린더형
+              달력형
             </button>
             <button
               onClick={() => setView("list")}

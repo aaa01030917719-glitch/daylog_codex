@@ -1,12 +1,12 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
-  LayoutDashboard, Calendar, Clock,
-  FolderKanban, FileText, Bell, LogOut,
-  Settings, ShieldCheck,
+  LogOut,
+  Settings,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,135 +16,186 @@ const ROLE_LABELS: Record<string, string> = {
   MEMBER: "직원",
 };
 
-const divider = (
-  <div style={{ height: "1px", background: "rgba(255,255,255,0.08)", margin: "8px 18px" }} />
-);
-
 interface SidebarProps {
   userRole?: string;
   userName?: string;
   userImage?: string;
 }
 
-export function Sidebar({ userRole, userName }: SidebarProps) {
-  const pathname = usePathname();
-  const isOwner = userRole === "OWNER";
-  const isAdmin = userRole === "ADMIN";
+type NavItemConfig = {
+  href: string;
+  icon: string;
+  label: string;
+};
 
-  function NavItem({ href, icon: Icon, label }: { href: string; icon: React.ElementType; label: string }) {
-    const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
-    return (
-      <li>
-        <Link
-          href={href}
-          className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-150",
-            isActive ? "bg-[#F56B23] text-white" : "text-[#aaa] hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
-          )}
-        >
-          <Icon size={16} />
-          {label}
-        </Link>
-      </li>
-    );
-  }
+function isActivePath(pathname: string, href: string) {
+  const [basePath] = href.split("?");
+  return basePath === "/" ? pathname === "/" : pathname.startsWith(basePath);
+}
+
+function NavItem({
+  pathname,
+  href,
+  icon,
+  label,
+}: NavItemConfig & { pathname: string }) {
+  const isActive = isActivePath(pathname, href);
 
   return (
-    <aside className="flex h-screen w-60 flex-col bg-[var(--sidebar-bg)] text-white">
-      {/* 로고 */}
-      <div className="flex h-16 items-center px-5 border-b border-white/10">
-        <Link href="/" className="hover:opacity-80 transition-opacity">
-          <div style={{ display: "flex", alignItems: "center", gap: "9px" }}>
-            <div style={{
-              width: "32px", height: "32px", background: "#F56B23", borderRadius: "8px",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#fff", fontSize: "14px", fontWeight: 700, flexShrink: 0,
-            }}>D</div>
-            <span style={{ color: "#fff", fontSize: "16px", fontWeight: 700 }}>Daylog</span>
+    <li>
+      <Link
+        href={href}
+        className={cn(
+          "sidebar-nav-link group relative flex items-center gap-3 rounded-[14px] px-4 py-3 text-[13px] font-medium transition-all duration-150",
+          isActive
+            ? "bg-[var(--sidebar-active)] text-white"
+            : "text-white/72 hover:bg-[var(--sidebar-hover)] hover:text-white"
+        )}
+      >
+        <span
+          className={cn(
+            "absolute inset-y-2 left-0 w-1 rounded-full bg-[var(--accent)] transition-opacity",
+            isActive ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+          )}
+        />
+        <span className={cn("text-[17px] leading-none", isActive ? "text-[var(--accent)]" : "text-white/70 group-hover:text-white")}>
+          {icon}
+        </span>
+        <span className="flex-1">{label}</span>
+      </Link>
+    </li>
+  );
+}
+
+export function Sidebar({ userRole, userName }: SidebarProps) {
+  const pathname = usePathname();
+  const isAdmin = userRole === "ADMIN" || userRole === "OWNER";
+  const isOwner = userRole === "OWNER";
+  const showAdminCenterMenu = false;
+
+  const workspaceItems: NavItemConfig[] = [
+    { href: "/", icon: "🏠", label: "내 워크스페이스" },
+    { href: "/notices", icon: "📢", label: "공지사항" },
+    { href: "/docs", icon: "📝", label: "문서 작성" },
+    { href: "/memo", icon: "🗒️", label: "메모" },
+  ];
+
+  const projectItems: NavItemConfig[] = [
+    { href: "/projects", icon: "📋", label: "프로젝트" },
+  ];
+
+  const documentItems: NavItemConfig[] = [
+    { href: "/ideas", icon: "💡", label: "아이디어" },
+    { href: "/notifications", icon: "📨", label: "전달함" },
+  ];
+
+  return (
+    <aside className="flex h-screen w-[17rem] flex-col border-r border-white/5 bg-[var(--sidebar-bg)] text-white">
+      <div className="border-b border-white/8 px-5 py-5">
+        <Link href="/" className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,124,255,0.28)]">
+            DL
+          </div>
+          <div>
+            <div className="text-base font-semibold tracking-[-0.02em] text-white">Daylog</div>
+            <div className="mt-0.5 text-xs text-white/45">workspace operations</div>
           </div>
         </Link>
       </div>
 
-      {/* 네비게이션 */}
-      <nav className="flex-1 overflow-y-auto py-3 scrollbar-hide">
-        <ul className="space-y-0.5 px-3">
-          <NavItem href="/" icon={LayoutDashboard} label="대시보드" />
-          <NavItem href="/projects" icon={FolderKanban} label="프로젝트" />
-          <NavItem href="/calendar" icon={Calendar} label="일정" />
-          <NavItem href="/docs" icon={FileText} label="문서" />
-          {/* MEMBER만 알림 표시 (OWNER/ADMIN은 헤더 벨 아이콘 사용) */}
-          {!isOwner && !isAdmin && (
-            <NavItem href="/notifications" icon={Bell} label="알림" />
-          )}
-        </ul>
+      <nav className="custom-scroll flex-1 overflow-y-auto px-3 py-4">
+        <div className="space-y-6">
+          <section className="space-y-2">
+            <div className="sidebar-section-label">바로가기</div>
+              <ul className="space-y-1.5">
+                {workspaceItems.map((item) => (
+                  <NavItem key={item.href} pathname={pathname} {...item} />
+                ))}
+              </ul>
+            </section>
 
-        {divider}
+          <section className="space-y-2">
+            <div className="sidebar-section-label">워크스페이스</div>
+              <ul className="space-y-1.5">
+                {projectItems.map((item) => (
+                  <NavItem key={item.href} pathname={pathname} {...item} />
+                ))}
+              </ul>
+              <ul className="space-y-1.5">
+                <NavItem pathname={pathname} href="/attendance" icon="🕐" label="출퇴근" />
+              </ul>
+              <ul className="space-y-1.5">
+                {documentItems.map((item) => (
+                  <NavItem key={item.label} pathname={pathname} {...item} />
+                ))}
+              </ul>
+            </section>
 
-        <ul className="space-y-0.5 px-3">
+            {/* 이거 삭제 예정*/}
+            {/*<section className="space-y-2">
+              <div className="sidebar-section-label">근무관리</div>
+              <ul className="space-y-1.5">
+                <NavItem pathname={pathname} href="/attendance" icon="🕐" label="출퇴근 현황" />
+              </ul>
+            </section> 
+
+          <section className="space-y-2">
+            <div className="sidebar-section-label">전달문서</div>
+              <ul className="space-y-1.5">
+                {documentItems.map((item) => (
+                  <NavItem key={item.label} pathname={pathname} {...item} />
+                ))}
+              </ul>
+            </section> */}
+
           {isOwner ? (
-            <NavItem href="/attendance" icon={Clock} label="출퇴근 관리" />
-          ) : (
-            <NavItem href="/attendance" icon={Clock} label="출퇴근11" />
-          )}
-        </ul>
-
-        {/* OWNER: 추가 구분선 후 관리자 */}
-        {isOwner && (
-          <>
-            {divider}
-            <ul className="space-y-0.5 px-3">
-              <NavItem href="/admin/dashboard" icon={ShieldCheck} label="관리자" />
-            </ul>
-          </>
-        )}
-
-        {/* ADMIN: 구분선 후 관리자 */}
-        {isAdmin && (
-          <>
-            {divider}
-            <ul className="space-y-0.5 px-3">
-              <NavItem href="/admin/dashboard" icon={ShieldCheck} label="관리자" />
-            </ul>
-          </>
-        )}
-
-        {/* OWNER 전용 설정 */}
-        {isOwner && (
-          <>
-            {divider}
-            <ul className="space-y-0.5 px-3">
-              <NavItem href="/settings" icon={Settings} label="설정" />
-            </ul>
-          </>
-        )}
+            <section className="space-y-2">
+              <div className="sidebar-section-label">설정</div>
+              <ul className="space-y-1.5">
+                <NavItem pathname={pathname} href="/settings" icon="⚙️" label="워크스페이스 설정" />
+              </ul>
+            </section>
+          ) : null}
+        </div>
       </nav>
 
-      {/* 유저 영역 */}
-      <div
-        className="flex items-center gap-3 px-4 py-3"
-        style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
-      >
-        <div className="h-8 w-8 rounded-full bg-[#F56B23] flex items-center justify-center text-sm font-bold text-white shrink-0">
-          {userName?.[0]?.toUpperCase() ?? "U"}
+      {isAdmin && showAdminCenterMenu ? (
+        <div className="border-t border-white/8 px-4 py-3">
+          <div className="sidebar-section-label px-0 pb-2">관리 센터</div>
+          <div className="space-y-1.5">
+            <Link href="/admin/dashboard" className="sidebar-nav-link group flex items-center gap-3 rounded-[14px] px-4 py-3 text-[13px] font-medium text-white/72 transition-all hover:bg-[var(--sidebar-hover)] hover:text-white">
+              <ShieldCheck size={17} className="text-white/70 group-hover:text-white" />
+              <span className="flex-1">관리 센터</span>
+            </Link>
+            <Link href="/settings" className="sidebar-nav-link group flex items-center gap-3 rounded-[14px] px-4 py-3 text-[13px] font-medium text-white/72 transition-all hover:bg-[var(--sidebar-hover)] hover:text-white">
+              <Settings size={17} className="text-white/70 group-hover:text-white" />
+              <span className="flex-1">설정</span>
+            </Link>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white truncate">{userName ?? "사용자"}</p>
-          {userRole && (
-            <p style={{ fontSize: "11px", color: "#888", marginTop: "1px" }}>
-              {ROLE_LABELS[userRole] ?? userRole}
-            </p>
-          )}
+      ) : null}
+
+      <div className="px-4 py-4">
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white">
+              {userName?.[0]?.toUpperCase() ?? "U"}
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-white">{userName ?? "사용자"}</div>
+              <div className="mt-0.5 text-xs text-white/45">
+                {ROLE_LABELS[userRole ?? "MEMBER"] ?? userRole ?? "직원"}
+              </div>
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="text-white/70 transition-colors hover:text-white"
+              aria-label="로그아웃"
+            >
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="p-1.5 rounded-md transition-colors shrink-0"
-          style={{ color: "#888" }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "#fff"; e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = "#888"; e.currentTarget.style.background = "transparent"; }}
-          aria-label="로그아웃"
-        >
-          <LogOut size={16} />
-        </button>
       </div>
     </aside>
   );

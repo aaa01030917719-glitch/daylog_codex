@@ -58,7 +58,7 @@ const COLUMNS: { id: TaskStatus; label: string }[] = [
 
 const PRIORITY_STYLES: Record<Priority, { bg: string; text: string; label: string }> = {
   LOW: { bg: "#F0F0F0", text: "#777", label: "낮음" },
-  MEDIUM: { bg: "#E8F7EE", text: "#2A8C50", label: "중간" },
+  MEDIUM: { bg: "#E8F7EE", text: "var(--success)", label: "중간" },
   HIGH: { bg: "#FFF8E6", text: "#D4A200", label: "높음" },
   URGENT: { bg: "#FDECEA", text: "#D93025", label: "긴급" },
 };
@@ -118,12 +118,12 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
         <button
           onClick={() => router.push("/projects")}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "#555", padding: "0.25rem", display: "flex", alignItems: "center" }}
+          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-body)", padding: "0.25rem", display: "flex", alignItems: "center" }}
         >
           <ArrowLeft size={18} />
         </button>
         <div style={{ width: "0.75rem", height: "0.75rem", borderRadius: "50%", background: project.color }} />
-        <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.25rem", fontWeight: 700, color: "#0D0D0D" }}>
+        <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-title)" }}>
           {project.name}
         </h1>
       </div>
@@ -147,7 +147,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                 {/* Column header */}
                 <div
                   style={{
-                    background: "#F5EED5",
+                    background: "var(--table-header)",
                     borderRadius: "0.5rem 0.5rem 0 0",
                     padding: "0.625rem 0.875rem",
                     display: "flex",
@@ -155,10 +155,10 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                     justifyContent: "space-between",
                   }}
                 >
-                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "#555" }}>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-body)" }}>
                     {col.label}
                   </span>
-                  <span style={{ fontSize: "0.75rem", color: "#999", background: "#fff", borderRadius: "9999px", padding: "0.125rem 0.5rem" }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-sub)", background: "#fff", borderRadius: "9999px", padding: "0.125rem 0.5rem" }}>
                     {colTasks.length}
                   </span>
                 </div>
@@ -170,9 +170,9 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                       {...provided.droppableProps}
                       style={{
                         flex: 1,
-                        background: snapshot.isDraggingOver ? "#FEF0E8" : "#FAF7EE",
+                        background: snapshot.isDraggingOver ? "var(--accent-light)" : "var(--bg-light)",
                         borderRadius: "0 0 0.5rem 0.5rem",
-                        border: "1px solid #E8E0C8",
+                        border: "1px solid var(--border)",
                         borderTop: "none",
                         padding: "0.5rem",
                         minHeight: "8rem",
@@ -193,12 +193,12 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                                 borderRadius: "0.5rem",
                                 padding: "0.75rem",
                                 marginBottom: "0.5rem",
-                                border: "1px solid #E8E0C8",
+                                border: "1px solid var(--border)",
                                 boxShadow: snapshot.isDragging ? "0 8px 24px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.04)",
                                 cursor: "pointer",
                               }}
                             >
-                              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "#0D0D0D", marginBottom: "0.5rem", lineHeight: 1.4 }}>
+                              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text-title)", marginBottom: "0.5rem", lineHeight: 1.4 }}>
                                 {task.title}
                               </p>
 
@@ -218,7 +218,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
 
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                                   {task.dueDate && (
-                                    <span style={{ fontSize: "0.6875rem", color: "#999" }}>
+                                    <span style={{ fontSize: "0.6875rem", color: "var(--text-sub)" }}>
                                       {format(new Date(task.dueDate), "M/d", { locale: ko })}
                                     </span>
                                   )}
@@ -228,7 +228,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                                         width: "1.25rem",
                                         height: "1.25rem",
                                         borderRadius: "50%",
-                                        background: "#F56B23",
+                                        background: "var(--accent)",
                                         color: "#fff",
                                         fontSize: "0.625rem",
                                         fontWeight: 700,
@@ -258,10 +258,10 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                           alignItems: "center",
                           gap: "0.375rem",
                           padding: "0.5rem",
-                          border: "1px dashed #E8E0C8",
+                          border: "1px dashed var(--border)",
                           borderRadius: "0.5rem",
                           background: "transparent",
-                          color: "#999",
+                          color: "var(--text-sub)",
                           fontSize: "0.8125rem",
                           cursor: "pointer",
                           marginTop: "0.25rem",

@@ -4,6 +4,7 @@ import { useState } from "react";
 
 function DevResetButtonInner() {
   const [loading, setLoading] = useState(false);
+  const showFloatingBanner = false;
 
   async function handleClick() {
     const ok = window.confirm("워크스페이스 데이터를 초기화합니다. 계속할까요?");
@@ -29,6 +30,8 @@ function DevResetButtonInner() {
     <button
       onClick={handleClick}
       disabled={loading}
+      aria-hidden={!showFloatingBanner}
+      hidden={!showFloatingBanner}
       style={{
         position: "fixed",
         bottom: "80px",

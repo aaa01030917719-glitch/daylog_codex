@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { getProjectBaseSelect, hasProjectSubtitleColumn } from "@/lib/project-column-support";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { KanbanBoard } from "@/components/tasks/KanbanBoard";
@@ -8,11 +9,13 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   if (!session?.user?.id) return null;
 
   const workspaceId = session.user.workspaceId ?? "";
+  const projectSubtitleEnabled = await hasProjectSubtitleColumn();
 
   const [project, members] = await Promise.all([
     prisma.project.findUnique({
       where: { id: params.id },
-      include: {
+      select: {
+        ...getProjectBaseSelect(projectSubtitleEnabled),
         tasks: {
           include: {
             assignee: { select: { id: true, name: true, image: true } },

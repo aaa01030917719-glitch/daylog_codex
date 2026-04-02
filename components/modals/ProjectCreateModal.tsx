@@ -1,18 +1,21 @@
-"use client";
+﻿"use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { X } from "lucide-react";
+import { useMemo, useState } from "react";
+import type { ProjectSummary } from "@/components/projects/project-board-types";
 
-interface Project {
+interface ProjectResponse {
   id: string;
   name: string;
+  subtitle: string | null;
   description: string | null;
   color: string;
   status: string;
   budget: number | null;
+  progress?: number | null;
+  startDate?: string | Date | null;
+  endDate?: string | Date | null;
   doneTasks: number;
-  _count: { tasks: number };
+  _count?: { tasks: number };
 }
 
 interface Member {
@@ -23,255 +26,380 @@ interface Member {
 
 interface Props {
   members: Member[];
-  onCreated: (project: Project) => void;
+  onCreated?: (project: ProjectResponse) => void;
+  onSaved?: (project: ProjectResponse) => void;
   onClose: () => void;
+  project?: ProjectSummary | null;
 }
 
-const today = format(new Date(), "yyyy-MM-dd");
+const COLOR_OPTIONS = [
+  "#4f7cff",
+  "#34d399",
+  "#f59e0b",
+  "#f97316",
+  "#ef4444",
+  "#8b5cf6",
+];
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  border: "1px solid #E8E0C8",
-  borderRadius: "0.5rem",
-  padding: "0.625rem 0.75rem",
-  fontSize: "0.875rem",
-  outline: "none",
-  boxSizing: "border-box",
-  color: "#0D0D0D",
-  background: "#fff",
+const BOARD_STATUS_LABELS: Record<ProjectSummary["boardStatus"], string> = {
+  ONGOING: "진행 중",
+  UPCOMING: "예정",
+  COMPLETED: "완료",
 };
 
-const labelStyle: React.CSSProperties = {
-  display: "block",
-  fontSize: "0.875rem",
-  fontWeight: 500,
-  color: "#2D2D2D",
-  marginBottom: "0.375rem",
-};
+function getTodayInputValue() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
 
-export function ProjectCreateModal({ members, onCreated, onClose }: Props) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(today);
-  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  return `${year}-${month}-${day}`;
+}
+
+function formatDateInputValue(value?: string | Date | null) {
+  if (!value) {
+    return "";
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+async function readError(response: Response) {
+  try {
+    const data = await response.json();
+    if (typeof data?.error === "string") {
+      return data.error;
+    }
+  } catch {
+    return "프로젝트를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+  }
+
+  return "프로젝트를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.";
+}
+
+export function ProjectCreateModal({
+  members,
+  onCreated,
+  onSaved,
+  onClose,
+  project = null,
+}: Props) {
+  const isEditMode = Boolean(project);
+  const todayValue = useMemo(() => getTodayInputValue(), []);
+  const [name, setName] = useState(project?.name ?? "");
+  const [subtitle, setSubtitle] = useState(project?.subtitle ?? "");
+  const [description, setDescription] = useState(project?.description ?? "");
+  const [color, setColor] = useState(project?.color ?? COLOR_OPTIONS[0]);
+  const [startDate, setStartDate] = useState(
+    formatDateInputValue(project?.startDate) || todayValue
+  );
+  const [endDate, setEndDate] = useState(
+    formatDateInputValue(project?.endDate) || todayValue
+  );
+  const [progress, setProgress] = useState(String(project?.progress ?? 0));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const endDateMin = startDate || todayValue;
+  const summaryTaskCount = project?.totalTasks ?? 0;
+  const summaryAssignees =
+    project?.assigneeNames.length ? project.assigneeNames.join(", ") : "담당자 미지정";
+  const summaryTags = project?.tags.length ? project.tags.join(", ") : "태그 없음";
 
-  const allSelected = members.length > 0 && assigneeIds.length === members.length;
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
 
-  function toggleAll() {
-    setAssigneeIds(allSelected ? [] : members.map((m) => m.id));
-  }
+    if (!name.trim()) {
+      setError("프로젝트 이름을 입력해 주세요.");
+      return;
+    }
 
-  function toggleAssignee(id: string) {
-    setAssigneeIds((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
-    );
-  }
+    const parsedProgress = Number(progress);
+    if (!Number.isFinite(parsedProgress) || parsedProgress < 0 || parsedProgress > 100) {
+      setError("진행률은 0부터 100 사이 숫자로 입력해 주세요.");
+      return;
+    }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!name.trim()) return;
+    const parsedStartDate = new Date(`${startDate}T00:00:00`);
+    const parsedEndDate = new Date(`${endDate}T00:00:00`);
+
+    if (Number.isNaN(parsedStartDate.getTime()) || Number.isNaN(parsedEndDate.getTime())) {
+      setError("프로젝트 날짜를 다시 확인해 주세요.");
+      return;
+    }
+
+    if (parsedEndDate.getTime() < parsedStartDate.getTime()) {
+      setError("마감날짜는 시작날짜보다 빠를 수 없습니다.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
+
     try {
-      const res = await fetch("/api/projects", {
-        method: "POST",
+      const response = await fetch(project ? `/api/projects/${project.id}` : "/api/projects", {
+        method: project ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
+          subtitle: subtitle.trim() || null,
           description: description.trim() || null,
-          color: "#F56B23",
+          color,
           budget: null,
+          progress: Math.round(parsedProgress),
+          startDate,
+          endDate,
         }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        onCreated(data.project);
-      } else {
-        setError(data.error ?? "프로젝트 생성에 실패했습니다.");
+
+      if (!response.ok) {
+        setError(await readError(response));
+        return;
       }
-    } catch {
-      setError("네트워크 오류가 발생했습니다.");
+
+      const data = (await response.json()) as { project?: ProjectResponse };
+      if (!data.project) {
+        setError("프로젝트 저장 결과를 확인하지 못했습니다. 다시 시도해 주세요.");
+        return;
+      }
+
+      if (isEditMode) {
+        if (onSaved) {
+          onSaved(data.project);
+        } else {
+          onClose();
+        }
+      } else {
+        if (onCreated) {
+          onCreated(data.project);
+        } else {
+          onClose();
+        }
+      }
+    } catch (createError) {
+      console.error("[PROJECT_CREATE_MODAL]", createError);
+      setError("프로젝트를 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div
-      style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}
-      onClick={onClose}
-    >
-      <div
-        style={{ background: "#fff", borderRadius: "0.875rem", width: "100%", maxWidth: "42rem", maxHeight: "90vh", display: "flex", flexDirection: "column", boxShadow: "0 20px 60px rgba(0,0,0,0.18)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 헤더 */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "1.25rem 1.5rem", borderBottom: "1px solid #E8E0C8" }}>
-          <h2 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.125rem", fontWeight: 700, color: "#0D0D0D", margin: 0 }}>
-            새 프로젝트 생성
-          </h2>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "#999", padding: "0.25rem", borderRadius: "0.25rem", display: "flex" }}>
-            <X size={20} />
+    <div className="modal-shell" onClick={onClose}>
+      <div className="modal-overlay" />
+      <div className="modal-card modal-card--form" onClick={(event) => event.stopPropagation()}>
+        <div className="modal-header">
+          <div>
+            <h2 className="modal-title">{isEditMode ? "프로젝트 상세" : "프로젝트 등록"}</h2>
+            <p className="modal-subtitle">
+              {isEditMode
+                ? "프로젝트 세부 내용과 진행률을 확인하고 필요한 값을 바로 수정합니다."
+                : "프로젝트 이름, 일정, 진행률을 먼저 저장하고 보드에서 이어서 관리합니다."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="icon-button"
+            aria-label={isEditMode ? "프로젝트 상세 모달 닫기" : "프로젝트 등록 모달 닫기"}
+          >
+            ×
           </button>
         </div>
 
-        {/* 폼 */}
-        <form onSubmit={handleSubmit} style={{ flex: 1, overflowY: "auto", padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          {error && (
-            <div style={{ background: "#FDECEA", border: "1px solid #fca5a5", borderRadius: "0.5rem", padding: "0.75rem 1rem", fontSize: "0.875rem", color: "#D93025" }}>
-              {error}
-            </div>
-          )}
-          {/* 1. 프로젝트 이름 */}
-          <div>
-            <label style={labelStyle}>
-              프로젝트 이름 <span style={{ color: "#F56B23" }}>*</span>
-            </label>
-            <input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="예) 2분기 마케팅 캠페인, 앱 리뉴얼"
-              required
-              style={inputStyle}
-              onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-              onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-            />
-          </div>
-
-          {/* 2. 프로젝트 설명 */}
-          <div>
-            <label style={labelStyle}>프로젝트 설명 (선택)</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="예) 신규 고객 유입을 위한 SNS 및 검색 광고 통합 캠페인"
-              rows={4}
-              style={{ ...inputStyle, resize: "vertical", minHeight: "5rem" }}
-              onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-              onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-            />
-          </div>
-
-          {/* 3. 시작일 / 마감일 */}
-          <div>
-            <label style={labelStyle}>기간</label>
-            <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-                  onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-                />
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body space-y-5">
+            {project ? (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4">
+                <div className="grid gap-3 text-sm text-[var(--text-secondary)] sm:grid-cols-2">
+                  <div>
+                    <p className="field-label">현재 상태</p>
+                    <p className="mt-1 font-semibold text-[var(--text-primary)]">
+                      {BOARD_STATUS_LABELS[project.boardStatus]}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="field-label">업무 수</p>
+                    <p className="mt-1 font-semibold text-[var(--text-primary)]">
+                      {project.doneTasks}/{summaryTaskCount}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="field-label">담당자</p>
+                    <p className="mt-1 line-clamp-1 font-medium text-[var(--text-primary)]">
+                      {summaryAssignees}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="field-label">태그</p>
+                    <p className="mt-1 line-clamp-1 font-medium text-[var(--text-primary)]">
+                      {summaryTags}
+                    </p>
+                  </div>
+                </div>
               </div>
-              <span style={{ color: "#999", fontSize: "0.875rem", flexShrink: 0 }}>~</span>
-              <div style={{ flex: 1 }}>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  style={inputStyle}
-                  onFocus={(e) => (e.target.style.borderColor = "#F56B23")}
-                  onBlur={(e) => (e.target.style.borderColor = "#E8E0C8")}
-                />
+            ) : members.length > 0 ? (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-4 text-sm text-[var(--text-secondary)]">
+                현재 워크스페이스 멤버 {members.length}명이 참여 중입니다. 프로젝트 등록 후
+                세부 업무와 담당자를 연결해 주세요.
               </div>
-            </div>
-          </div>
+            ) : null}
 
-          {/* 4. 담당자 */}
-          {members.length > 0 && (
-            <div>
-              <label style={labelStyle}>담당자</label>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-                <button
-                  type="button"
-                  onClick={toggleAll}
-                  style={{
-                    padding: "0.375rem 0.875rem",
-                    borderRadius: "9999px",
-                    border: `1px solid ${allSelected ? "#fcd9c2" : "#E8E0C8"}`,
-                    background: allSelected ? "#FEF0E8" : "#FAF7EE",
-                    color: allSelected ? "#D4581A" : "#555555",
-                    fontSize: "0.8125rem",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  전체
-                </button>
-                {members.map((m) => {
-                  const selected = assigneeIds.includes(m.id);
+            <div className="field">
+              <label className="field-label" htmlFor="project-name">
+                프로젝트 이름
+              </label>
+              <input
+                id="project-name"
+                type="text"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="form-input"
+                placeholder="예: 2분기 브랜드 캠페인"
+                maxLength={80}
+                autoFocus
+                required
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="project-subtitle">
+                상세제목
+              </label>
+              <input
+                id="project-subtitle"
+                type="text"
+                value={subtitle}
+                onChange={(event) => setSubtitle(event.target.value)}
+                className="form-input"
+                placeholder="예: 4월 프로모션 운영안"
+                maxLength={120}
+              />
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="project-description">
+                프로젝트 설명
+              </label>
+              <textarea
+                id="project-description"
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                className="form-textarea min-h-[160px]"
+                placeholder="프로젝트 목표와 운영 메모를 간단히 남겨 주세요"
+              />
+              <p className="field-hint">
+                담당자와 세부 업무는 프로젝트 보드에서 계속 관리할 수 있습니다.
+              </p>
+            </div>
+
+            <div className="field">
+              <span className="field-label">대표 색상</span>
+              <div className="flex flex-wrap gap-3">
+                {COLOR_OPTIONS.map((option) => {
+                  const selected = color === option;
+
                   return (
                     <button
-                      key={m.id}
+                      key={option}
                       type="button"
-                      onClick={() => toggleAssignee(m.id)}
+                      onClick={() => setColor(option)}
+                      className="flex h-10 w-10 items-center justify-center rounded-full border-2 transition-transform hover:-translate-y-0.5"
                       style={{
-                        padding: "0.375rem 0.875rem",
-                        borderRadius: "9999px",
-                        border: `1px solid ${selected ? "#fcd9c2" : "#E8E0C8"}`,
-                        background: selected ? "#FEF0E8" : "#FAF7EE",
-                        color: selected ? "#D4581A" : "#555555",
-                        fontSize: "0.8125rem",
-                        fontWeight: 500,
-                        cursor: "pointer",
-                        transition: "all 0.15s",
+                        background: option,
+                        borderColor: selected ? "#0f172a" : "rgba(255,255,255,0.92)",
+                        boxShadow: selected ? "0 0 0 4px rgba(79,124,255,0.14)" : "var(--shadow-sm)",
                       }}
+                      aria-label={`색상 ${option}`}
                     >
-                      {m.name ?? "알 수 없음"}
+                      {selected ? <span className="text-sm font-bold text-white">✓</span> : null}
                     </button>
                   );
                 })}
               </div>
             </div>
-          )}
-        </form>
 
-        {/* 하단 버튼 */}
-        <div style={{ display: "flex", gap: "0.5rem", padding: "1rem 1.5rem", borderTop: "1px solid #E8E0C8" }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              flex: 1,
-              padding: "0.625rem",
-              border: "1px solid #E8E0C8",
-              borderRadius: "0.5rem",
-              background: "#fff",
-              color: "#555555",
-              fontSize: "0.875rem",
-              cursor: "pointer",
-              fontWeight: 500,
-            }}
-          >
-            취소
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={loading || !name.trim()}
-            style={{
-              flex: 2,
-              padding: "0.625rem",
-              border: "none",
-              borderRadius: "0.5rem",
-              background: "#F56B23",
-              color: "#fff",
-              fontSize: "0.875rem",
-              fontWeight: 600,
-              cursor: loading || !name.trim() ? "not-allowed" : "pointer",
-              opacity: loading || !name.trim() ? 0.6 : 1,
-            }}
-          >
-            {loading ? "생성 중..." : "생성"}
-          </button>
-        </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="field">
+                <label className="field-label" htmlFor="project-start-date">
+                  시작날짜
+                </label>
+                <input
+                  id="project-start-date"
+                  type="date"
+                  value={startDate}
+                  onChange={(event) => {
+                    setStartDate(event.target.value);
+                    if (endDate && event.target.value && endDate < event.target.value) {
+                      setEndDate(event.target.value);
+                    }
+                  }}
+                  className="form-input"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label className="field-label" htmlFor="project-end-date">
+                  마감날짜
+                </label>
+                <input
+                  id="project-end-date"
+                  type="date"
+                  value={endDate}
+                  min={endDateMin}
+                  onChange={(event) => setEndDate(event.target.value)}
+                  className="form-input"
+                  required
+                />
+                <p className="field-hint">
+                  기본값은 오늘 이후 일정입니다. 시작날짜를 과거로 바꾸면 지난 업무 백업도
+                  등록할 수 있습니다.
+                </p>
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="field-label" htmlFor="project-progress">
+                진행률 (%)
+              </label>
+              <input
+                id="project-progress"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={100}
+                value={progress}
+                onChange={(event) => setProgress(event.target.value)}
+                className="form-input"
+                placeholder="0"
+              />
+            </div>
+
+            {error ? (
+              <div className="rounded-2xl border border-[#fecaca] bg-[var(--danger-light)] px-4 py-3 text-sm font-medium text-[#b42318]">
+                {error}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="modal-footer">
+            <button type="button" onClick={onClose} className="secondary-button" disabled={loading}>
+              취소
+            </button>
+            <button type="submit" className="primary-button" disabled={loading}>
+              {loading ? "저장 중..." : isEditMode ? "변경 저장" : "프로젝트 저장"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

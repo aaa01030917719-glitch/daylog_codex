@@ -44,7 +44,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "태스크 이름과 프로젝트를 입력해주세요." }, { status: 400 });
     }
 
-    const project = await prisma.project.findUnique({ where: { id: projectId } });
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { id: true, workspaceId: true },
+    });
     if (!project || project.workspaceId !== session.user.workspaceId) {
       return NextResponse.json({ error: "프로젝트를 찾을 수 없습니다." }, { status: 404 });
     }

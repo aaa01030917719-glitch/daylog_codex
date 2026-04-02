@@ -1,6 +1,4 @@
-"use client";
-
-export type DocsHubTab = "DOCS" | "ALL" | "LEAVE" | "WORK" | "CALENDAR";
+﻿export type DocsHubTab = "DOCS" | "ALL" | "LEAVE" | "WORK" | "CALENDAR";
 export type ApprovalFilterStatus = "ALL" | "PENDING" | "APPROVED" | "REJECTED";
 export type ApprovalCategory = "ALL" | "LEAVE" | "WORK";
 export type ApprovalTypeValue =
@@ -101,10 +99,7 @@ export const leaveTypeLabels: Record<LeaveRequestType, string> = {
   HALF_PM: "오후 반차",
 };
 
-export const approvalStatusLabels: Record<
-  Exclude<ApprovalFilterStatus, "ALL">,
-  string
-> = {
+export const approvalStatusLabels: Record<Exclude<ApprovalFilterStatus, "ALL">, string> = {
   PENDING: "대기",
   APPROVED: "승인",
   REJECTED: "반려",

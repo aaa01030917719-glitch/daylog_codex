@@ -1,3 +1,4 @@
+﻿import { AttendanceStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -5,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 export async function POST() {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "인증이 필요합니다." }, { status: 401 });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
   const now = new Date();
@@ -17,11 +18,10 @@ export async function POST() {
     });
 
     if (existing?.checkIn) {
-      return NextResponse.json({ error: "이미 출근 기록이 있습니다." }, { status: 409 });
+      return NextResponse.json({ error: "오늘은 이미 출근 처리되었습니다." }, { status: 409 });
     }
 
-    // workStartTime 기준 LATE 판정 (10분 초과)
-    let status: "NORMAL" | "LATE" = "NORMAL";
+    let status: AttendanceStatus = AttendanceStatus.NORMAL;
     const workspaceId = session.user.workspaceId ?? "";
 
     if (workspaceId) {
@@ -31,14 +31,12 @@ export async function POST() {
       });
 
       if (workspace?.workStartTime) {
-        const [hStr, mStr] = workspace.workStartTime.split(":");
-        const startH = parseInt(hStr, 10);
-        const startM = parseInt(mStr, 10);
-        const workStartMinutes = startH * 60 + startM;
-        const nowMinutes = now.getHours() * 60 + now.getMinutes();
+        const [hoursText, minutesText] = workspace.workStartTime.split(":");
+        const lateThreshold = Number.parseInt(hoursText, 10) * 60 + Number.parseInt(minutesText, 10) + 10;
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
-        if (nowMinutes > workStartMinutes + 10) {
-          status = "LATE";
+        if (currentMinutes > lateThreshold) {
+          status = AttendanceStatus.LATE;
         }
       }
     }
@@ -52,12 +50,23 @@ export async function POST() {
         checkIn: now,
         status,
       },
-      update: { checkIn: now, status },
+      update: {
+        checkIn: now,
+        status,
+      },
+      include: {
+        user: { select: { id: true, name: true, image: true } },
+      },
     });
 
-    return NextResponse.json(attendance);
+    return NextResponse.json({
+      ...attendance,
+      date: attendance.date.toISOString(),
+      checkIn: attendance.checkIn?.toISOString() ?? null,
+      checkOut: attendance.checkOut?.toISOString() ?? null,
+    });
   } catch (error) {
     console.error("[CHECK-IN]", error);
-    return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 });
+    return NextResponse.json({ error: "출근 처리 중 오류가 발생했습니다." }, { status: 500 });
   }
 }

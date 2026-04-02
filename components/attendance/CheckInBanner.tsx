@@ -1,6 +1,6 @@
-"use client";
+﻿"use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CheckoutConfirmModal } from "@/components/modals/CheckoutConfirmModal";
 
 interface AttendanceData {
@@ -14,24 +14,37 @@ interface CheckInBannerProps {
 }
 
 function formatTime(iso: string) {
-  const d = new Date(iso);
-  return `${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`;
+  const date = new Date(iso);
+  return `${date.getHours().toString().padStart(2, "0")}:${date
+    .getMinutes()
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+function formatDuration(startIso: string, endIso: string) {
+  const diffMs = new Date(endIso).getTime() - new Date(startIso).getTime();
+  const totalMinutes = Math.max(0, Math.round(diffMs / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  return hours > 0 ? `${hours}시간 ${minutes}분` : `${minutes}분`;
 }
 
 function calcElapsed(checkInIso: string) {
-  const diffMs = Date.now() - new Date(checkInIso).getTime();
-  const totalMin = Math.floor(diffMs / 60000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+  return formatDuration(checkInIso, new Date().toISOString());
 }
 
-function calcWorked(checkInIso: string, checkOutIso: string) {
-  const diffMs = new Date(checkOutIso).getTime() - new Date(checkInIso).getTime();
-  const totalMin = Math.round(diffMs / 60000);
-  const h = Math.floor(totalMin / 60);
-  const m = totalMin % 60;
-  return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+async function readError(response: Response) {
+  try {
+    const data = await response.json();
+    if (typeof data?.error === "string") {
+      return data.error;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 export function CheckInBanner({ initialAttendance }: CheckInBannerProps) {
@@ -39,8 +52,8 @@ export function CheckInBanner({ initialAttendance }: CheckInBannerProps) {
   const [elapsed, setElapsed] = useState("");
   const [loading, setLoading] = useState(false);
   const [showCheckout, setShowCheckout] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  // 경과시간 실시간 업데이트 (근무 중일 때만)
   const updateElapsed = useCallback(() => {
     if (attendance?.checkIn && !attendance.checkOut) {
       setElapsed(calcElapsed(attendance.checkIn));
@@ -48,77 +61,108 @@ export function CheckInBanner({ initialAttendance }: CheckInBannerProps) {
   }, [attendance?.checkIn, attendance?.checkOut]);
 
   useEffect(() => {
-    if (!attendance?.checkIn || attendance.checkOut) return;
+    if (!attendance?.checkIn || attendance.checkOut) {
+      return;
+    }
+
     updateElapsed();
-    const timer = setInterval(updateElapsed, 60000);
-    return () => clearInterval(timer);
+    const timer = window.setInterval(updateElapsed, 60000);
+    return () => window.clearInterval(timer);
   }, [attendance?.checkIn, attendance?.checkOut, updateElapsed]);
 
-  // 근무 중 페이지 이탈 시 경고
-  const isWorking = !!attendance?.checkIn && !attendance?.checkOut;
+  const isWorking = Boolean(attendance?.checkIn && !attendance?.checkOut);
+
   useEffect(() => {
-    if (!isWorking) return;
-    function handleBeforeUnload(e: BeforeUnloadEvent) {
-      e.preventDefault();
-      e.returnValue = "퇴근 처리를 하지 않으셨습니다.";
+    if (!isWorking) {
+      return;
     }
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "퇴근 처리가 아직 완료되지 않았습니다.";
+    }
+
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [isWorking]);
 
-  async function handleCheckIn() {
-    setLoading(true);
-    const optimistic = new Date().toISOString();
-    setAttendance({ checkIn: optimistic, checkOut: null, status: "NORMAL" });
-
+  async function syncTodayAttendance() {
     try {
-      const res = await fetch("/api/attendance/check-in", { method: "POST" });
-      if (res.status === 409) {
-        // 이미 출근 처리된 경우 — 서버 값으로 갱신
+      const response = await fetch("/api/attendance/today");
+      if (!response.ok) {
         return;
       }
-      if (!res.ok) {
-        setAttendance(initialAttendance);
-      } else {
-        const data = await res.json();
-        setAttendance({ checkIn: data.checkIn, checkOut: null, status: data.status });
-      }
+
+      const data = (await response.json()) as { attendance?: AttendanceData | null };
+      setAttendance(data.attendance ?? initialAttendance);
     } catch {
       setAttendance(initialAttendance);
+    }
+  }
+
+  async function handleCheckIn() {
+    setLoading(true);
+    setMessage(null);
+
+    const optimisticCheckIn = new Date().toISOString();
+    setAttendance({ checkIn: optimisticCheckIn, checkOut: null, status: "NORMAL" });
+
+    try {
+      const response = await fetch("/api/attendance/check-in", { method: "POST" });
+
+      if (response.status === 409) {
+        await syncTodayAttendance();
+        setMessage("이미 출근 처리되었습니다.");
+        return;
+      }
+
+      if (!response.ok) {
+        setAttendance(initialAttendance);
+        setMessage((await readError(response)) ?? "출근 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.");
+        return;
+      }
+
+      const data = (await response.json()) as AttendanceData;
+      setAttendance({ checkIn: data.checkIn, checkOut: null, status: data.status });
+    } catch {
+      setAttendance(initialAttendance);
+      setMessage("출근 처리에 실패했습니다. 잠시 후 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
   }
 
   async function handleCheckOut() {
-    const res = await fetch("/api/attendance/check-out", { method: "POST" });
-    if (!res.ok) throw new Error("퇴근 처리 실패");
-    const data = await res.json();
-    setAttendance((prev) =>
-      prev ? { ...prev, checkOut: data.checkOut } : prev
-    );
+    setMessage(null);
+
+    const response = await fetch("/api/attendance/check-out", { method: "POST" });
+    if (!response.ok) {
+      throw new Error((await readError(response)) ?? "퇴근 처리에 실패했습니다.");
+    }
+
+    const data = (await response.json()) as AttendanceData;
+    setAttendance((previous) => (previous ? { ...previous, checkOut: data.checkOut } : previous));
     setShowCheckout(false);
   }
 
-  // ── 상태 3: 퇴근 완료 ──────────────────────────────────────
   if (attendance?.checkIn && attendance.checkOut) {
     return (
       <div
-        className="rounded-xl px-5 py-4 flex items-center justify-between gap-3"
+        className="flex items-center justify-between gap-3 rounded-xl px-5 py-4"
         style={{ background: "#F0FBF4", border: "1px solid #BBF7D0" }}
       >
         <div className="min-w-0 overflow-hidden">
           <p className="text-sm font-medium" style={{ color: "#166534" }}>
             오늘 퇴근 완료
           </p>
-          <p className="text-xs mt-0.5" style={{ color: "#2A8C50" }}>
+          <p className="mt-0.5 text-xs" style={{ color: "#2A8C50" }}>
             {formatTime(attendance.checkIn)} ~ {formatTime(attendance.checkOut)}
-            &nbsp;·&nbsp;총 {calcWorked(attendance.checkIn, attendance.checkOut)}
+            &nbsp;·&nbsp;총 {formatDuration(attendance.checkIn, attendance.checkOut)}
           </p>
         </div>
         <button
           disabled
-          className="rounded-lg px-4 py-1.5 text-sm font-medium cursor-default"
+          className="cursor-default rounded-lg px-4 py-1.5 text-sm font-medium"
           style={{ background: "#dcfce7", color: "#166534" }}
         >
           퇴근 완료
@@ -127,36 +171,40 @@ export function CheckInBanner({ initialAttendance }: CheckInBannerProps) {
     );
   }
 
-  // ── 상태 2: 근무 중 ───────────────────────────────────────
   if (attendance?.checkIn) {
     return (
       <>
         <div
-          className="rounded-xl px-5 py-4 flex items-center justify-between gap-3"
+          className="flex items-center justify-between gap-3 rounded-xl px-5 py-4"
           style={{ background: "#F0FBF4", border: "1px solid #BBF7D0" }}
         >
           <div className="min-w-0 overflow-hidden">
             <div className="flex items-center gap-2">
               <span
-                className="inline-block w-2 h-2 rounded-full"
+                className="inline-block h-2 w-2 rounded-full"
                 style={{ background: "#22c55e" }}
               />
               <span className="text-sm font-medium" style={{ color: "#166534" }}>
                 근무 중
               </span>
-              {attendance.status === "LATE" && (
+              {attendance.status === "LATE" ? (
                 <span
-                  className="text-xs px-1.5 py-0.5 rounded"
+                  className="rounded px-1.5 py-0.5 text-xs"
                   style={{ background: "#FEF0E8", color: "#F56B23" }}
                 >
                   지각
                 </span>
-              )}
+              ) : null}
             </div>
-            <p className="text-xs mt-0.5" style={{ color: "#2A8C50" }}>
+            <p className="mt-0.5 text-xs" style={{ color: "#2A8C50" }}>
               출근 {formatTime(attendance.checkIn)}
-              {elapsed && <>&nbsp;·&nbsp;{elapsed} 경과</>}
+              {elapsed ? <>&nbsp;·&nbsp;{elapsed} 경과</> : null}
             </p>
+            {message ? (
+              <p className="mt-2 text-xs font-medium" style={{ color: "#166534" }}>
+                {message}
+              </p>
+            ) : null}
           </div>
           <button
             onClick={() => setShowCheckout(true)}
@@ -171,26 +219,32 @@ export function CheckInBanner({ initialAttendance }: CheckInBannerProps) {
           </button>
         </div>
 
-        {showCheckout && (
+        {showCheckout ? (
           <CheckoutConfirmModal
             checkInTime={attendance.checkIn}
             onConfirm={handleCheckOut}
             onClose={() => setShowCheckout(false)}
           />
-        )}
+        ) : null}
       </>
     );
   }
 
-  // ── 상태 1: 출근 전 ──────────────────────────────────────
   return (
     <div
-      className="rounded-xl px-5 py-4 flex items-center justify-between"
+      className="flex items-center justify-between gap-3 rounded-xl px-5 py-4"
       style={{ background: "#FEF0E8" }}
     >
-      <span className="text-sm font-medium" style={{ color: "#F56B23" }}>
-        아직 출근 전이에요
-      </span>
+      <div className="min-w-0">
+        <span className="text-sm font-medium" style={{ color: "#F56B23" }}>
+          아직 출근 전입니다
+        </span>
+        {message ? (
+          <p className="mt-2 text-xs font-medium" style={{ color: "#C05621" }}>
+            {message}
+          </p>
+        ) : null}
+      </div>
       <button
         onClick={handleCheckIn}
         disabled={loading}
