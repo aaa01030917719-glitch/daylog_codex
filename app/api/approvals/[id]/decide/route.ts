@@ -76,7 +76,7 @@ export async function POST(
         type: "APPROVAL_RESULT",
         title: `요청이 ${resultText}되었습니다`,
         body: `"${approval.title}" 요청이 ${resultText}되었습니다.${decisionNote ? ` 메모: ${decisionNote}` : ""}`,
-        link: "/notifications",
+        link: `/approvals/${approval.id}`,
         userId: approval.requesterId,
       },
     });

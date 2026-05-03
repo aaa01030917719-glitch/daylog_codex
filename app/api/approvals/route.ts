@@ -140,6 +140,10 @@ export async function POST(req: NextRequest) {
       !!body.leaveStart ||
       !!body.leaveEnd;
 
+    const shouldAutoApproveLeave =
+      session.user.role === "OWNER" &&
+      (leaveType === "FULL_DAY" || leaveType === "HALF_AM" || leaveType === "HALF_PM");
+
     const approval = isLeaveRequest
       ? await createLeaveApproval({
           sessionUserId: session.user.id,
@@ -148,6 +152,7 @@ export async function POST(req: NextRequest) {
           leaveEnd,
           title,
           description,
+          autoApprove: shouldAutoApproveLeave,
         })
       : await createWorkApproval({
           sessionUserId: session.user.id,
@@ -167,14 +172,14 @@ export async function POST(req: NextRequest) {
       select: { userId: true },
     });
 
-    if (admins.length > 0) {
+    if (admins.length > 0 && approval.status === "PENDING") {
       await prisma.notification.createMany({
         data: admins.map((admin) => ({
           userId: admin.userId,
           type: "APPROVAL_REQUEST",
           title: "결재 요청이 도착했습니다.",
           body: approval.title,
-          link: "/docs",
+          link: `/approvals/${approval.id}`,
         })),
       });
     }
@@ -203,8 +208,17 @@ async function createLeaveApproval(params: {
   leaveEnd: Date | null;
   title: string;
   description: string;
+  autoApprove: boolean;
 }) {
-  const { sessionUserId, leaveType, leaveStart, leaveEnd, title, description } =
+  const {
+    sessionUserId,
+    leaveType,
+    leaveStart,
+    leaveEnd,
+    title,
+    description,
+    autoApprove,
+  } =
     params;
 
   if (!leaveTypes.has(leaveType as LeaveType)) {
@@ -228,6 +242,8 @@ async function createLeaveApproval(params: {
       leaveType: leaveType as LeaveType,
       leaveStart,
       leaveEnd,
+      status: autoApprove ? "APPROVED" : "PENDING",
+      decidedAt: autoApprove ? new Date() : null,
     },
     include: {
       requester: { select: { id: true, name: true, image: true } },
