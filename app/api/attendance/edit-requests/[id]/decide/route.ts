@@ -1,8 +1,11 @@
-﻿import { ApprovalStatus, ApprovalType, AttendanceStatus } from "@prisma/client";
+import { ApprovalStatus, ApprovalType, AttendanceStatus } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX } from "@/components/attendance/attendance-utils";
+import {
+  ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX,
+  parseAttendanceDecisionNote,
+} from "@/components/attendance/attendance-utils";
 
 function isAdmin(role?: string | null) {
   return role === "ADMIN" || role === "OWNER";
@@ -21,6 +24,8 @@ function parseDescription(description: string | null) {
     const parsed = JSON.parse(description) as {
       kind?: string;
       date?: string;
+      originalCheckIn?: string | null;
+      originalCheckOut?: string | null;
       requestedCheckIn?: string | null;
       requestedCheckOut?: string | null;
       reason?: string;
@@ -41,29 +46,41 @@ function parseDateOnly(value: string) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-function buildResponse(request: {
-  id: string;
-  title: string;
-  status: ApprovalStatus;
-  createdAt: Date;
-  decidedAt: Date | null;
-  decisionNote: string | null;
-  description: string | null;
-  requesterId: string;
-  requester: { name: string | null };
-}) {
+function buildResponse(
+  request: {
+    id: string;
+    title: string;
+    status: ApprovalStatus;
+    createdAt: Date;
+    decidedAt: Date | null;
+    decisionNote: string | null;
+    description: string | null;
+    requesterId: string;
+    requester: { name: string | null };
+  },
+  fallbackOriginal?: {
+    checkIn: Date | null;
+    checkOut: Date | null;
+  } | null
+) {
   const parsed = parseDescription(request.description);
+  const note = parseAttendanceDecisionNote(request.decisionNote);
 
   return {
     id: request.id,
     title: request.title,
     status: request.status,
+    isWithdrawn: note.isWithdrawn,
     createdAt: request.createdAt.toISOString(),
     decidedAt: request.decidedAt?.toISOString() ?? null,
-    decisionNote: request.decisionNote,
+    decisionNote: note.text,
     requesterId: request.requesterId,
     requesterName: request.requester.name ?? "이름 없음",
     requestDate: parsed?.date ?? "",
+    originalCheckIn:
+      parsed?.originalCheckIn ?? fallbackOriginal?.checkIn?.toISOString() ?? null,
+    originalCheckOut:
+      parsed?.originalCheckOut ?? fallbackOriginal?.checkOut?.toISOString() ?? null,
     requestedCheckIn: parsed?.requestedCheckIn ?? null,
     requestedCheckOut: parsed?.requestedCheckOut ?? null,
     reason: parsed?.reason ?? "",
@@ -78,7 +95,10 @@ async function resolveAttendanceStatus(params: {
 }) {
   const { workspaceId, checkIn, workMinutes, previousStatus } = params;
 
-  if (previousStatus === AttendanceStatus.HOLIDAY || previousStatus === AttendanceStatus.EARLY_LEAVE) {
+  if (
+    previousStatus === AttendanceStatus.HOLIDAY ||
+    previousStatus === AttendanceStatus.EARLY_LEAVE
+  ) {
     return previousStatus;
   }
 
@@ -125,7 +145,12 @@ export async function POST(
 
   try {
     const body = await req.json();
-    const status = body.status === "APPROVED" ? ApprovalStatus.APPROVED : body.status === "REJECTED" ? ApprovalStatus.REJECTED : null;
+    const status =
+      body.status === "APPROVED"
+        ? ApprovalStatus.APPROVED
+        : body.status === "REJECTED"
+          ? ApprovalStatus.REJECTED
+          : null;
     const decisionNote = normalizeText(body.decisionNote);
 
     if (!status) {
@@ -139,8 +164,19 @@ export async function POST(
       },
     });
 
-    if (!approval || approval.type !== ApprovalType.PROJECT_REVIEW || !approval.title.startsWith(ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX)) {
-      return NextResponse.json({ error: "근무시간 수정 요청을 찾을 수 없습니다." }, { status: 404 });
+    if (
+      !approval ||
+      approval.type !== ApprovalType.PROJECT_REVIEW ||
+      !approval.title.startsWith(ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX)
+    ) {
+      return NextResponse.json(
+        { error: "근무시간 수정 요청을 찾을 수 없습니다." },
+        { status: 404 }
+      );
+    }
+
+    if (approval.status !== ApprovalStatus.PENDING) {
+      return NextResponse.json({ error: "이미 처리된 요청입니다." }, { status: 409 });
     }
 
     const parsed = parseDescription(approval.description);
@@ -149,6 +185,7 @@ export async function POST(
     }
 
     let attendance = null;
+    let originalAttendance: { checkIn: Date | null; checkOut: Date | null } | null = null;
 
     if (status === ApprovalStatus.APPROVED) {
       const date = parseDateOnly(parsed.date);
@@ -160,9 +197,21 @@ export async function POST(
         where: { userId_date: { userId: approval.requesterId, date } },
       });
 
-      const checkIn = parsed.requestedCheckIn ? new Date(parsed.requestedCheckIn) : existing?.checkIn ?? null;
-      const checkOut = parsed.requestedCheckOut ? new Date(parsed.requestedCheckOut) : existing?.checkOut ?? null;
-      const workMinutes = checkIn && checkOut ? Math.max(0, Math.floor((checkOut.getTime() - checkIn.getTime()) / 60000)) : null;
+      originalAttendance = {
+        checkIn: existing?.checkIn ?? null,
+        checkOut: existing?.checkOut ?? null,
+      };
+
+      const checkIn = parsed.requestedCheckIn
+        ? new Date(parsed.requestedCheckIn)
+        : existing?.checkIn ?? null;
+      const checkOut = parsed.requestedCheckOut
+        ? new Date(parsed.requestedCheckOut)
+        : existing?.checkOut ?? null;
+      const workMinutes =
+        checkIn && checkOut
+          ? Math.max(0, Math.floor((checkOut.getTime() - checkIn.getTime()) / 60000))
+          : null;
       const attendanceStatus = await resolveAttendanceStatus({
         workspaceId: session.user.workspaceId ?? "",
         checkIn,
@@ -219,7 +268,7 @@ export async function POST(
     });
 
     return NextResponse.json({
-      request: buildResponse(updated),
+      request: buildResponse(updated, originalAttendance),
       attendance: attendance
         ? {
             ...attendance,

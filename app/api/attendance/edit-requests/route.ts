@@ -2,10 +2,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX } from "@/components/attendance/attendance-utils";
+import {
+  ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX,
+  parseAttendanceDecisionNote,
+} from "@/components/attendance/attendance-utils";
 
-function isAdmin(role?: string | null) {
+function isManager(role?: string | null) {
   return role === "ADMIN" || role === "OWNER";
+}
+
+function canViewEditRequests(role?: string | null) {
+  return role === "ADMIN" || role === "OWNER" || role === "MEMBER";
+}
+
+function canCreateEditRequests(role?: string | null) {
+  return role === "ADMIN" || role === "MEMBER";
 }
 
 function normalizeText(value: unknown) {
@@ -49,6 +60,8 @@ function parseDescription(description: string | null) {
     const parsed = JSON.parse(description) as {
       kind?: string;
       date?: string;
+      originalCheckIn?: string | null;
+      originalCheckOut?: string | null;
       requestedCheckIn?: string | null;
       requestedCheckOut?: string | null;
       reason?: string;
@@ -76,17 +89,21 @@ function serializeRequest(approval: {
   requester: { name: string | null };
 }) {
   const parsed = parseDescription(approval.description);
+  const note = parseAttendanceDecisionNote(approval.decisionNote);
 
   return {
     id: approval.id,
     title: approval.title,
     status: approval.status,
+    isWithdrawn: note.isWithdrawn,
     createdAt: approval.createdAt.toISOString(),
     decidedAt: approval.decidedAt?.toISOString() ?? null,
-    decisionNote: approval.decisionNote,
+    decisionNote: note.text,
     requesterId: approval.requesterId,
     requesterName: approval.requester.name ?? "이름 없음",
     requestDate: parsed?.date ?? "",
+    originalCheckIn: parsed?.originalCheckIn ?? null,
+    originalCheckOut: parsed?.originalCheckOut ?? null,
     requestedCheckIn: parsed?.requestedCheckIn ?? null,
     requestedCheckOut: parsed?.requestedCheckOut ?? null,
     reason: parsed?.reason ?? "",
@@ -99,7 +116,7 @@ function buildWhere(workspaceId: string, userId: string, role?: string | null): 
     title: { startsWith: ATTENDANCE_EDIT_REQUEST_TITLE_PREFIX },
   };
 
-  if (isAdmin(role)) {
+  if (isManager(role)) {
     return {
       ...base,
       requester: { members: { some: { workspaceId } } },
@@ -116,6 +133,13 @@ export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  if (!canViewEditRequests(session.user.role)) {
+    return NextResponse.json(
+      { error: "근무시간 수정 요청을 조회할 권한이 없습니다." },
+      { status: 403 }
+    );
   }
 
   const workspaceId = session.user.workspaceId;
@@ -138,6 +162,13 @@ export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  if (!canCreateEditRequests(session.user.role)) {
+    return NextResponse.json(
+      { error: "OWNER 계정은 근무시간 수정 요청을 작성할 수 없습니다." },
+      { status: 403 }
+    );
   }
 
   const workspaceId = session.user.workspaceId;
@@ -176,6 +207,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "퇴근 시간은 출근 시간보다 늦어야 합니다." }, { status: 400 });
     }
 
+    const existingAttendance = await prisma.attendance.findUnique({
+      where: {
+        userId_date: {
+          userId: session.user.id,
+          date,
+        },
+      },
+      select: {
+        checkIn: true,
+        checkOut: true,
+      },
+    });
+
     const pendingForSameDate = await prisma.approval.findFirst({
       where: {
         requesterId: session.user.id,
@@ -196,6 +240,8 @@ export async function POST(req: NextRequest) {
         description: JSON.stringify({
           kind: "ATTENDANCE_EDIT",
           date: requestDate,
+          originalCheckIn: existingAttendance?.checkIn?.toISOString() ?? null,
+          originalCheckOut: existingAttendance?.checkOut?.toISOString() ?? null,
           requestedCheckIn: requestedCheckIn?.toISOString() ?? null,
           requestedCheckOut: requestedCheckOut?.toISOString() ?? null,
           reason,

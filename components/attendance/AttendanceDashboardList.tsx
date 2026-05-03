@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
@@ -7,6 +7,7 @@ import {
   getAttendanceStatusStyle,
   type AttendanceRecord,
 } from "@/components/attendance/attendance-utils";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 interface AttendanceDashboardListProps {
   records: AttendanceRecord[];
@@ -36,11 +37,11 @@ export function AttendanceDashboardList({
   }
 
   return (
-    <section className="card-panel">
+    <section className="card-panel min-w-0 overflow-hidden">
       <div className="card-header">
         <div>
-          <h2 className="card-title">월별 출퇴근 기록{title ? ` · ${title}` : ""}</h2>
-          <p className="card-description">달력 보기와 동일한 월 이동 기준으로 근무 기록을 확인합니다.</p>
+          <h2 className="card-title">이번 달 근무 기록{title ? ` · ${title}` : ""}</h2>
+          <p className="card-description">월별 보기로 이동하면서 근무 기록을 확인할 수 있어요.</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -56,14 +57,19 @@ export function AttendanceDashboardList({
         </div>
       </div>
 
-      <div className="card-body">
+      <div className="overflow-x-auto bg-[var(--surface)]">
         {records.length === 0 ? (
-          <div className="empty-panel min-h-[220px]">
-            <p className="empty-panel__title">이번 달 근무 기록이 없습니다.</p>
-            <p className="empty-panel__description">기록이 생성되면 날짜 순서대로 이 영역에 표시됩니다.</p>
+          <div className="p-5">
+            <div className="empty-panel min-h-[220px]">
+              <p className="empty-panel__title">이번 달 근무 기록이 없습니다.</p>
+              <p className="empty-panel__description">
+                기록이 생기면 날짜 순서대로 이 영역에 표시됩니다.
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="table-shell border-0 shadow-none">
+          <>
+            <div className="border-t border-[var(--border-light)]" />
             <table className="data-table">
               <thead>
                 <tr>
@@ -80,15 +86,16 @@ export function AttendanceDashboardList({
 
                   return (
                     <tr key={record.id}>
-                      <td className="font-semibold text-[var(--text-primary)]">{`${date.getMonth() + 1}/${date.getDate()} (${weekday})`}</td>
+                      <td className="font-semibold text-[var(--text-primary)]">
+                        {`${date.getMonth() + 1}/${date.getDate()} (${weekday})`}
+                      </td>
                       <td>{formatAttendanceTime(record.checkIn)}</td>
                       <td>{formatAttendanceTime(record.checkOut)}</td>
                       <td>{formatAttendanceMinutes(record.workMinutes)}</td>
                       <td>
-                        <span className="status-badge" style={{ background: tone.bg, color: tone.text }}>
-                          <span className="status-badge__dot" style={{ background: tone.dot }} />
+                        <StatusBadge variant={tone.variant} dotColor={tone.dot}>
                           {tone.label}
-                        </span>
+                        </StatusBadge>
                       </td>
                       <td>{record.memo?.trim() ? record.memo : "-"}</td>
                     </tr>
@@ -96,7 +103,7 @@ export function AttendanceDashboardList({
                 })}
               </tbody>
             </table>
-          </div>
+          </>
         )}
       </div>
     </section>
