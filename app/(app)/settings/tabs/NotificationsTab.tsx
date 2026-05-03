@@ -7,11 +7,15 @@ import {
   type NotificationRule,
   type WorkspaceSettings,
 } from "../types";
+import { savePersonalSettings } from "../personal-settings";
 
 interface NotificationsTabProps {
   settings: WorkspaceSettings;
   onSave: (settings: WorkspaceSettings) => void;
   onError: (message: string | null) => void;
+  readOnly?: boolean;
+  personalMode?: boolean;
+  personalStorageKey?: string | null;
 }
 
 type NotificationsFormState = {
@@ -37,7 +41,14 @@ async function readErrorMessage(response: Response) {
   }
 }
 
-export function NotificationsTab({ settings, onSave, onError }: NotificationsTabProps) {
+export function NotificationsTab({
+  settings,
+  onSave,
+  onError,
+  readOnly = false,
+  personalMode = false,
+  personalStorageKey = null,
+}: NotificationsTabProps) {
   const [form, setForm] = useState<NotificationsFormState>(() => createFormState(settings));
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -65,6 +76,21 @@ export function NotificationsTab({ settings, onSave, onError }: NotificationsTab
   }
 
   async function handleSave() {
+    if (personalMode && personalStorageKey) {
+      const nextSettings: WorkspaceSettings = {
+        ...settings,
+        notificationRules: form.notificationRules.map((rule) => ({ ...rule })),
+        checkoutAlertTime: form.checkoutAlertTime,
+        missingAlertTime: form.missingAlertTime,
+      };
+
+      onSave(nextSettings);
+      savePersonalSettings(personalStorageKey, nextSettings);
+      setSuccessMessage("내 알림 설정을 저장했습니다.");
+      onError(null);
+      return;
+    }
+
     setSaving(true);
     setSuccessMessage(null);
     onError(null);
@@ -101,169 +127,189 @@ export function NotificationsTab({ settings, onSave, onError }: NotificationsTab
 
   return (
     <>
-      <section className="settings-card">
-        <div className="settings-card__header">
-          <div className="settings-card__icon">알림</div>
-          <div>
-            <h2 className="settings-card__title">알림 설정</h2>
-            <p className="settings-card__desc">
-              중요도에 따라 Web Push, 배지, 끄기 중 원하는 알림 수준을 선택합니다.
-            </p>
-          </div>
+      {personalMode ? (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+          본인에게만 적용되는 알림을 설정합니다.
         </div>
-        <div className="settings-card__body space-y-4">
-          <div className="settings-summary-grid">
-            <div className="settings-stat-card">
-              <div className="settings-stat-card__label">Web Push</div>
-              <div className="settings-stat-card__value text-[1rem]">즉시 팝업</div>
-              <div className="settings-stat-card__sub">중요한 업무 알림에 권장합니다.</div>
-            </div>
-            <div className="settings-stat-card">
-              <div className="settings-stat-card__label">배지</div>
-              <div className="settings-stat-card__value text-[1rem]">접속 후 확인</div>
-              <div className="settings-stat-card__sub">실시간 팝업 없이 헤더에서 확인합니다.</div>
-            </div>
-            <div className="settings-stat-card">
-              <div className="settings-stat-card__label">끄기</div>
-              <div className="settings-stat-card__value text-[1rem]">알림 없음</div>
-              <div className="settings-stat-card__sub">참고용 정보만 조용하게 관리합니다.</div>
+      ) : readOnly ? (
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+          직원 권한에서는 현재 워크스페이스 알림 정책을 확인할 수 있습니다.
+        </div>
+      ) : null}
+      <div className={`${readOnly ? "pointer-events-none opacity-60 " : ""}space-y-6`}>
+        <section className="settings-card">
+          <div className="settings-card__header">
+            <div className="settings-card__icon">알림</div>
+            <div>
+              <h2 className="settings-card__title">
+                {personalMode ? "내 알림 설정" : "알림 설정"}
+              </h2>
+              <p className="settings-card__desc">
+                {personalMode
+                  ? "본인에게만 적용되는 알림을 설정합니다."
+                  : "중요도에 따라 Web Push, 배지, 끄기 중 원하는 알림 수준을 선택합니다."}
+              </p>
             </div>
           </div>
+          <div className="settings-card__body space-y-4">
+            <div className="settings-summary-grid">
+              <div className="settings-stat-card">
+                <div className="settings-stat-card__label">Web Push</div>
+                <div className="settings-stat-card__value text-[1rem]">즉시 팝업</div>
+                <div className="settings-stat-card__sub">중요한 업무 알림에 권장합니다.</div>
+              </div>
+              <div className="settings-stat-card">
+                <div className="settings-stat-card__label">배지</div>
+                <div className="settings-stat-card__value text-[1rem]">접속 후 확인</div>
+                <div className="settings-stat-card__sub">실시간 팝업 없이 헤더에서 확인합니다.</div>
+              </div>
+              <div className="settings-stat-card">
+                <div className="settings-stat-card__label">끄기</div>
+                <div className="settings-stat-card__value text-[1rem]">알림 없음</div>
+                <div className="settings-stat-card__sub">참고용 정보만 조용하게 관리합니다.</div>
+              </div>
+            </div>
 
-          <div className="table-shell">
-            <table className="data-table notif-matrix">
-              <thead>
-                <tr>
-                  <th>알림 항목</th>
-                  <th>Web Push</th>
-                  <th>배지</th>
-                  <th>끄기</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupedRows.map(({ item, isNewGroup }) => {
-                  const currentLevel =
-                    form.notificationRules.find((rule) => rule.key === item.key)?.level ??
-                    item.defaultLevel;
+            <div className="table-shell">
+              <table className="data-table notif-matrix">
+                <thead>
+                  <tr>
+                    <th>알림 항목</th>
+                    <th>Web Push</th>
+                    <th>배지</th>
+                    <th>끄기</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedRows.map(({ item, isNewGroup }) => {
+                    const currentLevel =
+                      form.notificationRules.find((rule) => rule.key === item.key)?.level ??
+                      item.defaultLevel;
 
-                  return (
-                    <Fragment key={item.key}>
-                      {isNewGroup ? (
+                    return (
+                      <Fragment key={item.key}>
+                        {isNewGroup ? (
+                          <tr>
+                            <td colSpan={4} className="notif-group-label">
+                              {item.group}
+                            </td>
+                          </tr>
+                        ) : null}
                         <tr>
-                          <td colSpan={4} className="notif-group-label">
-                            {item.group}
+                          <td>
+                            <div className="notif-matrix__label">{item.label}</div>
+                            <div className="notif-matrix__sub">{item.sub}</div>
                           </td>
+                          {(["push", "badge", "off"] as NotificationLevel[]).map((level) => (
+                            <td key={level}>
+                              <input
+                                type="radio"
+                                name={item.key}
+                                checked={currentLevel === level}
+                                onChange={() => updateRule(item.key, level)}
+                                disabled={readOnly}
+                              />
+                            </td>
+                          ))}
                         </tr>
-                      ) : null}
-                      <tr>
-                        <td>
-                          <div className="notif-matrix__label">{item.label}</div>
-                          <div className="notif-matrix__sub">{item.sub}</div>
-                        </td>
-                        {(["push", "badge", "off"] as NotificationLevel[]).map((level) => (
-                          <td key={level}>
-                            <input
-                              type="radio"
-                              name={item.key}
-                              checked={currentLevel === level}
-                              onChange={() => updateRule(item.key, level)}
-                            />
-                          </td>
-                        ))}
-                      </tr>
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-card__header">
-          <div className="settings-card__icon">PWA</div>
-          <div>
-            <h2 className="settings-card__title">기기 알림 안내</h2>
-            <p className="settings-card__desc">
-              모바일에서도 즉시 알림을 안정적으로 받으려면 홈 화면에 Daylog를 추가해 주세요.
-            </p>
-          </div>
-        </div>
-        <div className="settings-card__body space-y-3">
-          <div className="rounded-2xl border border-[#b7e4c7] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#15803d]">
-            Web Push를 허용한 브라우저에서는 즉시 알림이 팝업으로 전달됩니다.
-          </div>
-          <ol className="space-y-3 text-sm leading-7 text-[var(--text-secondary)]">
-            <li>1. 모바일 브라우저에서 Daylog를 연 뒤 브라우저 메뉴를 엽니다.</li>
-            <li>2. &quot;홈 화면에 추가&quot; 또는 &quot;앱 설치&quot; 메뉴를 선택합니다.</li>
-            <li>3. 설치 후 알림 허용을 켜면 중요한 알림을 빠르게 받을 수 있습니다.</li>
-          </ol>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-card__header">
-          <div className="settings-card__icon">시간</div>
-          <div>
-            <h2 className="settings-card__title">자동 알림 시간</h2>
-            <p className="settings-card__desc">
-              근무 관리 자동 알림은 아래 시간 기준으로 발송됩니다.
-            </p>
-          </div>
-        </div>
-        <div className="settings-card__body space-y-4">
-          <div className="settings-grid-two">
-            <label className="field">
-              <span className="field-label">퇴근 누락 알림</span>
-              <input
-                type="time"
-                value={form.checkoutAlertTime}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, checkoutAlertTime: event.target.value }))
-                }
-                className="form-input"
-              />
-            </label>
-            <label className="field">
-              <span className="field-label">다음 날 미기록 알림</span>
-              <input
-                type="time"
-                value={form.missingAlertTime}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, missingAlertTime: event.target.value }))
-                }
-                className="form-input"
-              />
-            </label>
-          </div>
-
-          {successMessage ? (
-            <div className="rounded-2xl border border-[#b7e4c7] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#15803d]">
-              {successMessage}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          ) : null}
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="secondary-button btn--sm"
-              onClick={() => setForm(createFormState(settings))}
-              disabled={saving}
-            >
-              초기화
-            </button>
-            <button
-              type="button"
-              className="primary-button btn--sm"
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? "저장 중..." : "알림 설정 저장"}
-            </button>
           </div>
-        </div>
-      </section>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-card__header">
+            <div className="settings-card__icon">PWA</div>
+            <div>
+              <h2 className="settings-card__title">기기 알림 안내</h2>
+              <p className="settings-card__desc">
+                모바일에서도 즉시 알림을 안정적으로 받으려면 홈 화면에 Daylog를 추가해 주세요.
+              </p>
+            </div>
+          </div>
+          <div className="settings-card__body space-y-3">
+            <div className="rounded-2xl border border-[#b7e4c7] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#15803d]">
+              Web Push를 허용한 브라우저에서는 즉시 알림이 팝업으로 전달됩니다.
+            </div>
+            <ol className="space-y-3 text-sm leading-7 text-[var(--text-secondary)]">
+              <li>1. 모바일 브라우저에서 Daylog를 연 뒤 브라우저 메뉴를 엽니다.</li>
+              <li>2. &quot;홈 화면에 추가&quot; 또는 &quot;앱 설치&quot; 메뉴를 선택합니다.</li>
+              <li>3. 설치 후 알림 허용을 켜면 중요한 알림을 빠르게 받을 수 있습니다.</li>
+            </ol>
+          </div>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-card__header">
+            <div className="settings-card__icon">시간</div>
+            <div>
+              <h2 className="settings-card__title">자동 알림 시간</h2>
+              <p className="settings-card__desc">
+                {personalMode
+                  ? "본인에게만 적용되는 알림 시간을 설정합니다."
+                  : "근무 관리 자동 알림은 아래 시간 기준으로 발송됩니다."}
+              </p>
+            </div>
+          </div>
+          <div className="settings-card__body space-y-4">
+            <div className="settings-grid-two">
+              <label className="field">
+                <span className="field-label">퇴근 누락 알림</span>
+                <input
+                  type="time"
+                  value={form.checkoutAlertTime}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, checkoutAlertTime: event.target.value }))
+                  }
+                  className="form-input"
+                  disabled={readOnly}
+                />
+              </label>
+              <label className="field">
+                <span className="field-label">다음 날 미기록 알림</span>
+                <input
+                  type="time"
+                  value={form.missingAlertTime}
+                  onChange={(event) =>
+                    setForm((current) => ({ ...current, missingAlertTime: event.target.value }))
+                  }
+                  className="form-input"
+                  disabled={readOnly}
+                />
+              </label>
+            </div>
+
+            {successMessage ? (
+              <div className="rounded-2xl border border-[#b7e4c7] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#15803d]">
+                {successMessage}
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                className="secondary-button btn--sm"
+                onClick={() => setForm(createFormState(settings))}
+                disabled={saving || readOnly}
+              >
+                초기화
+              </button>
+              <button
+                type="button"
+                className="primary-button btn--sm"
+                onClick={handleSave}
+                disabled={saving || readOnly}
+              >
+                {saving ? "저장 중..." : personalMode ? "내 알림 설정 저장" : "알림 설정 저장"}
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
     </>
   );
 }

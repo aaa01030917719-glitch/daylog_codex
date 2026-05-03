@@ -1,6 +1,8 @@
-﻿export type SettingsTab =
+export type SettingsTab =
+  | "profile"
   | "general"
   | "members"
+  | "subscriptions"
   | "workhours"
   | "attendance"
   | "notifications"
@@ -18,6 +20,7 @@ export interface WorkspaceMemberRow {
   role: MemberRoleValue;
   department: string | null;
   joinedAt: string;
+  personalColor: string | null;
 }
 
 export interface InviteLinkRow {
@@ -81,10 +84,15 @@ export const SETTINGS_TAB_NAV: Array<{
   items: Array<{ id: SettingsTab; label: string }>;
 }> = [
   {
+    section: "계정",
+    items: [{ id: "profile", label: "프로필 관리" }],
+  },
+  {
     section: "일반",
     items: [
       { id: "general", label: "기본 정보" },
-      { id: "members", label: "멤버 관리 · 초대 링크" },
+      { id: "members", label: "멤버 관리·초대 링크" },
+      { id: "subscriptions", label: "구독 서비스 관리" },
     ],
   },
   {
@@ -104,6 +112,24 @@ export const SETTINGS_TAB_NAV: Array<{
   },
 ];
 
+export function getSettingsTabNav(role?: MemberRoleValue) {
+  if (role === "MEMBER" || role === "ADMIN") {
+    return [
+      {
+        section: "내 설정",
+        items: [
+          { id: "profile" as const, label: "내 프로필" },
+          { id: "workhours" as const, label: "내 근무 시간" },
+          { id: "attendance" as const, label: "내 출퇴근 설정" },
+          { id: "notifications" as const, label: "내 알림 설정" },
+        ],
+      },
+    ];
+  }
+
+  return SETTINGS_TAB_NAV;
+}
+
 export const WEEKDAYS = [
   "월요일",
   "화요일",
@@ -115,12 +141,12 @@ export const WEEKDAYS = [
 ] as const;
 
 export const INDUSTRY_OPTIONS = [
-  "마케팅 · 광고",
-  "IT · 소프트웨어",
-  "유통 · 커머스",
-  "제조 · 생산",
-  "교육 · 연구",
-  "의료 · 서비스",
+  "마케팅·광고",
+  "IT·소프트웨어",
+  "유통·커머스",
+  "제조·생산",
+  "교육·연구",
+  "의료·서비스",
   "기타",
 ] as const;
 
@@ -158,14 +184,14 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
     group: "즉시 확인",
     key: "deadline_d1",
     label: "마감 D-1",
-    sub: "내일 마감되는 일정과 작업을 빠르게 확인할 수 있습니다.",
+    sub: "내일 마감하는 일정과 작업을 빠르게 확인할 수 있습니다.",
     defaultLevel: "push",
   },
   {
     group: "즉시 확인",
     key: "budget_over",
     label: "예산 초과",
-    sub: "프로젝트 예산이 기준을 넘기면 즉시 알려드립니다.",
+    sub: "프로젝트 예산이 기준치를 넘기면 즉시 알려드립니다.",
     defaultLevel: "push",
   },
   {
@@ -199,7 +225,7 @@ export const NOTIFICATION_ITEMS: NotificationItem[] = [
   {
     group: "참고 알림",
     key: "notice_read",
-    label: "공지 열람 현황",
+    label: "공지 읽음 현황",
     sub: "공지 읽음 현황은 배지 없이 참고 정보로만 표시합니다.",
     defaultLevel: "off",
   },

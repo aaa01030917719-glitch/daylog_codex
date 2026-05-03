@@ -117,6 +117,7 @@ export function DangerTab({ workspaceName, inviteLinks, onError }: DangerTabProp
         </div>
       ) : null}
 
+      <div className="space-y-6">
       <div className="rounded-2xl bg-[#b42318] px-4 py-3 text-sm leading-7 text-[#ffffff]">
         아래 작업은 즉시 적용되며 되돌릴 수 없습니다. 중요한 데이터는 먼저 내보내기나
         백업으로 확보해 주세요.
@@ -178,6 +179,7 @@ export function DangerTab({ workspaceName, inviteLinks, onError }: DangerTabProp
           </button>
         </div>
       </section>
+      </div>
 
       <Dialog open={resetAttendanceOpen} onOpenChange={setResetAttendanceOpen}>
         <DialogContent style={{ maxWidth: "32rem" }}>

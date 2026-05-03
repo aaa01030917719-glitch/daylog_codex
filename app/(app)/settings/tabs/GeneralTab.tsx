@@ -123,6 +123,7 @@ export function GeneralTab({ settings, onSave, onError }: GeneralTabProps) {
 
   return (
     <>
+      <div className="space-y-6">
       <section className="settings-card">
         <div className="settings-card__header">
           <div className="settings-card__icon">기본</div>
@@ -288,7 +289,6 @@ export function GeneralTab({ settings, onSave, onError }: GeneralTabProps) {
           ) : null}
         </div>
 
-        
       </section>
 
       <section className="settings-card">
@@ -313,9 +313,9 @@ export function GeneralTab({ settings, onSave, onError }: GeneralTabProps) {
               복사
             </button>
           </div>
-         
         </div>
       </section>
+      </div>
     </>
   );
 }

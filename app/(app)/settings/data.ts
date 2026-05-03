@@ -134,6 +134,43 @@ export async function requireOwner() {
   };
 }
 
+export async function requireWorkspaceMember() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  const member = await prisma.workspaceMember.findFirst({
+    where: {
+      userId: session.user.id,
+    },
+    include: {
+      workspace: {
+        select: {
+          id: true,
+          name: true,
+          logoUrl: true,
+          createdAt: true,
+          inviteCode: true,
+          workStartTime: true,
+          workEndTime: true,
+          workHoursPerDay: true,
+        },
+      },
+    },
+  });
+
+  if (!member) {
+    redirect("/");
+  }
+
+  return {
+    session,
+    member,
+    workspace: member.workspace,
+  };
+}
+
 export async function getWorkspaceSettings(workspaceId: string): Promise<WorkspaceSettings> {
   const workspace = await prisma.workspace.findUniqueOrThrow({
     where: { id: workspaceId },
@@ -203,6 +240,7 @@ export async function getWorkspaceMembers(workspaceId: string): Promise<Workspac
     role: row.role,
     department: null,
     joinedAt: row.joinedAt.toISOString(),
+    personalColor: row.personalColor ?? null,
   }));
 }
 

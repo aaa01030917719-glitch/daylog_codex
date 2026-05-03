@@ -11,6 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
+import { getUserAccentPalette } from "@/lib/user-profile-preferences";
 import type { InviteLinkRow, MemberRoleValue, WorkspaceMemberRow } from "../types";
 import { createInviteUrl as buildInviteUrl } from "@/lib/utils";
 
@@ -20,6 +22,7 @@ interface MembersTabProps {
   onMembersUpdate: (members: WorkspaceMemberRow[]) => void;
   onLinksUpdate: (links: InviteLinkRow[]) => void;
   onError: (message: string | null) => void;
+  readOnly?: boolean;
 }
 
 type InviteFormState = {
@@ -28,10 +31,10 @@ type InviteFormState = {
   memo: string;
 };
 
-function getRoleBadgeClass(role: MemberRoleValue) {
-  if (role === "OWNER") return "status-badge status-badge--accent";
-  if (role === "ADMIN") return "status-badge status-badge--warning";
-  return "status-badge status-badge--neutral";
+function getRoleBadgeVariant(role: MemberRoleValue): StatusBadgeVariant {
+  if (role === "OWNER") return "request";
+  if (role === "ADMIN") return "review";
+  return "neutral";
 }
 
 async function readErrorMessage(response: Response) {
@@ -51,12 +54,30 @@ function createInviteUrl(token: string) {
   return buildInviteUrl(window.location.origin, token);
 }
 
+function getMemberAvatarStyle(personalColor: string | null) {
+  if (!personalColor) {
+    return {
+      background: "var(--accent-light)",
+      color: "var(--accent)",
+      border: "1px solid transparent",
+    };
+  }
+
+  const palette = getUserAccentPalette(personalColor);
+  return {
+    background: palette.solid,
+    color: palette.avatarText,
+    border: `1px solid ${palette.softBorder}`,
+  };
+}
+
 export function MembersTab({
   members,
   inviteLinks,
   onMembersUpdate,
   onLinksUpdate,
   onError,
+  readOnly = false,
 }: MembersTabProps) {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"ALL" | MemberRoleValue>("ALL");
@@ -213,239 +234,252 @@ export function MembersTab({
 
   return (
     <>
-      <section className="settings-card">
-        <div className="settings-card__header">
-          <div className="settings-card__icon">멤버</div>
-          <div className="min-w-0 flex-1">
-            <h2 className="settings-card__title">멤버 관리</h2>
-            <p className="settings-card__desc">
-              현재 참여 중인 멤버를 확인하고 권한을 조정할 수 있습니다. OWNER 권한은
-              변경하거나 제외할 수 없습니다.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="primary-button btn--sm"
-            onClick={() => {
-              setGeneratedInviteUrl(null);
-              setInviteOpen(true);
-            }}
-          >
-            + 멤버 초대
-          </button>
-        </div>
-
-        <div className="settings-card__body space-y-4">
-          <div className="settings-toolbar">
-            <div className="settings-toolbar__left">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="form-input min-w-[240px]"
-                placeholder="이름 또는 이메일 검색"
-              />
-              <select
-                value={roleFilter}
-                onChange={(event) =>
-                  setRoleFilter(event.target.value as "ALL" | MemberRoleValue)
-                }
-                className="form-select min-w-[170px]"
-              >
-                <option value="ALL">전체 권한</option>
-                <option value="OWNER">OWNER</option>
-                <option value="ADMIN">ADMIN</option>
-                <option value="MEMBER">MEMBER</option>
-              </select>
+      <div className="space-y-6">
+        <section className="settings-card">
+          <div className="settings-card__header">
+            <div className="settings-card__icon">멤버</div>
+            <div className="min-w-0 flex-1">
+              <h2 className="settings-card__title">멤버 관리</h2>
+              <p className="settings-card__desc">
+                현재 참여 중인 멤버를 확인하고 권한을 조정할 수 있습니다. OWNER 권한은
+                변경하거나 제외할 수 없습니다.
+              </p>
             </div>
-            <div className="text-sm text-[var(--text-muted)]">총 {members.length}명</div>
+            {readOnly ? (
+              <StatusBadge variant="neutral">직원은 보기 전용</StatusBadge>
+            ) : (
+              <button
+                type="button"
+                className="primary-button btn--sm"
+                onClick={() => {
+                  setGeneratedInviteUrl(null);
+                  setInviteOpen(true);
+                }}
+              >
+                + 멤버 초대
+              </button>
+            )}
           </div>
 
-          <div className="table-shell">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>멤버</th>
-                  <th>이메일</th>
-                  <th>권한</th>
-                  <th>참여일</th>
-                  <th className="text-right">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredMembers.length === 0 ? (
+          <div className="settings-card__body space-y-4">
+            <div className="settings-toolbar">
+              <div className="settings-toolbar__left">
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="form-input min-w-[240px]"
+                  placeholder="이름 또는 이메일 검색"
+                />
+                <select
+                  value={roleFilter}
+                  onChange={(event) =>
+                    setRoleFilter(event.target.value as "ALL" | MemberRoleValue)
+                  }
+                  className="form-select min-w-[170px]"
+                >
+                  <option value="ALL">전체 권한</option>
+                  <option value="OWNER">OWNER</option>
+                  <option value="ADMIN">ADMIN</option>
+                  <option value="MEMBER">MEMBER</option>
+                </select>
+              </div>
+              <div className="text-sm text-[var(--text-muted)]">총 {members.length}명</div>
+            </div>
+
+            {readOnly ? (
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-sm text-[var(--text-secondary)]">
+                직원 권한에서는 멤버 목록과 권한 정보만 확인할 수 있고, 초대·권한 변경·제외 기능은 제한됩니다.
+              </div>
+            ) : null}
+
+            <div className="table-shell">
+              <table className="data-table">
+                <thead>
                   <tr>
-                    <td colSpan={5}>
-                      <div className="settings-empty-state">
-                        <p className="empty-panel__title">조건에 맞는 멤버가 없습니다.</p>
-                        <p className="empty-panel__description">
-                          검색어를 지우거나 권한 필터를 바꿔 다시 확인해 주세요.
-                        </p>
-                      </div>
-                    </td>
+                    <th>멤버</th>
+                    <th>이메일</th>
+                    <th>권한</th>
+                    <th>참여일</th>
+                    <th className="text-right">관리</th>
                   </tr>
-                ) : (
-                  filteredMembers.map((member) => (
-                    <tr key={member.id}>
-                      <td>
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-light)] text-sm font-bold text-[var(--accent)]">
-                            {member.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-semibold text-[var(--text-primary)]">
-                              {member.name}
-                            </div>
-                            <div className="text-xs text-[var(--text-muted)]">
-                              {member.department ?? "부서 정보 없음"}
-                            </div>
-                          </div>
+                </thead>
+                <tbody>
+                  {filteredMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5}>
+                        <div className="settings-empty-state">
+                          <p className="empty-panel__title">조건에 맞는 멤버가 없습니다.</p>
+                          <p className="empty-panel__description">
+                            검색어를 지우거나 권한 필터를 바꿔 다시 확인해 주세요.
+                          </p>
                         </div>
                       </td>
-                      <td>{member.email}</td>
-                      <td>
-                        <span className={getRoleBadgeClass(member.role)}>{member.role}</span>
+                    </tr>
+                  ) : (
+                    filteredMembers.map((member) => (
+                      <tr key={member.id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div
+                              className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold"
+                              style={getMemberAvatarStyle(member.personalColor)}
+                            >
+                              {member.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-semibold text-[var(--text-primary)]">
+                                {member.name}
+                              </div>
+                              <div className="text-xs text-[var(--text-muted)]">
+                                {member.department ?? "부서 정보 없음"}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>{member.email}</td>
+                        <td>
+                          <StatusBadge variant={getRoleBadgeVariant(member.role)}>
+                            {member.role}
+                          </StatusBadge>
+                        </td>
+                        <td>{format(new Date(member.joinedAt), "yyyy.MM.dd", { locale: ko })}</td>
+                        <td>
+                          <div className="flex justify-end gap-2">
+                            {member.role === "OWNER" || readOnly ? (
+                              <span className="text-xs text-[var(--text-muted)]">변경 불가</span>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="secondary-button btn--sm"
+                                  onClick={() => {
+                                    setRoleTarget(member);
+                                    setRoleValue(member.role === "ADMIN" ? "ADMIN" : "MEMBER");
+                                  }}
+                                >
+                                  권한 변경
+                                </button>
+                                <button
+                                  type="button"
+                                  className="danger-button btn--sm"
+                                  onClick={() => setRemoveTarget(member)}
+                                >
+                                  제외
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="settings-card">
+          <div className="settings-card__header">
+            <div className="settings-card__icon">초대</div>
+            <div className="min-w-0 flex-1">
+              <h2 className="settings-card__title">초대 링크</h2>
+              <p className="settings-card__desc">
+                역할과 만료 기간을 지정한 초대 링크를 발급하고, 사용 중인 링크를 관리합니다.
+              </p>
+            </div>
+          </div>
+
+          <div className="settings-card__body space-y-4">
+            {infoMessage ? (
+              <div className="rounded-2xl border border-[#b7e4c7] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#15803d]">
+                {infoMessage}
+              </div>
+            ) : null}
+
+            <div className="table-shell">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>초대 링크</th>
+                    <th>권한</th>
+                    <th>만료</th>
+                    <th>사용 횟수</th>
+                    <th>메모</th>
+                    <th>상태</th>
+                    <th className="text-right">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inviteLinks.length === 0 ? (
+                    <tr>
+                      <td colSpan={7}>
+                        <div className="settings-empty-state">
+                          <p className="empty-panel__title">발급된 초대 링크가 없습니다.</p>
+                          <p className="empty-panel__description">
+                            상단의 멤버 초대 버튼으로 새 초대 링크를 만들 수 있습니다.
+                          </p>
+                        </div>
                       </td>
-                      <td>{format(new Date(member.joinedAt), "yyyy.MM.dd", { locale: ko })}</td>
-                      <td>
-                        <div className="flex justify-end gap-2">
-                          {member.role === "OWNER" ? (
-                            <span className="text-xs text-[var(--text-muted)]">변경 불가</span>
-                          ) : (
-                            <>
+                    </tr>
+                  ) : (
+                    inviteLinks.map((link) => {
+                      const url = createInviteUrl(link.token);
+                      return (
+                        <tr key={link.id}>
+                          <td>
+                            <div className="max-w-[260px] truncate font-mono text-xs text-[var(--text-secondary)]">
+                              {url}
+                            </div>
+                          </td>
+                          <td>
+                            <StatusBadge variant={getRoleBadgeVariant(link.role)}>
+                              {link.role}
+                            </StatusBadge>
+                          </td>
+                          <td>
+                            {link.expiresAt
+                              ? format(new Date(link.expiresAt), "yyyy.MM.dd HH:mm", {
+                                  locale: ko,
+                                })
+                              : "무기한"}
+                          </td>
+                          <td>{link.usedCount}</td>
+                          <td>{link.memo || "-"}</td>
+                          <td>
+                            <StatusBadge variant={link.expired ? "expired" : "active"}>
+                              {link.expired ? "만료" : "사용 중"}
+                            </StatusBadge>
+                          </td>
+                          <td>
+                            <div className="flex justify-end gap-2">
                               <button
                                 type="button"
                                 className="secondary-button btn--sm"
-                                onClick={() => {
-                                  setRoleTarget(member);
-                                  setRoleValue(member.role === "ADMIN" ? "ADMIN" : "MEMBER");
-                                }}
+                                onClick={() => copyInviteUrl(url)}
                               >
-                                권한 변경
+                                복사
                               </button>
                               <button
                                 type="button"
                                 className="danger-button btn--sm"
-                                onClick={() => setRemoveTarget(member)}
+                                onClick={() => handleInvalidateLink(link)}
+                                disabled={link.expired || linkLoadingId === link.id}
                               >
-                                제외
+                                {linkLoadingId === link.id ? "처리 중..." : "무효화"}
                               </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section className="settings-card">
-        <div className="settings-card__header">
-          <div className="settings-card__icon">초대</div>
-          <div className="min-w-0 flex-1">
-            <h2 className="settings-card__title">초대 링크</h2>
-            <p className="settings-card__desc">
-              역할과 만료 기간을 지정한 초대 링크를 발급하고, 사용 중인 링크를 관리합니다.
-            </p>
-          </div>
-        </div>
-
-        <div className="settings-card__body space-y-4">
-          {infoMessage ? (
-            <div className="rounded-2xl border border-[#b7e4c7] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#15803d]">
-              {infoMessage}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
-          ) : null}
-
-          <div className="table-shell">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>초대 링크</th>
-                  <th>권한</th>
-                  <th>만료</th>
-                  <th>사용 횟수</th>
-                  <th>메모</th>
-                  <th>상태</th>
-                  <th className="text-right">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {inviteLinks.length === 0 ? (
-                  <tr>
-                    <td colSpan={7}>
-                      <div className="settings-empty-state">
-                        <p className="empty-panel__title">발급된 초대 링크가 없습니다.</p>
-                        <p className="empty-panel__description">
-                          상단의 멤버 초대 버튼으로 새 초대 링크를 만들 수 있습니다.
-                        </p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  inviteLinks.map((link) => {
-                    const url = createInviteUrl(link.token);
-                    return (
-                      <tr key={link.id}>
-                        <td>
-                          <div className="max-w-[260px] truncate font-mono text-xs text-[var(--text-secondary)]">
-                            {url}
-                          </div>
-                        </td>
-                        <td>
-                          <span className={getRoleBadgeClass(link.role)}>{link.role}</span>
-                        </td>
-                        <td>
-                          {link.expiresAt
-                            ? format(new Date(link.expiresAt), "yyyy.MM.dd HH:mm", {
-                                locale: ko,
-                              })
-                            : "무기한"}
-                        </td>
-                        <td>{link.usedCount}</td>
-                        <td>{link.memo || "-"}</td>
-                        <td>
-                          <span
-                            className={
-                              link.expired
-                                ? "status-badge status-badge--danger"
-                                : "status-badge status-badge--success"
-                            }
-                          >
-                            {link.expired ? "만료" : "사용 중"}
-                          </span>
-                        </td>
-                        <td>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              className="secondary-button btn--sm"
-                              onClick={() => copyInviteUrl(url)}
-                            >
-                              복사
-                            </button>
-                            <button
-                              type="button"
-                              className="danger-button btn--sm"
-                              onClick={() => handleInvalidateLink(link)}
-                              disabled={link.expired || linkLoadingId === link.id}
-                            >
-                              {linkLoadingId === link.id ? "처리 중..." : "무효화"}
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       <Dialog open={!!roleTarget} onOpenChange={(open) => (!open ? setRoleTarget(null) : null)}>
         <DialogContent style={{ maxWidth: "30rem" }}>
@@ -533,6 +567,10 @@ export function MembersTab({
       <Dialog
         open={inviteOpen}
         onOpenChange={(open) => {
+          if (readOnly) {
+            setInviteOpen(false);
+            return;
+          }
           setInviteOpen(open);
           if (!open) {
             setGeneratedInviteUrl(null);
