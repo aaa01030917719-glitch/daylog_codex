@@ -1,4 +1,9 @@
-﻿export type ProjectBoardStatus = "ALL" | "ONGOING" | "COMPLETED" | "UPCOMING";
+﻿export type ProjectBoardStatus =
+  | "ALL"
+  | "ONGOING"
+  | "REVIEW"
+  | "COMPLETED"
+  | "UPCOMING";
 
 export type ProjectViewMode = "LIST" | "CALENDAR" | "GANTT";
 
@@ -33,6 +38,7 @@ export interface ProjectSummary {
   startDate: string | null;
   endDate: string | null;
   tasks: ProjectTaskSummary[];
+  commentCount: number;
 }
 
 export interface ProjectMember {
@@ -94,6 +100,7 @@ export interface ProjectGanttPayload {
 
 export const PROJECT_STATUS_LABELS: Record<Exclude<ProjectBoardStatus, "ALL">, string> = {
   ONGOING: "진행 중",
+  REVIEW: "검토 중",
   UPCOMING: "예정",
   COMPLETED: "완료",
 };
@@ -106,6 +113,11 @@ export const PROJECT_STATUS_COLORS: Record<
     background: "#eef2ff",
     text: "#3158c6",
     border: "#d6e3ff",
+  },
+  REVIEW: {
+    background: "#f3f0ff",
+    text: "#6d28d9",
+    border: "#ddd6fe",
   },
   UPCOMING: {
     background: "#fff0e6",
