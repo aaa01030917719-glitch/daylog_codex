@@ -4152,6 +4152,533 @@ body {
   }
 }
 
+/* ================================================
+   휴가·결재 상세 모달
+   ================================================ */
+.leave-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.38);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.leave-modal {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.14);
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.leave-modal-header {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid #f3f4f6;
+  position: relative;
+}
+
+.leave-modal-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.leave-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #eef2ff;
+  color: #4f7cff;
+}
+
+.leave-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.leave-status-badge.review {
+  background: #f3f0ff;
+  color: #8b5cf6;
+}
+
+.leave-status-badge.approved {
+  background: #dcfce7;
+  color: #2a8c50;
+}
+
+.leave-status-badge.rejected {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.leave-status-badge.pending {
+  background: #fff0e6;
+  color: #f97316;
+}
+
+.leave-modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.4px;
+  margin-bottom: 4px;
+}
+
+.leave-modal-sub {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.leave-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+}
+
+.leave-close-btn:hover {
+  background: #f8f9fa;
+  color: #111827;
+}
+
+.leave-modal-body {
+  padding: 0 22px;
+}
+
+.leave-info-row {
+  display: flex;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.leave-info-row:last-child {
+  border-bottom: none;
+}
+
+.leave-info-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #9ca3af;
+  width: 72px;
+  flex-shrink: 0;
+}
+
+.leave-info-value {
+  font-size: 13.5px;
+  color: #111827;
+  font-weight: 500;
+  flex: 1;
+  text-align: right;
+}
+
+.leave-info-value.empty {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.leave-section-divider {
+  height: 1px;
+  background: #f3f4f6;
+}
+
+.leave-reason-section {
+  padding: 16px 0 18px;
+}
+
+.leave-reason-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+}
+
+.leave-reason-text {
+  font-size: 13.5px;
+  color: #4b5563;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.leave-reason-text.empty {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.leave-modal-footer {
+  padding: 14px 22px;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.leave-done-notice {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+.leave-done-notice.approved {
+  background: #dcfce7;
+  color: #2a8c50;
+}
+
+.leave-done-notice.rejected {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+@media (max-width: 520px) {
+  .leave-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .leave-modal {
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .leave-modal-header::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 99px;
+    background: #e5e7eb;
+    margin: 0 auto 14px;
+  }
+}
+/* ================================================
+   공통 상세 모달 — 결재요청 / 근무시간수정요청
+   ================================================ */
+.detail-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.detail-modal-card {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.14);
+}
+
+.detail-modal-header {
+  position: relative;
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.detail-modal-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 10px;
+}
+
+.detail-modal-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+  background: #eef2ff;
+  color: #4f7cff;
+}
+
+.detail-modal-status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.detail-modal-status-badge.review {
+  background: #f3f0ff;
+  color: #8b5cf6;
+}
+
+.detail-modal-status-badge.approved {
+  background: #dcfce7;
+  color: #2a8c50;
+}
+
+.detail-modal-status-badge.rejected {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.detail-modal-status-badge.pending {
+  background: #fff0e6;
+  color: #f97316;
+}
+
+.detail-modal-status-badge.neutral {
+  background: #f0f1f3;
+  color: #4b5563;
+}
+
+.detail-modal-title {
+  margin-bottom: 4px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.4px;
+}
+
+.detail-modal-sub {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.detail-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: background 0.12s, color 0.12s;
+}
+
+.detail-modal-close:hover {
+  background: #f8f9fa;
+  color: #111827;
+}
+
+.detail-modal-body {
+  flex: 1;
+  padding: 0 22px;
+}
+
+.detail-info-row {
+  display: flex;
+  align-items: center;
+  padding: 13px 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.detail-info-row:last-child {
+  border-bottom: none;
+}
+
+.detail-info-label {
+  width: 88px;
+  flex-shrink: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #9ca3af;
+}
+
+.detail-info-value {
+  flex: 1;
+  text-align: right;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #111827;
+}
+
+.detail-info-value.empty {
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.detail-section-divider {
+  height: 1px;
+  background: #f3f4f6;
+}
+
+.detail-reason-section {
+  padding: 16px 0 18px;
+}
+
+.detail-reason-label {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.detail-reason-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: #4b5563;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.detail-reason-text.empty {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.detail-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid #f3f4f6;
+}
+
+.detail-done-notice {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detail-done-notice.approved {
+  background: #dcfce7;
+  color: #2a8c50;
+}
+
+.detail-done-notice.rejected {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.detail-done-notice.neutral {
+  background: #f0f1f3;
+  color: #4b5563;
+}
+
+.detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: 6px;
+  border: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.detail-btn:active {
+  transform: scale(0.98);
+}
+
+.detail-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.detail-btn-ghost {
+  background: transparent;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+.detail-btn-ghost:hover {
+  background: #f8f9fa;
+}
+
+.detail-btn-reject {
+  background: #fef2f2;
+  color: #ef4444;
+  border: 1px solid transparent;
+}
+
+.detail-btn-reject:hover {
+  background: #fde8e8;
+}
+
+.detail-btn-approve {
+  background: #4f7cff;
+  color: #fff;
+}
+
+.detail-btn-approve:hover {
+  background: #3d6aee;
+}
+
+@media (max-width: 520px) {
+  .detail-modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .detail-modal-card {
+    max-width: 100%;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .detail-modal-header::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 99px;
+    background: #e5e7eb;
+    margin: 0 auto 14px;
+  }
+
+  .detail-modal-close {
+    top: 22px;
+  }
+}
 .attendance-page-shell .card-panel,
 .attendance-page-shell .table-shell,
 .attendance-page-shell .list-card {
@@ -4166,6 +4693,30 @@ body {
   box-shadow: none !important;
 }
 
+/* ================================================
+   Notice-style Card Surface Unification
+   ================================================ */
+.doc-page-shell .workspace-stat-card,
+.doc-page-shell .card-panel,
+.doc-page-shell .table-shell,
+.attendance-page-shell .card-panel,
+.attendance-page-shell .table-shell,
+.attendance-page-shell .list-card,
+.ideas-page-shell .list-card {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.doc-page-shell .workspace-stat-card:hover,
+.doc-page-shell .card-panel:hover,
+.doc-page-shell .table-shell:hover,
+.attendance-page-shell .card-panel:hover,
+.attendance-page-shell .table-shell:hover,
+.attendance-page-shell .list-card:hover,
+.ideas-page-shell .list-card:hover {
+  box-shadow: none !important;
+}
 .editor-toolbar {
   display: flex;
   gap: 2px;
