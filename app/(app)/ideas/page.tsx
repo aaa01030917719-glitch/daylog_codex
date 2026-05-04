@@ -1,9 +1,10 @@
-import { BoardPostType, BoardPostVisibility } from "@prisma/client";
+﻿import { BoardPostType, BoardPostVisibility } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { IdeasPageClient } from "@/components/ideas/IdeasPageClient";
 import type { IdeaPostSummary } from "@/components/ideas/types";
 import { prisma } from "@/lib/prisma";
+import { resolveWorkspaceIdForUser } from "@/lib/workspace-membership";
 
 export default async function IdeasPage() {
   const session = await auth();
@@ -11,7 +12,10 @@ export default async function IdeasPage() {
     redirect("/login");
   }
 
-  const workspaceId = session.user.workspaceId;
+  const workspaceId = await resolveWorkspaceIdForUser(
+    session.user.id,
+    session.user.workspaceId
+  );
   const currentUserId = session.user.id;
 
   let initialPosts: IdeaPostSummary[] = [];
@@ -38,6 +42,22 @@ export default async function IdeasPage() {
       },
     });
 
+    const commentCounts =
+      posts.length > 0
+        ? await prisma.detailComment.groupBy({
+            by: ["targetId"],
+            where: {
+              targetType: "idea",
+              targetId: { in: posts.map((post) => post.id) },
+            },
+            _count: { _all: true },
+          })
+        : [];
+
+    const commentCountMap = new Map(
+      commentCounts.map((item) => [item.targetId, item._count._all])
+    );
+
     initialPosts = posts.map((post) => ({
       id: post.id,
       title: post.title ?? "",
@@ -48,6 +68,7 @@ export default async function IdeasPage() {
       canManage: post.authorId === currentUserId,
       createdAt: post.createdAt.toISOString(),
       updatedAt: post.updatedAt.toISOString(),
+      commentCount: commentCountMap.get(post.id) ?? 0,
     }));
   }
 

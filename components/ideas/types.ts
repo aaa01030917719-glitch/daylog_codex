@@ -11,6 +11,7 @@ export interface IdeaPostSummary {
   canManage: boolean;
   createdAt: string;
   updatedAt: string;
+  commentCount: number;
 }
 
 export interface IdeaPostPayload {
