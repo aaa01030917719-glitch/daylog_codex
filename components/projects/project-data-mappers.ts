@@ -13,6 +13,7 @@ interface ProjectTaskSnapshot {
   title?: string;
   description?: string | null;
   status: string;
+  startDate?: Date | null;
   createdAt?: Date;
   dueDate?: Date | null;
   assignee?: { name: string | null } | null;
@@ -56,6 +57,8 @@ function mapBoardStatusToGanttStatus(
       return "done";
     case "ONGOING":
       return "prog";
+    case "REVIEW":
+      return "review";
     case "UPCOMING":
       return "todo";
   }
@@ -81,6 +84,7 @@ export function deriveProjectBoardStatus(project: {
   taskCount: number;
   doneTasks: number;
   hasInProgressTask: boolean;
+  hasInReviewTask: boolean;
   storedStartDate: Date | null;
   storedEndDate: Date | null;
   earliestDueDate: Date | null;
@@ -103,17 +107,27 @@ export function deriveProjectBoardStatus(project: {
     return "UPCOMING" as const;
   }
 
+  if (project.hasInReviewTask) {
+    return "REVIEW" as const;
+  }
+
   if (project.hasInProgressTask) {
     return "ONGOING" as const;
   }
 
-  if (!project.earliestDueDate) {
-    return project.taskCount === 0 ? "UPCOMING" : "ONGOING";
+  if (project.taskCount === 0) {
+    return "ONGOING" as const;
   }
 
-  return project.earliestDueDate.getTime() > todayStart.getTime()
-    ? "UPCOMING"
-    : "ONGOING";
+  if (
+    !project.storedStartDate &&
+    project.earliestDueDate &&
+    project.earliestDueDate.getTime() > todayStart.getTime()
+  ) {
+    return "UPCOMING" as const;
+  }
+
+  return "ONGOING" as const;
 }
 
 export function mapProjectRecordToSummary(
@@ -134,8 +148,9 @@ export function mapProjectRecordToSummary(
     taskCount: project._count.tasks,
     doneTasks,
     hasInProgressTask: project.tasks.some(
-      (task) => task.status === "IN_PROGRESS" || task.status === "IN_REVIEW"
+      (task) => task.status === "IN_PROGRESS"
     ),
+    hasInReviewTask: project.tasks.some((task) => task.status === "IN_REVIEW"),
     storedStartDate,
     storedEndDate,
     earliestDueDate,
@@ -151,7 +166,7 @@ export function mapProjectRecordToSummary(
     : derivedProgress;
   const fallbackStartDate = storedStartDate ?? earliestDueDate ?? project.createdAt;
   const taskSummaries: ProjectTaskSummary[] = project.tasks.map((task, index) => {
-    const startDate = task.createdAt ?? fallbackStartDate;
+    const startDate = task.startDate ?? task.createdAt ?? fallbackStartDate;
     const endDate = task.dueDate ?? startDate;
     const safeEndDate =
       endDate.getTime() >= startDate.getTime() ? endDate : startDate;
@@ -196,6 +211,7 @@ export function mapProjectRecordToSummary(
     startDate: summaryStartDate,
     endDate: summaryEndDate,
     tasks: taskSummaries,
+    commentCount: 0,
   };
 }
 
