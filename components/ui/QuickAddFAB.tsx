@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CalendarPlus, FolderKanban, Lightbulb } from "lucide-react";
 import { EventCreateModal } from "@/components/modals/EventCreateModal";
 import { ProjectCreateModal } from "@/components/modals/ProjectCreateModal";
@@ -15,7 +14,6 @@ interface Member {
 }
 
 export function QuickAddFAB() {
-  const router = useRouter();
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const showFloatingButton = false;
@@ -39,7 +37,9 @@ export function QuickAddFAB() {
       key: "idea",
       icon: Lightbulb,
       label: "아이디어",
-      onClick: () => router.push("/ideas"),
+      onClick: () => {
+        window.location.href = "/ideas";
+      },
     },
     {
       key: "project",
@@ -65,7 +65,7 @@ export function QuickAddFAB() {
     <>
       <div
         aria-hidden={!showFloatingButton}
-        className="fixed bottom-20 right-4 z-50 hidden flex-col items-end gap-3 md:bottom-6 md:right-6 md:flex"
+        className="fixed bottom-20 right-4 z-50 hidden flex-col items-end gap-3 md:bottom-6 md:right-6"
         hidden={!showFloatingButton}
       >
         {buttons.map(({ key, icon: Icon, label, onClick }) => (

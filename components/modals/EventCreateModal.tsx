@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useMemo, useState } from "react";
+import { useDirtyLeaveGuard } from "@/hooks/useDirtyLeaveGuard";
 
 interface EventData {
   id: string;
@@ -56,8 +57,9 @@ async function readError(response: Response) {
 }
 
 export function EventCreateModal({ members, onCreated, onClose }: Props) {
+  const todayValue = useMemo(() => getTodayValue(), []);
   const [title, setTitle] = useState("");
-  const [date, setDate] = useState(getTodayValue());
+  const [date, setDate] = useState(todayValue);
   const [allDay, setAllDay] = useState(false);
   const [startTime, setStartTime] = useState("09:00");
   const [endTime, setEndTime] = useState("10:00");
@@ -66,6 +68,20 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
   const [isImportant, setIsImportant] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isDirty =
+    title !== "" ||
+    date !== todayValue ||
+    allDay ||
+    startTime !== "09:00" ||
+    endTime !== "10:00" ||
+    description !== "" ||
+    color !== COLOR_OPTIONS[0] ||
+    isImportant;
+  const { requestClose } = useDirtyLeaveGuard({
+    isDirty,
+    onDiscard: onClose,
+    disabled: loading,
+  });
 
   const schedulePreview = useMemo(() => {
     if (allDay) {
@@ -130,7 +146,7 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
   }
 
   return (
-    <div className="modal-shell" onClick={onClose}>
+    <div className="modal-shell" onClick={requestClose}>
       <div className="modal-overlay" />
       <div className="modal-card modal-card--form" onClick={(event) => event.stopPropagation()}>
         <div className="modal-header">
@@ -140,7 +156,7 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
               일정 제목, 날짜, 시간을 입력해 캘린더에 바로 등록하세요.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="icon-button" aria-label="새 일정 모달 닫기">
+          <button type="button" onClick={requestClose} className="icon-button" aria-label="새 일정 모달 닫기">
             ×
           </button>
         </div>
@@ -291,7 +307,7 @@ export function EventCreateModal({ members, onCreated, onClose }: Props) {
           </div>
 
           <div className="modal-footer">
-            <button type="button" onClick={onClose} className="secondary-button" disabled={loading}>
+            <button type="button" onClick={requestClose} className="secondary-button" disabled={loading}>
               취소
             </button>
             <button type="submit" className="primary-button" disabled={loading}>
