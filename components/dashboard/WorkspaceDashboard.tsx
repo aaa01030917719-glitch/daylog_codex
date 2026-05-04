@@ -1,12 +1,14 @@
-﻿import Link from "next/link";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import { WorkspaceCheckinCard } from "@/components/dashboard/WorkspaceCheckinCard";
 import {
   WorkspaceMonthCalendar,
   type WorkspaceCalendarEvent,
   type WorkspaceLeaveMarker,
 } from "@/components/dashboard/WorkspaceMonthCalendar";
+import { TaskDetailModal } from "@/components/modals/TaskDetailModal";
 
 type AttendanceCode =
   | "NORMAL"
@@ -65,6 +67,11 @@ interface NoticePreview {
 }
 
 interface ProjectPreview {
+  tasks: Array<{
+    id: string;
+    title: string;
+    statusLabel: string;
+  }>;
   id: string;
   name: string;
   subtitle: string | null;
@@ -85,7 +92,7 @@ interface WorkspaceDashboardProps {
   projects: ProjectPreview[];
 }
 
-function MoreLink({ href, label = "더보기" }: { href: string; label?: string }) {
+function MoreLink({ href, label = "더 보기" }: { href: string; label?: string }) {
   return (
     <Link href={href} className="secondary-button btn--sm">
       {label}
@@ -110,21 +117,21 @@ function NoticeSection({ notices }: { notices: NoticePreview[] }) {
   return (
     <section className="card-panel">
       <div className="card-header">
-        <h2 className="card-title">공지사항</h2>
+        <h2 className="card-title">📢 팀 공지</h2>
         <MoreLink href="/notices" />
       </div>
-      <div className="card-body">
+      <div className="card-body workspace-card-body--tight-top">
         {notices.length === 0 ? (
           <div className="empty-panel">
-            <p className="empty-panel__title">등록된 공지사항이 없습니다.</p>
+            <p className="empty-panel__title">등록된 공지사항이 없어요.</p>
             <p className="empty-panel__description">
-              새 공지가 등록되면 최근 순서대로 이 영역에 표시됩니다.
+              새 공지가 올라오면 이곳에서 바로 확인할 수 있어요.
             </p>
           </div>
         ) : (
           <div className="workspace-notice-list">
-            {notices.slice(0, 3).map((notice) => (
-              <Link key={notice.id} href="/notices" className="workspace-notice-item">
+            {notices.slice(0, 2).map((notice) => (
+              <Link key={notice.id} href={`/notices/${notice.id}`} className="workspace-notice-item">
                 <span className="workspace-notice-item__dot" />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
@@ -139,7 +146,7 @@ function NoticeSection({ notices }: { notices: NoticePreview[] }) {
                       {notice.badgeLabel}
                     </span>
                   </div>
-                  <div className="workspace-notice-item__meta">작성일 {notice.createdAt}</div>
+                  <div className="workspace-notice-item__meta">{notice.createdAt}</div>
                 </div>
               </Link>
             ))}
@@ -150,25 +157,32 @@ function NoticeSection({ notices }: { notices: NoticePreview[] }) {
   );
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function ProjectSection({ projects }: { projects: ProjectPreview[] }) {
   return (
     <section className="card-panel">
       <div className="card-header">
-        <h2 className="card-title">진행 중인 프로젝트</h2>
-        <MoreLink href="/projects?status=ONGOING" />
+        <h2 className="card-title">📁 진행 중인 프로젝트</h2>
+        <MoreLink href="/projects" />
       </div>
-      <div className="card-body">
+      <div className="card-body workspace-card-body--tight-top">
         {projects.length === 0 ? (
           <div className="empty-panel">
-            <p className="empty-panel__title">진행 중인 프로젝트가 없습니다.</p>
+            <p className="empty-panel__title">표시할 프로젝트가 없어요.</p>
             <p className="empty-panel__description">
-              프로젝트가 시작되면 진행률과 담당자 정보가 여기에 표시됩니다.
+              프로젝트가 시작되면 진행 상황을 여기서 볼 수 있어요.
             </p>
           </div>
         ) : (
-          <div className="workspace-project-list">
-            {projects.slice(0, 3).map((project) => (
-              <div key={project.id} className="workspace-project-item">
+          <div className="workspace-project-list workspace-project-list--scroll custom-scroll">
+            {projects.map((project) => (
+              <Link
+                key={project.id}
+                // 0403 테스크 화면 안쓰는중
+                // href={`/projects/${project.id}`}
+                href={`/projects?projectId=${project.id}`}
+                className="workspace-project-item"
+              >
                 <div className="workspace-project-item__top">
                   <span className="workspace-project-item__name">{project.name}</span>
                   <span className="workspace-project-item__pct">{project.progress}%</span>
@@ -185,11 +199,96 @@ function ProjectSection({ projects }: { projects: ProjectPreview[] }) {
                 <div className="workspace-project-item__meta">
                   {project.assigneeLabel} · {project.tagLabel}
                 </div>
-              </div>
+                {project.tasks.length > 0 ? (
+                  <div className="mt-3 rounded-[14px] border border-[var(--border-light)] bg-[var(--surface-2)] px-3 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)]">
+                      진행 중인 태스크
+                    </div>
+                    <div className="mt-2 space-y-2">
+                      {project.tasks.slice(0, 3).map((task) => (
+                        <div key={task.id} className="flex items-center gap-2">
+                          <span className="status-badge status-badge--accent">{task.statusLabel}</span>
+                          <span className="min-w-0 truncate text-sm text-[var(--text-secondary)]">
+                            {task.title}
+                          </span>
+                        </div>
+                      ))}
+                      {project.tasks.length > 3 ? (
+                        <div className="text-xs text-[var(--text-muted)]">
+                          +{project.tasks.length - 3}개 더 보기
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </Link>
             ))}
           </div>
         )}
       </div>
+    </section>
+  );
+}
+
+function getTaskPeriodLabel(label: string) {
+  return label.startsWith("#") ? label.slice(1) : label;
+}
+
+function TaskSection({ tasks }: { tasks: ProjectPreview[] }) {
+  const [selectedTask, setSelectedTask] = useState<ProjectPreview | null>(null);
+
+  return (
+    <section className="card-panel">
+      <div className="card-header">
+        <h2 className="card-title">📁 진행 중인 태스크</h2>
+        <MoreLink href="/projects" />
+      </div>
+      <div className="card-body workspace-card-body--tight-top">
+        {tasks.length === 0 ? (
+          <div className="empty-panel">
+            <p className="empty-panel__title">현재 진행 중인 태스크가 없습니다.</p>
+            <p className="empty-panel__description">
+              새로운 태스크가 생성되면 이곳에 표시됩니다.
+            </p>
+          </div>
+        ) : (
+          <div className="workspace-project-list workspace-project-list--scroll custom-scroll">
+            {tasks.map((task) => (
+              <button
+                key={task.id}
+                type="button"
+                className="workspace-project-item workspace-task-item"
+                onClick={() => setSelectedTask(task)}
+              >
+                <div className="workspace-project-item__top">
+                  <span className="workspace-project-item__name">{task.name}</span>
+                  <span className="workspace-project-item__pct">{task.progress}%</span>
+                </div>
+                {task.subtitle ? (
+                  <div className="workspace-task-item__project">{task.subtitle}</div>
+                ) : null}
+                <div className="workspace-project-progress">
+                  <div
+                    className="workspace-project-progress__fill"
+                    style={{ width: `${task.progress}%`, background: task.color || "var(--accent)" }}
+                  />
+                </div>
+                <div className="workspace-project-item__meta">
+                  {task.assigneeLabel} · {getTaskPeriodLabel(task.tagLabel)}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      {selectedTask ? (
+        <TaskDetailModal
+          isOpen={true}
+          onClose={() => setSelectedTask(null)}
+          taskId={selectedTask.id}
+          projectName={selectedTask.subtitle ?? undefined}
+        />
+      ) : null}
     </section>
   );
 }
@@ -204,28 +303,16 @@ export function WorkspaceDashboard({
   leaveMarkers,
   projects,
 }: WorkspaceDashboardProps) {
-  const messages = [
-    "오늘도 차분하게 업무를 시작해볼까요?",
-    "이번 주 일정과 진행 상황을 한 번에 정리해드릴게요.",
-    "중요한 일정과 결재 요청을 먼저 확인해 보세요.",
-    "작은 할 일부터 차근차근 정리해보세요.",
-    "한 주의 흐름을 정리하기 좋은 날입니다.",
-    "이번 주 마무리까지 안정적으로 이어가볼까요?",
-    "다음 주를 준비하기 전에 오늘 현황부터 확인해 보세요.",
-  ];
-
-  const today = new Date().getDay();
-  const weeklyMessage = messages[today];
   const hideCheckinCard = userRole === "OWNER";
 
   return (
     <div className="page-shell">
       <section className="page-header">
         <div className="page-header__meta">
-          <h1 className="page-title">안녕하세요, {userName}님</h1>
-          <p className="page-subtitle">{weeklyMessage}</p>
+          <h1 className="page-title">안녕하세요, {userName}님 😊</h1>
+          <p className="page-subtitle">오늘 하루도 잘 부탁드려요 🙌</p>
         </div>
-        <div className="summary-chip">{format(new Date(), "yyyy.MM.dd (eee)", { locale: ko })}</div>
+        
       </section>
 
       <section className="workspace-stats-grid">
@@ -251,7 +338,7 @@ export function WorkspaceDashboard({
 
         <div className="workspace-main-column">
           <NoticeSection notices={notices} />
-          <ProjectSection projects={projects} />
+          <TaskSection tasks={projects} />
         </div>
       </section>
     </div>
@@ -269,34 +356,35 @@ export function buildDashboardStatCards(params: {
     {
       label: "진행 중인 프로젝트",
       value: `${params.ongoingProjects}`,
-      description: `총 ${params.totalProjects}개 프로젝트`,
-      href: "/projects?status=ONGOING",
+      description: `전체 ${params.totalProjects}개 프로젝트 중`,
+      href: "/projects",
       icon: "📁",
       tone: "var(--accent)",
     },
     {
-      label: "남은 연차",
-      value: params.remainingLeave,
-      description: "연차 현황은 근무 기록과 함께 관리됩니다.",
-      href: "/attendance",
-      icon: "🌴",
-      tone: "var(--success)",
+      label: "아이디어",
+      value: `${params.ideaCount}`,
+      description: `팀에 공유된 아이디어 ${params.ideaCount}개`,
+      href: "/ideas",
+      icon: "💡",
+      tone: "var(--purple)",
     },
     {
-      label: "대기 중인 문서",
+      label: "검토 대기 중",
       value: `${params.pendingDocs}`,
-      description: `결재 요청 ${params.pendingDocs}건`,
+      description: `결재 요청이 ${params.pendingDocs}건 있어요`,
       href: "/docs",
       icon: "📄",
       tone: "var(--warning)",
     },
     {
-      label: "아이디어",
-      value: `${params.ideaCount}`,
-      description: `열람 가능한 아이디어 ${params.ideaCount}건`,
-      href: "/ideas",
-      icon: "💡",
-      tone: "var(--purple)",
+      label: "남은 연차",
+      value: params.remainingLeave,
+      description: `연차 ${params.remainingLeave} 남았어요`,
+      href: "/leave",
+      icon: "🌴",
+      tone: "var(--success)",
     },
   ] satisfies DashboardStatCard[];
 }
+

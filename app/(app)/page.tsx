@@ -2,13 +2,12 @@ import { auth } from "@/auth";
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { ko } from "date-fns/locale";
 import { redirect } from "next/navigation";
-import {
-  WorkspaceDashboard,
-  buildDashboardStatCards,
-} from "@/components/dashboard/WorkspaceDashboard";
+import { WorkspaceDashboard } from "@/components/dashboard/WorkspaceDashboard";
+import { buildDashboardStatCards } from "@/components/dashboard/dashboard-stat-cards";
 import { mapProjectRecordToSummary } from "@/components/projects/project-data-mappers";
 import { getProjectBaseSelect, getProjectColumnSupport } from "@/lib/project-column-support";
 import { prisma } from "@/lib/prisma";
+import { getTaskColumnSupport } from "@/lib/task-column-support";
 import { resolveWorkspaceIdForUser } from "@/lib/workspace-membership";
 
 function isAdminRole(role?: string | null) {
@@ -31,7 +30,7 @@ function getAttendanceTone(status?: string | null) {
     case "EARLY_LEAVE":
       return { label: "반차", background: "#EDE9FE", color: "#6D28D9" };
     case "OVERTIME":
-      return { label: "추가근무", background: "var(--accent-light)", color: "#C05621" };
+      return { label: "추가 근무", background: "var(--accent-light)", color: "#C05621" };
     case "ABSENT":
       return { label: "부재", background: "#FDECEA", color: "#D93025" };
     default:
@@ -52,6 +51,35 @@ function getNoticeBadgeTone(badge: string) {
     default:
       return { label: "기타", background: "#F3F4F6", color: "#4B5563" };
   }
+}
+
+function getTaskProgress(status: string) {
+  switch (status) {
+    case "DONE":
+      return 100;
+    case "IN_REVIEW":
+      return 80;
+    case "IN_PROGRESS":
+      return 50;
+    default:
+      return 0;
+  }
+}
+
+function normalizeProgressValue(value: number | null | undefined, fallback: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return fallback;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+function formatTaskPeriodLabel(startDate: Date, dueDate: Date | null) {
+  if (!dueDate) {
+    return "마감일 없음";
+  }
+
+  return `${format(startDate, "M.d", { locale: ko })} - ${format(dueDate, "M.d", { locale: ko })}`;
 }
 
 export default async function DashboardPage() {
@@ -136,9 +164,10 @@ export default async function DashboardPage() {
         workspaceId,
         endAt: { gte: todayStart },
         OR: [{ creatorId: userId }, { isImportant: true }],
-    };
+      };
 
   const projectColumnSupport = await getProjectColumnSupport();
+  const taskColumnSupport = await getTaskColumnSupport();
 
   const [
     todayAttendance,
@@ -146,8 +175,10 @@ export default async function DashboardPage() {
     ideaCount,
     notices,
     events,
+    approvedApprovals,
     leaveRecords,
     rawProjects,
+    ongoingTasks,
     todayTeamRecords,
     teamMemberCount,
   ] = await Promise.all([
@@ -155,9 +186,7 @@ export default async function DashboardPage() {
       where: { userId_date: { userId, date: todayStart } },
       select: { checkIn: true, checkOut: true, status: true },
     }),
-    prisma.approval.count({
-      where: approvalWhere,
-    }),
+    prisma.approval.count({ where: approvalWhere }),
     prisma.boardPost.count({
       where: {
         workspaceId,
@@ -166,9 +195,7 @@ export default async function DashboardPage() {
       },
     }),
     prisma.notice.findMany({
-      where: {
-        workspaceId,
-      },
+      where: { workspaceId },
       orderBy: { createdAt: "desc" },
       take: 4,
     }),
@@ -177,16 +204,35 @@ export default async function DashboardPage() {
       orderBy: [{ startAt: "asc" }, { createdAt: "desc" }],
       take: 5,
     }),
+    prisma.approval.findMany({
+      where: {
+        requesterId: userId,
+        status: "APPROVED",
+        OR: [
+          { leaveStart: { gte: monthStart, lte: monthEnd } },
+          { leaveEnd: { gte: monthStart, lte: monthEnd } },
+          { decidedAt: { gte: monthStart, lte: monthEnd } },
+        ],
+      },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        leaveType: true,
+        leaveStart: true,
+        leaveEnd: true,
+        decidedAt: true,
+      },
+      orderBy: [{ leaveStart: "asc" }, { decidedAt: "desc" }],
+      take: 12,
+    }),
     prisma.attendance.findMany({
       where: {
         userId,
         date: { gte: monthStart, lte: monthEnd },
         status: { in: ["HOLIDAY", "EARLY_LEAVE"] },
       },
-      select: {
-        date: true,
-        status: true,
-      },
+      select: { date: true, status: true },
       orderBy: { date: "asc" },
     }),
     prisma.project.findMany({
@@ -200,6 +246,7 @@ export default async function DashboardPage() {
             title: true,
             description: true,
             status: true,
+            ...(taskColumnSupport.startDate ? { startDate: true } : {}),
             createdAt: true,
             dueDate: true,
             assignee: { select: { name: true } },
@@ -209,6 +256,30 @@ export default async function DashboardPage() {
       },
       orderBy: { createdAt: "desc" },
       take: 12,
+    }),
+    prisma.task.findMany({
+      where: {
+        project: { workspaceId },
+        status: { not: "DONE" },
+        OR: [
+          { status: "IN_PROGRESS" },
+          { progress: { gt: 0, lt: 100 } },
+        ],
+      },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        progress: true,
+        ...(taskColumnSupport.startDate ? { startDate: true } : {}),
+        createdAt: true,
+        updatedAt: true,
+        dueDate: true,
+        assignee: { select: { name: true } },
+        project: { select: { id: true, name: true, color: true } },
+      },
+      orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
+      take: 8,
     }),
     isAdmin
       ? prisma.attendance.findMany({
@@ -224,9 +295,7 @@ export default async function DashboardPage() {
         })
       : Promise.resolve([]),
     isAdmin
-      ? prisma.workspaceMember.count({
-          where: { workspaceId },
-        })
+      ? prisma.workspaceMember.count({ where: { workspaceId } })
       : Promise.resolve(0),
   ]);
 
@@ -235,6 +304,60 @@ export default async function DashboardPage() {
   );
 
   const ongoingProjects = projectSummaries.filter((project) => project.boardStatus === "ONGOING");
+  const workspaceProjects = ongoingTasks.map((task) => ({
+    id: task.id,
+    name: task.title,
+    tasks: [] as Array<{ id: string; title: string; status: string }>,
+    subtitle: task.project.name,
+    progress: normalizeProgressValue(task.progress, getTaskProgress(task.status)),
+    assigneeNames: [task.assignee?.name?.trim() || "담당자 미지정"],
+    tags: [formatTaskPeriodLabel(task.startDate ?? task.createdAt, task.dueDate)],
+    color: task.project.color || "var(--accent)",
+  }));
+
+  const approvalEvents = approvedApprovals
+    .filter((approval) => approval.type !== "LEAVE_REQUEST")
+    .map((approval) => {
+      const startAt = approval.decidedAt ?? approval.leaveStart ?? approval.leaveEnd ?? now;
+      return {
+        id: `approval-${approval.id}`,
+        title: approval.title,
+        startAt,
+        endAt: startAt,
+        allDay: true,
+        color: "var(--accent)",
+      };
+    });
+
+  const mergedEvents = [...events, ...approvalEvents]
+    .sort((left, right) => left.startAt.getTime() - right.startAt.getTime())
+    .slice(0, 8);
+
+  const leaveMarkerMap = new Map<string, { date: string; kind: "leave" | "half" }>();
+
+  for (const record of leaveRecords) {
+    const dateKey = format(record.date, "yyyy-MM-dd");
+    leaveMarkerMap.set(dateKey, {
+      date: dateKey,
+      kind: record.status === "HOLIDAY" ? "leave" : "half",
+    });
+  }
+
+  for (const approval of approvedApprovals) {
+    if (approval.type !== "LEAVE_REQUEST" || !approval.leaveStart) {
+      continue;
+    }
+
+    const current = new Date(approval.leaveStart);
+    const end = approval.leaveEnd ? new Date(approval.leaveEnd) : new Date(approval.leaveStart);
+    const kind = approval.leaveType === "FULL_DAY" ? "leave" : "half";
+
+    while (current <= end) {
+      const dateKey = format(current, "yyyy-MM-dd");
+      leaveMarkerMap.set(dateKey, { date: dateKey, kind });
+      current.setDate(current.getDate() + 1);
+    }
+  }
 
   const currentAttendanceTone = getAttendanceTone(todayAttendance?.status);
   const attendance = {
@@ -309,7 +432,7 @@ export default async function DashboardPage() {
           createdAt: format(new Date(notice.createdAt), "M/d", { locale: ko }),
         };
       })}
-      events={events.map((event) => ({
+      events={mergedEvents.map((event) => ({
         id: event.id,
         title: event.title,
         startAt: event.startAt.toISOString(),
@@ -317,24 +440,27 @@ export default async function DashboardPage() {
         allDay: event.allDay,
         scheduleLabel: event.allDay
           ? `${format(new Date(event.startAt), "M/d (EEE)", { locale: ko })} · 종일`
-          : `${format(new Date(event.startAt), "M/d (EEE) HH:mm", {
-              locale: ko,
-            })} - ${format(new Date(event.endAt), "HH:mm", { locale: ko })}`,
+          : `${format(new Date(event.startAt), "M/d (EEE) HH:mm", { locale: ko })} - ${format(new Date(event.endAt), "HH:mm", { locale: ko })}`,
         color: event.color,
       }))}
-      leaveMarkers={leaveRecords.map((record) => ({
-        date: format(record.date, "yyyy-MM-dd"),
-        kind: record.status === "HOLIDAY" ? "leave" : "half",
-      }))}
-      projects={ongoingProjects.slice(0, 3).map((project) => ({
+      leaveMarkers={Array.from(leaveMarkerMap.values())}
+      projects={workspaceProjects.map((project) => ({
         id: project.id,
         name: project.name,
+        tasks: project.tasks
+          .filter((task) => task.status === "IN_PROGRESS" || task.status === "IN_REVIEW")
+          .slice(0, 4)
+          .map((task) => ({
+            id: task.id,
+            title: task.title,
+            statusLabel: task.status === "IN_REVIEW" ? "검토 중" : "진행 중",
+          })),
         subtitle: project.subtitle,
         progress: project.progress,
         assigneeLabel:
           project.assigneeNames.length > 0
-            ? `담당자 ${project.assigneeNames.slice(0, 2).join(", ")}`
-            : "담당자 미지정",
+            ? `담당 ${project.assigneeNames.slice(0, 2).join(", ")}`
+            : "담당 미지정",
         tagLabel: project.tags.length > 0 ? `#${project.tags[0]}` : "#태그없음",
         color: project.color,
       }))}

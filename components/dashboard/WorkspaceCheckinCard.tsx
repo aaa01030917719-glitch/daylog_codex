@@ -26,6 +26,8 @@ interface AttendanceApiPayload {
     checkOut: string | null;
     status: AttendanceCode;
   } | null;
+  hasCheckIn?: boolean;
+  hasCheckOut?: boolean;
   error?: string;
 }
 
@@ -68,7 +70,7 @@ function getStatusLabel(status: AttendanceCode) {
     case "EARLY_LEAVE":
       return "반차";
     case "OVERTIME":
-      return "추가근무";
+      return "추가 근무";
     case "ABSENT":
       return "부재";
     default:
@@ -77,9 +79,9 @@ function getStatusLabel(status: AttendanceCode) {
 }
 
 function buildSummary(hasCheckIn: boolean, hasCheckOut: boolean, status: AttendanceCode) {
-  if (!hasCheckIn) return "오늘 출근 기록이 없습니다.";
-  if (hasCheckOut) return `${getStatusLabel(status)} 상태로 오늘 근무가 마감되었습니다.`;
-  return `${getStatusLabel(status)} 상태로 근무 중입니다.`;
+  if (!hasCheckIn) return "아직 출근 전이에요";
+  if (hasCheckOut) return `${getStatusLabel(status)}으로 오늘 기록을 남겼어요`;
+  return `${getStatusLabel(status)} 상태로 출근했어요`;
 }
 
 export function WorkspaceCheckinCard({
@@ -114,13 +116,10 @@ export function WorkspaceCheckinCard({
 
   async function refreshTodayAttendance() {
     const response = await fetch("/api/attendance/today");
-    const data = (await response.json()) as AttendanceApiPayload & {
-      hasCheckIn?: boolean;
-      hasCheckOut?: boolean;
-    };
+    const data = (await response.json()) as AttendanceApiPayload;
 
     if (!response.ok) {
-      throw new Error(data.error ?? "오늘 근무 현황을 불러오지 못했습니다.");
+      throw new Error(data.error ?? "오늘 출퇴근 기록을 불러오지 못했어요.");
     }
 
     const attendance = data.attendance;
@@ -145,13 +144,13 @@ export function WorkspaceCheckinCard({
       const data = (await response.json()) as AttendanceApiPayload;
 
       if (!response.ok) {
-        throw new Error(data.error ?? "출근 처리에 실패했습니다.");
+        throw new Error(data.error ?? "출근 처리에 실패했어요.");
       }
 
       await refreshTodayAttendance();
-      setFeedback("출근 기록이 저장되었습니다.");
+      setFeedback("출근했어요");
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "출근 처리에 실패했습니다.");
+      setFeedback(error instanceof Error ? error.message : "출근 처리에 실패했어요.");
     } finally {
       setCheckingIn(false);
     }
@@ -166,13 +165,13 @@ export function WorkspaceCheckinCard({
       const data = (await response.json()) as AttendanceApiPayload;
 
       if (!response.ok) {
-        throw new Error(data.error ?? "퇴근 처리에 실패했습니다.");
+        throw new Error(data.error ?? "퇴근 처리에 실패했어요.");
       }
 
       await refreshTodayAttendance();
-      setFeedback("퇴근 기록이 저장되었습니다.");
+      setFeedback("퇴근할게요");
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : "퇴근 처리에 실패했습니다.");
+      setFeedback(error instanceof Error ? error.message : "퇴근 처리에 실패했어요.");
     } finally {
       setCheckingOut(false);
     }
@@ -180,9 +179,14 @@ export function WorkspaceCheckinCard({
 
   return (
     <section className="workspace-checkin-card">
-      <div className="workspace-checkin-card__label">출퇴근</div>
+      <div className="workspace-checkin-card__label">오늘 출퇴근</div>
       <div className="workspace-checkin-card__time">{formatClockTime(now)}</div>
-      <div className="workspace-checkin-card__date">{formatClockDate(now)}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="workspace-checkin-card__date">{formatClockDate(now)}</div>
+        <div className="workspace-checkin-card__summary whitespace-nowrap">
+          오늘 상태 <span>{statusLabel}</span>
+        </div>
+      </div>
 
       <div className="workspace-checkin-card__buttons">
         <button
@@ -191,7 +195,7 @@ export function WorkspaceCheckinCard({
           onClick={handleCheckIn}
           disabled={!canCheckIn}
         >
-          {checkingIn ? "출근 처리 중..." : "출근하기"}
+          {checkingIn ? "출근 확인 중..." : hasCheckIn ? `출근 ${checkInLabel}` : "출근했어요"}
         </button>
         <button
           type="button"
@@ -199,17 +203,10 @@ export function WorkspaceCheckinCard({
           onClick={handleCheckOut}
           disabled={!canCheckOut}
         >
-          {checkingOut ? "퇴근 처리 중..." : "퇴근하기"}
+          {checkingOut ? "퇴근 확인 중..." : hasCheckOut ? `퇴근 ${checkOutLabel}` : "퇴근할게요"}
         </button>
       </div>
 
-      <div className="workspace-checkin-card__summary">
-        오늘 상태 <span>{statusLabel}</span>
-      </div>
-      <div className="workspace-checkin-card__meta">
-        <span>출근 {checkInLabel}</span>
-        <span>퇴근 {checkOutLabel}</span>
-      </div>
       <div className="workspace-checkin-card__description">{summaryLabel}</div>
       {feedback ? <div className="workspace-checkin-card__feedback">{feedback}</div> : null}
     </section>
