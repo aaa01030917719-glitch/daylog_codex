@@ -116,6 +116,7 @@ model WorkspaceMember {
   id          String   @id @default(cuid())
   role        Role     @default(MEMBER)
   annualLeave Int      @default(12)
+  personalColor String?
   joinedAt    DateTime @default(now())
   userId      String
   workspaceId String
@@ -124,6 +125,7 @@ model WorkspaceMember {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@unique([userId, workspaceId])
+  @@unique([workspaceId, personalColor])
 }
 
 model InviteToken {
@@ -188,6 +190,7 @@ model Task {
   projectId        String
   assigneeId       String?
   creatorId        String
+  progress         Int?       @default(0)
   isApprovalRequested Boolean    @default(false)
   approvedBy          String?
   approvedAt          DateTime?
