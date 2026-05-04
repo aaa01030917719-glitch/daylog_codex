@@ -24,11 +24,20 @@ const DocEditor = dynamic(
   }
 );
 
-export default async function DocDetailPage({ params }: { params: { id: string } }) {
+export default async function DocDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: { source?: string | string[] };
+}) {
   const session = await auth();
   if (!session?.user?.id) return null;
 
   const workspaceId = session.user.workspaceId ?? "";
+  const sourceParam = Array.isArray(searchParams?.source)
+    ? searchParams.source[0]
+    : searchParams?.source;
 
   const [page, memberRows] = await Promise.all([
     prisma.page.findUnique({
@@ -76,6 +85,7 @@ export default async function DocDetailPage({ params }: { params: { id: string }
         }}
         currentUserId={session.user.id}
         isAdmin={session.user.role === "ADMIN" || session.user.role === "OWNER"}
+        source={typeof sourceParam === "string" ? sourceParam : null}
       />
       <CommentSection
         pageId={page.id}

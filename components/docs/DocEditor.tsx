@@ -55,15 +55,27 @@ interface Props {
   page: PageData;
   currentUserId: string;
   isAdmin: boolean;
+  source?: string | null;
 }
 
-export function DocEditor({ page, currentUserId, isAdmin }: Props) {
+export function DocEditor({ page, currentUserId, isAdmin, source }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(page.title);
   const [emoji, setEmoji] = useState(page.emoji ?? "");
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "idle">("saved");
   const [saveTimeout, setSaveTimeout] = useState<ReturnType<typeof setTimeout> | null>(null);
   const [isEditorFocused, setIsEditorFocused] = useState(false);
+  const noticeSource =
+    source === "notices" || source === "meeting-note" ? source : null;
+  const backHref = noticeSource ? "/notices" : "/docs";
+
+  function buildDocHref(pageId: string) {
+    if (!noticeSource) {
+      return `/docs/${pageId}`;
+    }
+
+    return `/docs/${pageId}?source=${encodeURIComponent(noticeSource)}`;
+  }
 
   const handleAutoSave = useCallback(
     (data: { title?: string; content?: object; emoji?: string }) => {
@@ -139,7 +151,7 @@ export function DocEditor({ page, currentUserId, isAdmin }: Props) {
 
     const response = await fetch(`/api/pages/${page.id}`, { method: "DELETE" });
     if (response.ok) {
-      router.push("/docs");
+      router.push(backHref);
     }
   }
 
@@ -211,7 +223,7 @@ export function DocEditor({ page, currentUserId, isAdmin }: Props) {
             <div className="flex min-w-0 flex-wrap items-center gap-2 text-[13px] text-[var(--text-muted)]">
               <button
                 type="button"
-                onClick={() => router.push("/docs")}
+                onClick={() => router.push(backHref)}
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[var(--text-secondary)] transition hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
               >
                 <ArrowLeft size={14} />
@@ -222,7 +234,7 @@ export function DocEditor({ page, currentUserId, isAdmin }: Props) {
                   <ChevronRight size={12} />
                   <button
                     type="button"
-                    onClick={() => router.push(`/docs/${page.parent?.id}`)}
+                    onClick={() => router.push(buildDocHref(page.parent!.id))}
                     className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[var(--text-secondary)] transition hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
                   >
                     <span>{page.parent.emoji ?? "📄"}</span>
@@ -347,7 +359,7 @@ export function DocEditor({ page, currentUserId, isAdmin }: Props) {
               <button
                 key={child.id}
                 type="button"
-                onClick={() => router.push(`/docs/${child.id}`)}
+                onClick={() => router.push(buildDocHref(child.id))}
                 className="flex w-full items-center gap-3 rounded-[12px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3 text-left transition hover:bg-[var(--surface-2)]"
               >
                 <span className="flex h-10 w-10 items-center justify-center rounded-[12px] bg-[var(--surface-2)] text-base">

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -31,9 +31,25 @@ type NavItemConfig = {
   label: string;
 };
 
-function isActivePath(pathname: string, href: string) {
+function isActivePath(pathname: string, href: string, source: string | null = null) {
   const [basePath] = href.split("?");
-  return basePath === "/" ? pathname === "/" : pathname.startsWith(basePath);
+  if (basePath === "/") {
+    return pathname === "/";
+  }
+
+  const isMeetingNoteFromNotices =
+    pathname.startsWith("/docs/") &&
+    (source === "notices" || source === "meeting-note");
+
+  if (basePath === "/notices") {
+    return pathname.startsWith("/notices") || isMeetingNoteFromNotices;
+  }
+
+  if (basePath === "/docs") {
+    return pathname === "/docs" || (pathname.startsWith("/docs/") && !isMeetingNoteFromNotices);
+  }
+
+  return pathname.startsWith(basePath);
 }
 
 function NavItem({
@@ -41,8 +57,9 @@ function NavItem({
   href,
   icon,
   label,
-}: NavItemConfig & { pathname: string }) {
-  const isActive = isActivePath(pathname, href);
+  source,
+}: NavItemConfig & { pathname: string; source: string | null }) {
+  const isActive = isActivePath(pathname, href, source);
 
   return (
     <li>
@@ -72,9 +89,14 @@ function NavItem({
 
 export function MobileSidebar({ open, onClose, userRole, userName }: MobileSidebarProps) {
   const pathname = usePathname();
+  const [source, setSource] = useState<string | null>(null);
   const isAdmin = userRole === "ADMIN" || userRole === "OWNER";
   const isOwner = userRole === "OWNER";
   const showAdminCenterMenu = false;
+
+  useEffect(() => {
+    setSource(new URLSearchParams(window.location.search).get("source"));
+  }, [pathname]);
 
   useEffect(() => {
     onClose();
@@ -134,7 +156,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
               <div className="sidebar-section-label">바로가기</div>
               <ul className="space-y-1.5">
                 {workspaceItems.map((item) => (
-                  <NavItem key={item.href} pathname={pathname} {...item} />
+                  <NavItem key={item.href} pathname={pathname} source={source} {...item} />
                 ))}
               </ul>
             </section>
@@ -143,7 +165,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
               <div className="sidebar-section-label">프로젝트</div>
               <ul className="space-y-1.5">
                 {projectItems.map((item) => (
-                  <NavItem key={item.href} pathname={pathname} {...item} />
+                  <NavItem key={item.href} pathname={pathname} source={source} {...item} />
                 ))}
               </ul>
             </section>
@@ -151,7 +173,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
             <section className="space-y-2">
               <div className="sidebar-section-label">근무관리</div>
               <ul className="space-y-1.5">
-                <NavItem pathname={pathname} href="/attendance" icon="🕐" label="출퇴근 현황" />
+                <NavItem pathname={pathname} source={source} href="/attendance" icon="🕐" label="출퇴근 현황" />
               </ul>
             </section>
 
@@ -159,7 +181,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
               <div className="sidebar-section-label">전달문서</div>
               <ul className="space-y-1.5">
                 {documentItems.map((item) => (
-                  <NavItem key={item.label} pathname={pathname} {...item} />
+                  <NavItem key={item.label} pathname={pathname} source={source} {...item} />
                 ))}
               </ul>
             </section>
@@ -168,7 +190,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
               <section className="space-y-2">
                 <div className="sidebar-section-label">설정</div>
                 <ul className="space-y-1.5">
-                  <NavItem pathname={pathname} href="/settings" icon="⚙️" label="워크스페이스 설정" />
+                  <NavItem pathname={pathname} source={source} href="/settings" icon="⚙️" label="워크스페이스 설정" />
                 </ul>
               </section>
             ) : null}

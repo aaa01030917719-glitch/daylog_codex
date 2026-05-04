@@ -619,7 +619,7 @@ export function NoticePage({
                     key={minute.id}
                     type="button"
                     onClick={() => {
-                      window.location.href = `/docs/${minute.id}`;
+                      window.location.href = `/docs/${minute.id}?source=notices`;
                     }}
                     className="w-full rounded-[14px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-4 text-left transition hover:bg-[var(--surface-2)]"
                   >
