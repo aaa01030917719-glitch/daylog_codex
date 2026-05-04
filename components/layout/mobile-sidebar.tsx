@@ -164,10 +164,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,124,255,0.28)]">
               DL
             </div>
-            <div>
-              <div className="text-base font-semibold tracking-[-0.02em] text-white">Daylog</div>
-              <div className="mt-0.5 text-xs text-white/45">workspace operations</div>
-            </div>
+            <span className="text-base font-semibold tracking-[-0.02em] text-white">Daylog</span>
           </Link>
           <button onClick={onClose} className="text-white/70 transition-colors hover:text-white" aria-label="닫기">
             <X size={18} />
@@ -238,21 +235,25 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
         ) : null}
 
         <div className="px-4 py-4">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white">
-                {userName?.[0]?.toUpperCase() ?? "U"}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-white">{userName ?? "사용자"}</div>
-                <div className="mt-0.5 text-xs text-white/45">
-                  {ROLE_LABELS[userRole ?? "MEMBER"] ?? userRole ?? "직원"}
-                </div>
-              </div>
-              <button onClick={() => signOut({ callbackUrl: "/login" })} className="text-white/70 transition-colors hover:text-white" aria-label="로그아웃">
-                <LogOut size={18} />
-              </button>
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--accent)] text-[13px] font-bold text-white">
+              {userName?.[0]?.toUpperCase() ?? "U"}
             </div>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-medium text-white">{userName ?? "사용자"}</div>
+              {userRole ? (
+                <div className="mt-0.5 text-[11px] text-white/45">
+                  {ROLE_LABELS[userRole] ?? userRole}
+                </div>
+              ) : null}
+            </div>
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="rounded-md p-1.5 text-white/55 transition-colors hover:bg-white/8 hover:text-white"
+              aria-label="로그아웃"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
         </div>
       </aside>
