@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { ArrowLeft, Plus } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { TaskDetail } from "./TaskDetail";
-import { TaskCreateModal } from "./TaskCreateModal";
+import { TaskCreateDetailModal } from "./TaskCreateDetailModal";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 
@@ -19,8 +18,13 @@ interface Task {
   status: TaskStatus;
   priority: Priority;
   requiresApproval: boolean;
+  isApprovalRequested?: boolean;
+  approvedBy?: string | null;
+  approvedAt?: string | Date | null;
+  rejectedReason?: string | null;
   budget: number | null;
   dueDate: string | Date | null;
+  progress?: number | null;
   projectId: string;
   assigneeId: string | null;
   creatorId: string;
@@ -47,12 +51,14 @@ interface Props {
   members: Member[];
   isAdmin: boolean;
   currentUserId: string;
+  showHeader?: boolean;
+  initialSelectedTaskId?: string | null;
 }
 
 const COLUMNS: { id: TaskStatus; label: string }[] = [
-  { id: "TODO", label: "할 일" },
-  { id: "IN_PROGRESS", label: "진행중" },
-  { id: "IN_REVIEW", label: "검토중" },
+  { id: "TODO", label: "예정" },
+  { id: "IN_PROGRESS", label: "진행 중" },
+  { id: "IN_REVIEW", label: "검토 중" },
   { id: "DONE", label: "완료" },
 ];
 
@@ -63,11 +69,16 @@ const PRIORITY_STYLES: Record<Priority, { bg: string; text: string; label: strin
   URGENT: { bg: "#FDECEA", text: "#D93025", label: "긴급" },
 };
 
-export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUserId }: Props) {
-  const router = useRouter();
+export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUserId, showHeader = true, initialSelectedTaskId = null }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [createForStatus, setCreateForStatus] = useState<TaskStatus | null>(null);
+
+  useEffect(() => {
+    if (!initialSelectedTaskId) return;
+    const task = tasks.find((item) => item.id === initialSelectedTaskId);
+    if (task) setSelectedTask(task);
+  }, [initialSelectedTaskId, tasks]);
 
   const tasksByStatus = useCallback(
     (status: TaskStatus) => tasks.filter((t) => t.status === status),
@@ -82,18 +93,32 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
     const task = tasks.find((t) => t.id === taskId);
     if (!task || task.status === newStatus) return;
 
-    // Optimistic update
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)));
+    const nextProgress =
+      newStatus === "DONE"
+        ? 100
+        : task.status === "DONE"
+          ? Math.min(task.progress ?? 0, 99)
+          : task.progress;
+
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus, progress: nextProgress } : t
+      )
+    );
 
     try {
       await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: newStatus, progress: nextProgress }),
       });
     } catch {
       // Revert on error
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: task.status } : t)));
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: task.status, progress: task.progress } : t
+        )
+      );
     }
   }
 
@@ -114,23 +139,26 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
 
   return (
     <div style={{ height: "100%" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", marginBottom: "1.25rem" }}>
-        <button
-          onClick={() => router.push("/projects")}
-          style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-body)", padding: "0.25rem", display: "flex", alignItems: "center" }}
-        >
-          <ArrowLeft size={18} />
-        </button>
-        <div style={{ width: "0.75rem", height: "0.75rem", borderRadius: "50%", background: project.color }} />
-        <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-title)" }}>
-          {project.name}
-        </h1>
-      </div>
+      {showHeader ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.625rem", marginBottom: "1rem" }}>
+          <button
+            onClick={() => {
+              window.location.href = "/projects";
+            }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-body)", padding: "0.25rem", display: "flex", alignItems: "center" }}
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div style={{ width: "0.75rem", height: "0.75rem", borderRadius: "50%", background: project.color }} />
+          <h1 style={{ fontFamily: "Noto Serif KR, serif", fontSize: "1.25rem", fontWeight: 700, color: "var(--text-title)" }}>
+            {project.name}
+          </h1>
+        </div>
+      ) : null}
 
       {/* Kanban */}
       <DragDropContext onDragEnd={onDragEnd}>
-        <div style={{ display: "flex", gap: "1rem", overflowX: "auto", paddingBottom: "1rem", minHeight: "70vh" }}>
+        <div style={{ display: "flex", gap: "0.875rem", overflowX: "auto", paddingBottom: "0.75rem", minHeight: "64vh" }}>
           {COLUMNS.map((col) => {
             const colTasks = tasksByStatus(col.id);
             return (
@@ -149,7 +177,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                   style={{
                     background: "var(--table-header)",
                     borderRadius: "0.5rem 0.5rem 0 0",
-                    padding: "0.625rem 0.875rem",
+                    padding: "0.5rem 0.75rem",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -174,7 +202,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                         borderRadius: "0 0 0.5rem 0.5rem",
                         border: "1px solid var(--border)",
                         borderTop: "none",
-                        padding: "0.5rem",
+                        padding: "0.4375rem",
                         minHeight: "8rem",
                         transition: "background 0.15s",
                       }}
@@ -191,18 +219,18 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                                 ...provided.draggableProps.style,
                                 background: "#fff",
                                 borderRadius: "0.5rem",
-                                padding: "0.75rem",
-                                marginBottom: "0.5rem",
+                                padding: "0.625rem",
+                                marginBottom: "0.4375rem",
                                 border: "1px solid var(--border)",
                                 boxShadow: snapshot.isDragging ? "0 8px 24px rgba(0,0,0,0.12)" : "0 1px 3px rgba(0,0,0,0.04)",
                                 cursor: "pointer",
                               }}
                             >
-                              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text-title)", marginBottom: "0.5rem", lineHeight: 1.4 }}>
+                              <p style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text-title)", marginBottom: "0.375rem", lineHeight: 1.32 }}>
                                 {task.title}
                               </p>
 
-                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.375rem" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.25rem" }}>
                                 <span
                                   style={{
                                     fontSize: "0.6875rem",
@@ -257,14 +285,14 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                           display: "flex",
                           alignItems: "center",
                           gap: "0.375rem",
-                          padding: "0.5rem",
+                          padding: "0.4375rem 0.5rem",
                           border: "1px dashed var(--border)",
                           borderRadius: "0.5rem",
                           background: "transparent",
                           color: "var(--text-sub)",
                           fontSize: "0.8125rem",
                           cursor: "pointer",
-                          marginTop: "0.25rem",
+                          marginTop: "0.125rem",
                         }}
                       >
                         <Plus size={14} />
@@ -283,6 +311,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
       {selectedTask && (
         <TaskDetail
           task={selectedTask}
+          projectName={project.name}
           members={members}
           isAdmin={isAdmin}
           currentUserId={currentUserId}
@@ -294,8 +323,9 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
 
       {/* Task create modal */}
       {createForStatus && (
-        <TaskCreateModal
+        <TaskCreateDetailModal
           projectId={project.id}
+          projectName={project.name}
           defaultStatus={createForStatus}
           members={members}
           onCreated={handleTaskCreated}

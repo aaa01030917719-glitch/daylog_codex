@@ -1,0 +1,116 @@
+import { NextRequest, NextResponse } from "next/server";
+import { TaskStatus } from "@prisma/client";
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+
+function canRequestTaskApproval(task: { assigneeId: string | null; creatorId: string }, userId: string) {
+  return task.assigneeId === userId || task.creatorId === userId;
+}
+
+function buildTaskInclude() {
+  return {
+    id: true,
+    title: true,
+    status: true,
+    progress: true,
+    requiresApproval: true,
+    assigneeId: true,
+    creatorId: true,
+    projectId: true,
+    assignee: { select: { id: true, name: true, image: true } },
+    creator: { select: { id: true, name: true } },
+    project: { select: { id: true, name: true, color: true, workspaceId: true } },
+    tags: { select: { id: true, name: true, color: true } },
+  };
+}
+
+export async function POST(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+  }
+
+  const workspaceId = session.user.workspaceId;
+  if (!workspaceId) {
+    return NextResponse.json({ error: "워크스페이스 정보가 없습니다." }, { status: 400 });
+  }
+
+  try {
+    const task = await prisma.task.findUnique({
+      where: { id: params.id },
+      select: buildTaskInclude(),
+    });
+
+    if (!task) {
+      return NextResponse.json({ error: "업무를 찾을 수 없습니다." }, { status: 404 });
+    }
+
+    if (task.project.workspaceId !== workspaceId) {
+      return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+    }
+
+    if (!canRequestTaskApproval(task, session.user.id)) {
+      return NextResponse.json({ error: "확인 요청 권한이 없습니다." }, { status: 403 });
+    }
+
+    if (task.status === TaskStatus.DONE) {
+      return NextResponse.json({ error: "이미 완료된 업무입니다." }, { status: 400 });
+    }
+
+    const reviewers = await prisma.workspaceMember.findMany({
+      where: {
+        workspaceId,
+        role: { in: ["OWNER", "ADMIN"] },
+        userId: { not: session.user.id },
+      },
+      select: { userId: true },
+    });
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const nextTask = await tx.task.update({
+        where: { id: task.id },
+        data: {
+          status: TaskStatus.IN_REVIEW,
+          progress: Math.min(task.progress ?? 0, 99),
+          requiresApproval: true,
+        },
+        select: buildTaskInclude(),
+      });
+
+      if (reviewers.length > 0) {
+        await tx.notification.createMany({
+          data: reviewers.map((reviewer) => ({
+            userId: reviewer.userId,
+            type: "TASK_APPROVAL_REQUEST",
+            title: "업무 확인 요청",
+            body: `${task.title} 확인을 요청했어요.`,
+            link: `/projects/${task.projectId}?taskId=${task.id}`,
+          })),
+        });
+      }
+
+      return nextTask;
+    });
+
+    return NextResponse.json({
+      task: {
+        ...updated,
+        isApprovalRequested: true,
+        approvedBy: null,
+        approvedAt: null,
+        rejectedReason: null,
+        project: {
+          id: updated.project.id,
+          name: updated.project.name,
+          color: updated.project.color,
+        },
+      },
+    });
+  } catch (error) {
+    console.error("[TASK APPROVAL REQUEST]", error);
+    return NextResponse.json({ error: "확인 요청을 보내지 못했습니다." }, { status: 500 });
+  }
+}

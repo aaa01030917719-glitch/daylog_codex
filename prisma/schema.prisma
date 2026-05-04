@@ -181,12 +181,17 @@ model Task {
   priority         Priority   @default(MEDIUM)
   requiresApproval Boolean    @default(false)
   budget           Float?
+  startDate           DateTime?
   dueDate          DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
   projectId        String
   assigneeId       String?
   creatorId        String
+  isApprovalRequested Boolean    @default(false)
+  approvedBy          String?
+  approvedAt          DateTime?
+  rejectedReason      String?
 
   project   Project   @relation(fields: [projectId], references: [id])
   assignee  User?     @relation("AssignedTo", fields: [assigneeId], references: [id])
@@ -564,6 +569,7 @@ model Notification {
 enum NotificationType {
   MENTION
   TASK_DUE
+  TASK_APPROVAL_REQUEST
   APPROVAL_REQUEST
   APPROVAL_RESULT
   ATTENDANCE_REMINDER
