@@ -46,6 +46,7 @@ const FILTER_TABS: { key: FilterTab; label: string }[] = [
   { key: "IMPORTANT_EVENT", label: "일정" },
   { key: "DEADLINE_CHANGE", label: "마감 변경" },
   { key: "BUDGET_TASK", label: "예산" },
+  { key: "PROJECT_REVIEW", label: "프로젝트 검토" },
 ];
 
 async function readError(response: Response) {
@@ -137,13 +138,17 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
   return (
     <div>
       {feedbackMessage ? (
-        <p style={{ marginBottom: "0.75rem", fontSize: "12px", fontWeight: 600, color: "#2A8C50" }}>
+        <p
+          className="mb-3 rounded-2xl border border-[rgba(34,197,94,0.2)] bg-[var(--success-light)] px-4 py-3 text-sm font-medium text-[#16a34a]"
+        >
           {feedbackMessage}
         </p>
       ) : null}
 
       {errorMessage ? (
-        <p style={{ marginBottom: "0.75rem", fontSize: "12px", fontWeight: 600, color: "#D93025" }}>
+        <p
+          className="mb-3 rounded-2xl border border-[rgba(239,68,68,0.2)] bg-[var(--danger-light)] px-4 py-3 text-sm font-medium text-[var(--danger)]"
+        >
           {errorMessage}
         </p>
       ) : null}
@@ -251,17 +256,8 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
               <button
                 onClick={() => handleApprove(approval.id)}
                 disabled={loading === approval.id}
-                style={{
-                  background: "#FEF0E8",
-                  color: "#C05621",
-                  border: "1px solid #FED7AA",
-                  borderRadius: "7px",
-                  padding: "5px 12px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  opacity: loading === approval.id ? 0.7 : 1,
-                }}
+                className="primary-button btn--sm"
+                style={{ opacity: loading === approval.id ? 0.7 : 1 }}
               >
                 승인
               </button>
@@ -271,17 +267,8 @@ export function AdminApprovalPanel({ initialApprovals }: Props) {
                   setDecisionNote("");
                 }}
                 disabled={loading === approval.id}
-                style={{
-                  background: "#F1EFE8",
-                  color: "#888",
-                  border: "1px solid #E8E0C8",
-                  borderRadius: "7px",
-                  padding: "5px 12px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  opacity: loading === approval.id ? 0.7 : 1,
-                }}
+                className="danger-button btn--sm"
+                style={{ opacity: loading === approval.id ? 0.7 : 1 }}
               >
                 거절
               </button>
