@@ -26,6 +26,7 @@ model User {
   comments          Comment[]
   mentions          Mention[]
   events            Event[]
+  calendarGroups              CalendarGroup[]          @relation("CalendarGroupOwner")
   pages             Page[]
   attendances       Attendance[]
   approvals         Approval[]        @relation("RequestedBy")
@@ -98,6 +99,7 @@ model Workspace {
   inviteTokens InviteToken[]
   projects    Project[]
   events      Event[]
+  calendarGroups          CalendarGroup[]
   pages       Page[]
   notices     Notice[]
   boardPosts  BoardPost[]
@@ -155,6 +157,7 @@ model Project {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   tasks     Task[]
+  events    Event[]
 }
 
 enum ProjectStatus {
@@ -201,23 +204,61 @@ enum Priority {
 }
 
 // ── 일정
+enum CalendarEventGroupKind {
+  PERSONAL
+  COMPANY_ALL
+  TEAM_SHARED
+  PROJECT
+  CUSTOM
+}
+
 model Event {
-  id               String   @id @default(cuid())
+  id               String                 @id @default(cuid())
   title            String
   description      String?
   startAt          DateTime
   endAt            DateTime
-  allDay           Boolean  @default(false)
-  color            String   @default("#F56B23")
-  isImportant      Boolean  @default(false)
-  requiresApproval Boolean  @default(false)
-  createdAt        DateTime @default(now())
+  allDay           Boolean                @default(false)
+  color            String                 @default("#F56B23")
+  textColor        String                 @default("#3158C6")
+  isImportant      Boolean                @default(false)
+  requiresApproval Boolean                @default(false)
+  groupKind        CalendarEventGroupKind @default(PERSONAL)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
   workspaceId      String
   creatorId        String
+  customGroupId    String?
+  projectId        String?
 
-  workspace Workspace  @relation(fields: [workspaceId], references: [id])
-  creator   User       @relation(fields: [creatorId], references: [id])
-  approvals Approval[]
+  workspace   Workspace      @relation(fields: [workspaceId], references: [id])
+  creator     User           @relation(fields: [creatorId], references: [id])
+  customGroup CalendarGroup? @relation(fields: [customGroupId], references: [id], onDelete: SetNull)
+  project     Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  approvals   Approval[]
+
+  @@index([workspaceId, startAt], map: "Event_calendar_workspaceId_startAt_idx")
+  @@index([workspaceId, endAt], map: "Event_calendar_workspaceId_endAt_idx")
+  @@index([workspaceId, groupKind], map: "Event_calendar_workspaceId_groupKind_idx")
+  @@index([customGroupId], map: "Event_calendar_customGroupId_idx")
+  @@index([projectId], map: "Event_calendar_projectId_idx")
+}
+
+model CalendarGroup {
+  id          String   @id @default(cuid())
+  name        String
+  color       String
+  ownerId     String
+  workspaceId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner     User      @relation("CalendarGroupOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  events    Event[]
+
+  @@index([workspaceId, ownerId], map: "CalendarGroup_calendar_workspaceId_ownerId_idx")
+  @@index([ownerId, createdAt], map: "CalendarGroup_calendar_ownerId_createdAt_idx")
 }
 
 // ── 문서
