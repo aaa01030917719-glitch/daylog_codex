@@ -28,6 +28,7 @@ export default function RegisterPage() {
     event.preventDefault();
     setError("");
     setLoading(true);
+    const destination = inviteCode ? createInvitePath(inviteCode) : "/";
 
     try {
       const response = await fetch("/api/register", {
@@ -42,10 +43,20 @@ export default function RegisterPage() {
         return;
       }
 
-      await signIn("credentials", { email, password, redirect: false });
+      const signInResult = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+        callbackUrl: destination,
+      });
+
+      if (signInResult?.error) {
+        setError("회원가입은 완료됐지만 로그인에 실패했습니다. 다시 로그인해 주세요.");
+        return;
+      }
 
       if (inviteCode) {
-        window.location.href = createInvitePath(inviteCode);
+        window.location.replace(destination);
         return;
       }
 

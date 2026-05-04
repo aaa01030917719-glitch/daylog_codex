@@ -33,6 +33,7 @@ export default function LoginPage() {
     event.preventDefault();
     setError("");
     setLoading(true);
+    const destination = inviteCode ? createInvitePath(inviteCode) : "/";
 
     if (saveId) {
       localStorage.setItem(SAVED_ID_KEY, email);
@@ -45,6 +46,7 @@ export default function LoginPage() {
         email,
         password,
         redirect: false,
+        callbackUrl: destination,
       });
 
       if (result?.error) {
@@ -52,7 +54,7 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = inviteCode ? createInvitePath(inviteCode) : "/";
+      window.location.replace(destination);
     } finally {
       setLoading(false);
     }
