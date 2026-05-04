@@ -38,6 +38,7 @@ model User {
   boardLikes        BoardLike[]
   boardReads        BoardRead[]
   detailComments    DetailComment[]
+  errorReports                ErrorReport[]
   pushSubscriptions PushSubscription[]
 }
 
@@ -318,6 +319,18 @@ model DetailComment {
 
   @@index([targetType, targetId, createdAt])
   @@index([authorId])
+}
+
+model ErrorReport {
+  id          String   @id @default(cuid())
+  message     String
+  currentPath String?
+  createdAt   DateTime @default(now())
+  userId      String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Mention {
