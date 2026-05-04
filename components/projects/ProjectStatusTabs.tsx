@@ -11,6 +11,7 @@ interface ProjectStatusTabsProps {
 const STATUS_LABELS: Record<ProjectBoardStatus, string> = {
   ALL: "전체",
   ONGOING: "진행 중",
+  REVIEW: "검토 중",
   COMPLETED: "완료",
   UPCOMING: "예정",
 };

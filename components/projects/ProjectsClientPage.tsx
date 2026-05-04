@@ -41,6 +41,7 @@ interface ProjectsPageProps {
   members: ProjectMember[];
   initialStatus: ProjectBoardStatus;
   initialView: ProjectViewMode;
+  initialProjectId: string | null;
 }
 
 export function ProjectsClientPage(props: ProjectsPageProps) {
@@ -48,7 +49,7 @@ export function ProjectsClientPage(props: ProjectsPageProps) {
 }
 
 const STATUS_LABELS: Record<string, { label: string; bg: string; text: string }> = {
-  ACTIVE: { label: "진행중", bg: "#E8F7EE", text: "#2A8C50" },
+  ACTIVE: { label: "진행 중", bg: "#E8F7EE", text: "#2A8C50" },
   ARCHIVED: { label: "보관됨", bg: "#F0F0F0", text: "#777" },
 };
 

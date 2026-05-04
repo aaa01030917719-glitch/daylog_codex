@@ -1,12 +1,13 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { FolderOpen, Plus } from "lucide-react";
 import { ProjectCreateModal } from "@/components/modals/ProjectCreateModal";
+import { ProjectDetailModal } from "@/components/modals/ProjectDetailModal";
 import { ProjectBoardLayout } from "@/components/projects/ProjectBoardLayout";
 import { ProjectCalendarView } from "@/components/projects/ProjectCalendarView";
-import { ProjectGanttView } from "@/components/projects/ProjectGanttView";
+import { ProjectGanttViewRedesign } from "@/components/projects/ProjectGanttViewRedesign";
 import { ProjectStatusTabs } from "@/components/projects/ProjectStatusTabs";
 import { ProjectViewToggle } from "@/components/projects/ProjectViewToggle";
 import type {
@@ -22,6 +23,7 @@ interface ProjectsBoardClientProps {
   members: ProjectMember[];
   initialStatus: ProjectBoardStatus;
   initialView: ProjectViewMode;
+  initialProjectId: string | null;
 }
 
 interface ProjectMutationResponse {
@@ -44,7 +46,8 @@ function buildProjectUrl(
   pathname: string,
   params: URLSearchParams,
   status: ProjectBoardStatus,
-  view: ProjectViewMode
+  view: ProjectViewMode,
+  projectId: string | null
 ) {
   const nextParams = new URLSearchParams(params.toString());
 
@@ -60,6 +63,12 @@ function buildProjectUrl(
     nextParams.set("view", view);
   }
 
+  if (!projectId || projectId === "ALL") {
+    nextParams.delete("projectId");
+  } else {
+    nextParams.set("projectId", projectId);
+  }
+
   const query = nextParams.toString();
   return query ? `${pathname}?${query}` : pathname;
 }
@@ -73,6 +82,7 @@ function deriveBoardStatus(project: {
   status: string;
   startDate: string | null;
   endDate: string | null;
+  taskStatuses?: string[];
 }) {
   const todayStart = startOfToday();
 
@@ -86,6 +96,10 @@ function deriveBoardStatus(project: {
 
   if (project.startDate && new Date(project.startDate).getTime() > todayStart.getTime()) {
     return "UPCOMING" as const;
+  }
+
+  if (project.taskStatuses?.includes("IN_REVIEW")) {
+    return "REVIEW" as const;
   }
 
   return "ONGOING" as const;
@@ -126,12 +140,14 @@ function normalizeProject(
       status: project.status,
       startDate,
       endDate,
+      taskStatuses: fallback?.tasks.map((task) => task.status) ?? [],
     }),
     assigneeNames: fallback?.assigneeNames ?? [],
     tags: fallback?.tags ?? [],
     startDate,
     endDate,
     tasks: fallback?.tasks ?? [],
+    commentCount: fallback?.commentCount ?? 0,
   };
 }
 
@@ -159,6 +175,7 @@ export function ProjectsBoardClient({
   members,
   initialStatus,
   initialView,
+  initialProjectId,
 }: ProjectsBoardClientProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -166,32 +183,44 @@ export function ProjectsBoardClient({
   const [projects, setProjects] = useState<ProjectSummary[]>(initialProjects);
   const [activeStatus, setActiveStatus] = useState<ProjectBoardStatus>(initialStatus);
   const [viewMode, setViewMode] = useState<ProjectViewMode>(initialView);
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(initialProjectId);
   const [showModal, setShowModal] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [processingProjectId, setProcessingProjectId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  const projectScopedProjects = useMemo(() => {
+    if (!activeProjectId) {
+      return projects;
+    }
+
+    return projects.filter((project) => project.id === activeProjectId);
+  }, [activeProjectId, projects]);
+
   const counts = useMemo(
     () => ({
-      ALL: projects.length,
-      ONGOING: projects.filter((project) => project.boardStatus === "ONGOING").length,
-      COMPLETED: projects.filter((project) => project.boardStatus === "COMPLETED").length,
-      UPCOMING: projects.filter((project) => project.boardStatus === "UPCOMING").length,
+      ALL: projectScopedProjects.length,
+      ONGOING: projectScopedProjects.filter((project) => project.boardStatus === "ONGOING").length,
+      REVIEW: projectScopedProjects.filter((project) => project.boardStatus === "REVIEW").length,
+      COMPLETED: projectScopedProjects.filter((project) => project.boardStatus === "COMPLETED").length,
+      UPCOMING: projectScopedProjects.filter((project) => project.boardStatus === "UPCOMING").length,
     }),
-    [projects]
+    [projectScopedProjects]
   );
 
   const filteredProjects = useMemo(() => {
     if (activeStatus === "ALL") {
-      return projects;
+      return projectScopedProjects;
     }
 
-    return projects.filter((project) => project.boardStatus === activeStatus);
-  }, [activeStatus, projects]);
+    return projectScopedProjects.filter((project) => project.boardStatus === activeStatus);
+  }, [activeStatus, projectScopedProjects]);
 
   const columns = useMemo(
     () => ({
       ONGOING: filteredProjects.filter((project) => project.boardStatus === "ONGOING"),
+      REVIEW: filteredProjects.filter((project) => project.boardStatus === "REVIEW"),
       UPCOMING: filteredProjects.filter((project) => project.boardStatus === "UPCOMING"),
       COMPLETED: filteredProjects.filter((project) => project.boardStatus === "COMPLETED"),
     }),
@@ -202,14 +231,54 @@ export function ProjectsBoardClient({
     () => projects.find((project) => project.id === selectedProjectId) ?? null,
     [projects, selectedProjectId]
   );
+  const editingProject = useMemo(
+    () => projects.find((project) => project.id === editingProjectId) ?? null,
+    [editingProjectId, projects]
+  );
+  const activeProject = useMemo(
+    () => projects.find((project) => project.id === activeProjectId) ?? null,
+    [activeProjectId, projects]
+  );
+  const existingProjectNames = useMemo(
+    () => Array.from(new Set(projects.map((project) => project.name).filter(Boolean))),
+    [projects]
+  );
   const showsGanttView = viewMode === "GANTT";
+  const pageTitle =
+    activeStatus === "ONGOING"
+      ? "진행 중인 프로젝트"
+      : activeStatus === "COMPLETED"
+        ? "완료된 프로젝트"
+        : activeStatus === "UPCOMING"
+          ? "예정된 프로젝트"
+          : activeStatus === "REVIEW"
+            ? "검토 중인 프로젝트"
+            : "프로젝트 전체";
 
-  function syncRoute(nextStatus: ProjectBoardStatus, nextView: ProjectViewMode) {
+  useEffect(() => {
+    setActiveStatus(initialStatus);
+  }, [initialStatus]);
+
+  useEffect(() => {
+    setViewMode(initialView);
+  }, [initialView]);
+
+  useEffect(() => {
+    setActiveProjectId(initialProjectId);
+    setSelectedProjectId(null);
+  }, [initialProjectId]);
+
+  function syncRoute(
+    nextStatus: ProjectBoardStatus,
+    nextView: ProjectViewMode,
+    nextProjectId: string | null = activeProjectId
+  ) {
     const href = buildProjectUrl(
       pathname,
       new URLSearchParams(searchParams.toString()),
       nextStatus,
-      nextView
+      nextView,
+      nextProjectId
     );
     router.replace(href, { scroll: false });
   }
@@ -278,22 +347,20 @@ export function ProjectsBoardClient({
       <section className="page-header">
         <div className="page-header__meta">
           <div className="page-header__eyebrow">Project Board</div>
-          <h1 className="page-title">프로젝트</h1>
-          <p className="page-subtitle">
-            {showsGanttView
-              ? "업무별 일정과 진행 상황을 한눈에 확인하세요."
-              : "전체, 진행 중, 완료, 예정 상태를 기준으로 프로젝트 흐름을 한 번에 확인하세요."}
-          </p>
+          <h1 className="page-title">{pageTitle}</h1>
+          <p className="page-subtitle">총 {filteredProjects.length}개</p>
         </div>
 
-        <div className="page-actions">
-          <ProjectViewToggle viewMode={viewMode} onChange={handleViewChange} />
-          {isAdmin ? (
-            <button type="button" onClick={() => setShowModal(true)} className="primary-button">
-              <Plus size={16} />
-              프로젝트 추가
-            </button>
-          ) : null}
+        <div className="flex flex-col items-start gap-3 md:items-end">
+          <div className="page-actions">
+            <ProjectViewToggle viewMode={viewMode} onChange={handleViewChange} />
+            {isAdmin ? (
+              <button type="button" onClick={() => setShowModal(true)} className="primary-button">
+                <Plus size={16} />
+                프로젝트 추가
+              </button>
+            ) : null}
+          </div>
         </div>
       </section>
 
@@ -321,11 +388,11 @@ export function ProjectsBoardClient({
       {isEmpty ? (
         <section className="empty-panel min-h-[280px]">
           <FolderOpen size={44} className="text-[var(--text-muted)]" />
-          <p className="empty-panel__title">표시할 프로젝트가 없습니다.</p>
-          <p className="empty-panel__description">선택한 상태에 맞는 프로젝트가 생기면 이 영역에 표시됩니다.</p>
+          <p className="empty-panel__title">표시할 프로젝트가 없어요.</p>
+          <p className="empty-panel__description">프로젝트가 생기면 여기서 바로 볼 수 있어요.</p>
           {isAdmin ? (
             <button type="button" onClick={() => setShowModal(true)} className="text-button">
-              새 프로젝트 만들기
+              프로젝트 추가하기
             </button>
           ) : null}
         </section>
@@ -338,7 +405,10 @@ export function ProjectsBoardClient({
           onSelectProject={(project) => setSelectedProjectId(project.id)}
         />
       ) : viewMode === "GANTT" ? (
-        <ProjectGanttView projects={projects} />
+        <ProjectGanttViewRedesign
+          projects={projects}
+          onSelectProject={(project) => setSelectedProjectId(project.id)}
+        />
       ) : (
         <ProjectCalendarView projects={filteredProjects} />
       )}
@@ -346,6 +416,8 @@ export function ProjectsBoardClient({
       {showModal ? (
         <ProjectCreateModal
           members={members}
+          existingProjectNames={existingProjectNames}
+          defaultProjectName={activeProject?.name ?? undefined}
           onCreated={(project) => {
             const normalizedProject = normalizeProject(project);
             setProjects((current) => [normalizedProject, ...current]);
@@ -363,18 +435,58 @@ export function ProjectsBoardClient({
         />
       ) : null}
       {selectedProject ? (
+        <ProjectDetailModal
+          isOpen
+          projectId={selectedProject.id}
+          defaultTab="tasks"
+          project={selectedProject}
+          members={members}
+          canDelete={isAdmin}
+          onEdit={() => {
+            setEditingProjectId(selectedProject.id);
+            setSelectedProjectId(null);
+          }}
+          onDeleted={(projectId) => {
+            setProjects((current) => current.filter((item) => item.id !== projectId));
+            setSelectedProjectId(null);
+          }}
+          onProgressUpdated={(projectId, progress) => {
+            setProjects((current) =>
+              current.map((item) =>
+                item.id === projectId
+                  ? {
+                      ...item,
+                      progress,
+                    }
+                  : item
+              )
+            );
+          }}
+          onClose={() => setSelectedProjectId(null)}
+        />
+      ) : null}
+      {editingProject ? (
         <ProjectCreateModal
           members={members}
-          project={selectedProject}
+          project={editingProject}
+          startInEditMode
+          existingProjectNames={existingProjectNames}
+          canDelete={isAdmin}
           onSaved={(project) => {
             setProjects((current) =>
               current.map((item) =>
                 item.id === project.id ? normalizeProject(project, item) : item
               )
             );
+            setEditingProjectId(null);
+            setSelectedProjectId(project.id);
+          }}
+          onDeleted={(projectId) => {
+            setProjects((current) => current.filter((item) => item.id !== projectId));
+            setEditingProjectId(null);
             setSelectedProjectId(null);
           }}
-          onClose={() => setSelectedProjectId(null)}
+          onClose={() => setEditingProjectId(null)}
         />
       ) : null}
     </div>

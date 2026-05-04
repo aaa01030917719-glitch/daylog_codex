@@ -9,7 +9,7 @@ interface ProjectViewToggleProps {
 }
 
 const VIEWS: { value: ProjectViewMode; label: string; icon: React.ElementType }[] = [
-  { value: "LIST", label: "보드", icon: LayoutList },
+  { value: "LIST", label: "목록", icon: LayoutList },
   { value: "CALENDAR", label: "달력", icon: CalendarDays },
   { value: "GANTT", label: "간트", icon: ChartNoAxesGantt },
 ];

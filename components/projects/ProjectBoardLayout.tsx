@@ -16,6 +16,7 @@ interface ProjectBoardLayoutProps {
 
 const ORDER: Exclude<ProjectBoardStatus, "ALL">[] = [
   "ONGOING",
+  "REVIEW",
   "UPCOMING",
   "COMPLETED",
 ];
@@ -27,20 +28,34 @@ export function ProjectBoardLayout({
   onCompleteProject,
   onSelectProject,
 }: ProjectBoardLayoutProps) {
-  const visibleStatuses =
-    activeStatus === "ALL" ? ORDER : ORDER.filter((status) => status === activeStatus);
+  const allColumns = ORDER.map((status) => ({
+    status,
+    items: columns[status],
+  }));
+
+  const visibleColumns =
+    activeStatus === "ALL"
+      ? allColumns.filter((column) => column.items.length > 0)
+      : allColumns.filter(
+          (column) => column.status === activeStatus && column.items.length > 0
+        );
+
+  const gridClassName =
+  visibleColumns.length <= 1
+    ? "grid-cols-1"
+    : visibleColumns.length === 2
+      ? "grid-cols-1 md:grid-cols-2"
+      : visibleColumns.length === 3
+        ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+        : "grid-cols-1 md:grid-cols-2 xl:grid-cols-4";
 
   return (
-    <div
-      className={`grid gap-4 ${
-        visibleStatuses.length === 1 ? "grid-cols-1" : "grid-cols-1 xl:grid-cols-3"
-      }`}
-    >
-      {visibleStatuses.map((status) => (
+    <div className={`grid gap-4 ${gridClassName}`}>
+      {visibleColumns.map(({ status, items }) => (
         <ProjectColumn
           key={status}
           status={status}
-          projects={columns[status]}
+          projects={items}
           processingProjectId={processingProjectId}
           onCompleteProject={onCompleteProject}
           onSelectProject={onSelectProject}
