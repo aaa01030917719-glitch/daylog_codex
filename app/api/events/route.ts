@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     });
 
     if (isImportant) {
-      await prisma.approval.create({
+      const approval = await prisma.approval.create({
         data: {
           type: "IMPORTANT_EVENT",
           title: `[중요 일정] ${title}`,
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
             type: "APPROVAL_REQUEST" as const,
             title: "중요 일정 결재 요청이 도착했습니다.",
             body: title,
-            link: "/docs",
+            link: `/approvals/${approval.id}`,
           })),
         });
       }
