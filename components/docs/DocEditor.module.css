@@ -1,0 +1,125 @@
+.editorFrame {
+  overflow: hidden;
+  border-radius: 16px;
+  background: #fff;
+  transition: box-shadow 160ms ease;
+}
+
+.editorFrame :global(.editor-toolbar) {
+  border-color: var(--border-light);
+}
+
+.editorFrame[data-focused="true"] {
+  box-shadow: 0 0 0 3px rgba(79, 124, 255, 0.08);
+}
+
+.editorFrame[data-focused="true"] :global(.editor-toolbar) {
+  border-color: var(--accent);
+}
+
+.editorShell {
+  border: 1.5px solid var(--border-light);
+  border-top: none;
+  background: #fff;
+  padding: 18px 20px 20px;
+  transition: border-color 160ms ease;
+}
+
+.editorFrame[data-focused="true"] .editorShell {
+  border-color: var(--accent);
+}
+
+.editorShell :global(.doc-editor-content) {
+  min-height: 320px;
+  max-height: 68vh;
+  overflow-y: auto;
+  border: none;
+  padding: 0;
+  color: var(--text-primary);
+  line-height: 1.75;
+  background: transparent;
+  box-shadow: none;
+}
+
+.editorShell :global(.doc-editor-content:focus),
+.editorShell :global(.ProseMirror:focus) {
+  outline: none;
+  box-shadow: none;
+}
+
+.editorShell :global(.doc-editor-content p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+.editorShell :global(.doc-editor-content h1) {
+  margin-bottom: 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.editorShell :global(.doc-editor-content h2) {
+  margin-bottom: 0.625rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.editorShell :global(.doc-editor-content h3) {
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.editorShell :global(.doc-editor-content p) {
+  margin-bottom: 0.75rem;
+}
+
+.editorShell :global(.doc-editor-content ul[data-type="taskList"]) {
+  list-style: none;
+  padding: 0;
+}
+
+.editorShell :global(.doc-editor-content ul[data-type="taskList"] li) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.editorShell :global(.doc-editor-content ul[data-type="taskList"] li input[type="checkbox"]) {
+  margin-top: 0.25rem;
+  accent-color: var(--accent);
+}
+
+.editorShell :global(.doc-editor-content ul),
+.editorShell :global(.doc-editor-content ol) {
+  margin-bottom: 0.75rem;
+  padding-left: 1.5rem;
+}
+
+.editorShell :global(.doc-editor-content li) {
+  margin-bottom: 0.35rem;
+}
+
+.editorShell :global(.doc-editor-content blockquote) {
+  margin: 1rem 0;
+  border-left: 3px solid var(--accent-light);
+  padding-left: 1rem;
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .editorShell {
+    padding: 16px 14px 18px;
+  }
+
+  .editorShell :global(.doc-editor-content) {
+    min-height: 260px;
+  }
+}

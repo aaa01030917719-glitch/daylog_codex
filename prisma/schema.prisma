@@ -32,9 +32,11 @@ model User {
   approvalDecisions Approval[]        @relation("DecidedBy")
   notifications     Notification[]
   notices           Notice[]
+  noticeReads       NoticeRead[]
   boardPosts        BoardPost[]
   boardLikes        BoardLike[]
   boardReads        BoardRead[]
+  detailComments    DetailComment[]
   pushSubscriptions PushSubscription[]
 }
 
@@ -104,6 +106,7 @@ model Workspace {
 model WorkspaceMember {
   id          String   @id @default(cuid())
   role        Role     @default(MEMBER)
+  annualLeave Int      @default(12)
   joinedAt    DateTime @default(now())
   userId      String
   workspaceId String
@@ -253,6 +256,29 @@ model Comment {
   mentions Mention[]
 }
 
+enum CommentTargetType {
+  document
+  project
+  idea
+  notice
+  delivery
+}
+
+model DetailComment {
+  id         String            @id @default(cuid())
+  targetType CommentTargetType
+  targetId   String
+  content    String
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+  authorId   String
+
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId, createdAt])
+  @@index([authorId])
+}
+
 model Mention {
   id        String   @id @default(cuid())
   isRead    Boolean  @default(false)
@@ -338,22 +364,41 @@ enum LeaveType {
 }
 
 model Notice {
-  id          String      @id @default(cuid())
-  title       String
-  content     String
-  badge       NoticeBadge
-  startDate   DateTime
-  endDate     DateTime
-  createdAt   DateTime    @default(now())
-  authorId    String
-  workspaceId String
+  id                 String      @id @default(cuid())
+  title              String
+  content            String
+  badge              NoticeBadge
+  category           String      @default("怨듭?")
+  priority           String      @default("?쇰컲")
+  target             String[]    @default([])
+  requireReadConfirm Boolean     @default(false)
+  startDate          DateTime
+  endDate            DateTime
+  createdAt          DateTime    @default(now())
+  authorId           String
+  workspaceId        String
 
-  author    User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  workspace Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  reads     NoticeRead[]
 
   @@index([workspaceId, createdAt])
   @@index([workspaceId, endDate])
 }
+
+model NoticeRead {
+  id       String   @id @default(cuid())
+  readAt   DateTime @default(now())
+  userId   String
+  noticeId String
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notice Notice @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+
+  @@unique([noticeId, userId])
+  @@index([noticeId, readAt])
+}
+
 
 enum NoticeBadge {
   SCHEDULE
@@ -384,6 +429,7 @@ enum NotificationType {
   APPROVAL_RESULT
   ATTENDANCE_REMINDER
   OVERTIME_ALERT
+  NOTICE_POSTED
 }
 
 // NextAuth 필수
