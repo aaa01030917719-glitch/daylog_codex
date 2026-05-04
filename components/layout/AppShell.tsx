@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
@@ -17,11 +18,13 @@ import {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
+  const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [themeColor, setThemeColor] = useState<string | null>(null);
   usePushNotification();
 
   const user = session?.user;
+  const isCalendarRoute = pathname.startsWith("/calendar");
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -105,20 +108,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header
-          onMenuClick={() => setMobileSidebarOpen(true)}
-          userRole={user?.role}
-        />
+        {isCalendarRoute ? (
+          <div className="md:hidden">
+            <Header
+              onMenuClick={() => setMobileSidebarOpen(true)}
+              userRole={user?.role}
+            />
+          </div>
+        ) : (
+          <Header
+            onMenuClick={() => setMobileSidebarOpen(true)}
+            userRole={user?.role}
+          />
+        )}
 
-        <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[var(--max-layout)] px-4 pb-24 pt-6 md:px-6 md:pb-8 md:pt-7">
+        <main className={isCalendarRoute ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto"}>
+          <div className={isCalendarRoute ? "h-full w-full" : "w-full px-4 pb-24 pt-6 md:px-6 md:pb-8 md:pt-7"}>
             {children}
           </div>
         </main>
       </div>
 
       <MobileTabBar />
-      <QuickAddFAB />
+      {isCalendarRoute ? null : <QuickAddFAB />}
     </div>
   );
 }
