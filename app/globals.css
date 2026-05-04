@@ -3689,3 +3689,53 @@ body {
 .attendance-page-shell .list-card:hover {
   box-shadow: none !important;
 }
+
+.editor-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.toolbar-btn {
+  padding: 4px 7px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: background 0.12s, color 0.12s;
+}
+
+.toolbar-btn:hover {
+  background: var(--surface-3);
+  color: var(--text-primary);
+}
+
+.toolbar-btn.is-active {
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+.toolbar-sep {
+  width: 1px;
+  margin: 3px 2px;
+  background: var(--border-light);
+}
+
+.doc-page-shell .workspace-stat-card,
+.doc-page-shell .card-panel,
+.doc-page-shell .table-shell {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.doc-page-shell .workspace-stat-card:hover,
+.doc-page-shell .card-panel:hover,
+.doc-page-shell .table-shell:hover {
+  box-shadow: none !important;
+}

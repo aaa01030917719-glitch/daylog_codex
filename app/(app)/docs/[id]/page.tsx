@@ -1,8 +1,28 @@
+import dynamic from "next/dynamic";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { DocEditor } from "@/components/docs/DocEditor";
 import { CommentSection } from "@/components/docs/CommentSection";
+
+const DocEditor = dynamic(
+  () => import("@/components/docs/DocEditor").then((module) => module.DocEditor),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          border: "1px solid #E8E0C8",
+          borderRadius: "0.75rem",
+          background: "#fff",
+          padding: "1.5rem",
+          color: "#666",
+        }}
+      >
+        문서 편집기를 불러오는 중입니다.
+      </div>
+    ),
+  }
+);
 
 export default async function DocDetailPage({ params }: { params: { id: string } }) {
   const session = await auth();

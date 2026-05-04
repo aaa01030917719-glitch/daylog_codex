@@ -1,120 +1,252 @@
-import { Prisma } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
-import DocsHubClientPage from "@/components/docs/DocsHubClientPage";
-import type {
-  ApprovalSummary,
-  PageSummary,
-} from "@/components/docs/docsHubTypes";
+import { DocPage } from "@/components/docs/DocPage";
+import {
+  calculateLeaveDays,
+  formatLeaveSummaryDays,
+  resolveDocumentStatus,
+  type DocumentMemberOption,
+  type DocumentStats,
+  type DocumentSummary,
+} from "@/lib/documents";
 import { prisma } from "@/lib/prisma";
+import { resolveWorkspaceIdForUser } from "@/lib/workspace-membership";
+
+type ApprovalDocumentRow = {
+  id: string;
+  type: string;
+  title: string;
+  description: string | null;
+  status: string;
+  decisionNote: string | null;
+  createdAt: Date;
+  requesterId: string;
+  leaveType: string | null;
+  leaveStart: Date | null;
+  leaveEnd: Date | null;
+  requester: {
+    id: string;
+    name: string | null;
+  };
+};
 
 function isAdminRole(role?: string | null) {
   return role === "ADMIN" || role === "OWNER";
 }
 
-export default async function DocsPage() {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+function mapApprovalTypeToDocumentType(
+  approvalType: string,
+  leaveType: string | null
+): DocumentSummary["type"] {
+  if (approvalType === "LEAVE_REQUEST") {
+    if (leaveType === "HALF_AM") {
+      return "AM_HALF_DAY";
+    }
 
-  const workspaceId = session.user.workspaceId;
+    if (leaveType === "HALF_PM") {
+      return "PM_HALF_DAY";
+    }
+
+    return "LEAVE";
+  }
+
+  if (approvalType === "BUDGET_TASK") {
+    return "APPROVAL";
+  }
+
+  return "OTHER";
+}
+
+function mapApprovalToDocumentSummary(params: {
+  approval: ApprovalDocumentRow;
+  approverName: string;
+  currentUserId: string;
+}): DocumentSummary {
+  const { approval, approverName, currentUserId } = params;
+  const status = resolveDocumentStatus(approval.status, approval.status);
+
+  return {
+    id: approval.id,
+    title: approval.title,
+    type: mapApprovalTypeToDocumentType(approval.type, approval.leaveType),
+    status,
+    halfDayPeriod:
+      approval.leaveType === "HALF_AM"
+        ? "AM"
+        : approval.leaveType === "HALF_PM"
+          ? "PM"
+          : null,
+    reason: approval.description ?? "",
+    amount: null,
+    costType: null,
+    attachmentName: null,
+    startDate: approval.leaveStart?.toISOString() ?? null,
+    endDate: approval.leaveEnd?.toISOString() ?? null,
+    createdAt: approval.createdAt.toISOString(),
+    authorId: approval.requesterId,
+    authorName: approval.requester.name ?? "이름 없음",
+    approverName,
+    ccUserId: null,
+    ccUserName: null,
+    approvalId: approval.id,
+    rejectionReason: approval.decisionNote,
+    canCancel: approval.requesterId === currentUserId && status === "PENDING",
+    isMine: approval.requesterId === currentUserId,
+  };
+}
+
+function toDate(value: string | null) {
+  return value ? new Date(value) : null;
+}
+
+export default async function DocsPage({
+  searchParams,
+}: {
+  searchParams?: { approvalId?: string | string[] };
+}) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+
+  const workspaceId = await resolveWorkspaceIdForUser(
+    session.user.id,
+    session.user.workspaceId
+  );
   const currentUserId = session.user.id;
   const isAdmin = isAdminRole(session.user.role);
+  const approvalIdParam = Array.isArray(searchParams?.approvalId)
+    ? searchParams.approvalId[0]
+    : searchParams?.approvalId;
 
-  let initialPages: PageSummary[] = [];
-  let initialApprovals: ApprovalSummary[] = [];
+  let initialDocuments: DocumentSummary[] = [];
+  let members: DocumentMemberOption[] = [];
+  let stats: DocumentStats = {
+    annualLeave: 12,
+    usedDays: 0,
+    remainingDays: 12,
+    pendingCount: 0,
+    submittedThisMonth: 0,
+    approvedThisMonth: 0,
+    rejectedThisMonth: 0,
+    upcomingDays: 0,
+  };
+  let approverName = "대표";
 
   if (workspaceId) {
-    const approvalWhere: Prisma.ApprovalWhereInput = isAdmin
-      ? { requester: { members: { some: { workspaceId } } } }
-      : { requesterId: currentUserId };
-
-    const [pages, approvals] = await Promise.all([
-      prisma.page.findMany({
-        where: { workspaceId },
-        orderBy: [{ parentId: "asc" }, { updatedAt: "desc" }],
+    const [approvalRows, memberRows] = await Promise.all([
+      prisma.approval.findMany({
+        where: isAdmin
+          ? { requester: { members: { some: { workspaceId } } } }
+          : {
+              requesterId: currentUserId,
+              requester: { members: { some: { workspaceId } } },
+            },
         include: {
-          author: {
-            select: { id: true, name: true, image: true },
-          },
-          _count: {
-            select: { children: true },
+          requester: {
+            select: { id: true, name: true },
           },
         },
-      }),
-      prisma.approval.findMany({
-        where: approvalWhere,
         orderBy: { createdAt: "desc" },
-        include: {
-          requester: { select: { id: true, name: true, image: true } },
-          decider: { select: { id: true, name: true } },
-          task: { select: { id: true, title: true } },
-          event: { select: { id: true, title: true } },
+      }),
+      prisma.workspaceMember.findMany({
+        where: { workspaceId },
+        orderBy: [{ role: "asc" }, { joinedAt: "asc" }],
+        select: {
+          role: true,
+          user: {
+            select: { id: true, name: true },
+          },
         },
       }),
     ]);
 
-    initialPages = pages.map((page) => ({
-      id: page.id,
-      title: page.title,
-      emoji: page.emoji,
-      isPublic: page.isPublic,
-      parentId: page.parentId,
-      updatedAt: page.updatedAt.toISOString(),
-      author: {
-        id: page.author.id,
-        name: page.author.name,
-        image: page.author.image,
-      },
-      _count: {
-        children: page._count.children,
-      },
-    }));
+    members = memberRows
+      .filter((member) => member.user.id !== currentUserId)
+      .map((member) => ({
+        id: member.user.id,
+        name: member.user.name ?? "이름 없음",
+        role: member.role,
+      }));
 
-    initialApprovals = approvals.map((approval) => ({
-      id: approval.id,
-      type: approval.type,
-      title: approval.title,
-      description: approval.description,
-      status: approval.status,
-      createdAt: approval.createdAt.toISOString(),
-      decidedAt: approval.decidedAt?.toISOString() ?? null,
-      decisionNote: approval.decisionNote,
-      leaveType: approval.leaveType,
-      leaveStart: approval.leaveStart?.toISOString() ?? null,
-      leaveEnd: approval.leaveEnd?.toISOString() ?? null,
-      requesterId: approval.requesterId,
-      deciderId: approval.deciderId,
-      requester: {
-        id: approval.requester.id,
-        name: approval.requester.name,
-        image: approval.requester.image,
-      },
-      decider: approval.decider
-        ? {
-            id: approval.decider.id,
-            name: approval.decider.name,
-          }
-        : null,
-      task: approval.task
-        ? {
-            id: approval.task.id,
-            title: approval.task.title,
-          }
-        : null,
-      event: approval.event
-        ? {
-            id: approval.event.id,
-            title: approval.event.title,
-          }
-        : null,
-    }));
+    approverName =
+      memberRows.find((member) => member.role === "OWNER" || member.role === "ADMIN")?.user
+        .name ?? "대표";
+
+    initialDocuments = approvalRows.map((approval) =>
+      mapApprovalToDocumentSummary({
+        approval,
+        approverName,
+        currentUserId,
+      })
+    );
+
+    const currentYear = new Date().getFullYear();
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+    const myDocuments = initialDocuments.filter((document) => document.authorId === currentUserId);
+
+    const approvedLeaveDays = myDocuments.reduce((total, document) => {
+      const startDate = toDate(document.startDate);
+      const endDate = toDate(document.endDate);
+      const isApproved = document.status === "APPROVED";
+      const sameYear = startDate?.getFullYear() === currentYear;
+
+      if (!isApproved || !sameYear) {
+        return total;
+      }
+
+      return total + calculateLeaveDays(document.type, startDate, endDate);
+    }, 0);
+
+    const upcomingDays = myDocuments.reduce((total, document) => {
+      const startDate = toDate(document.startDate);
+      const endDate = toDate(document.endDate);
+      const isUpcoming =
+        (document.status === "PENDING" || document.status === "APPROVED") &&
+        !!startDate &&
+        startDate >= new Date();
+
+      if (!isUpcoming) {
+        return total;
+      }
+
+      return total + calculateLeaveDays(document.type, startDate, endDate);
+    }, 0);
+
+    const monthDocuments = myDocuments.filter((document) => {
+      const createdAt = new Date(document.createdAt);
+      return createdAt >= monthStart && createdAt < monthEnd;
+    });
+
+    const annualLeave = 12;
+    stats = {
+      annualLeave,
+      usedDays: Number(formatLeaveSummaryDays(approvedLeaveDays)),
+      remainingDays: Math.max(annualLeave - approvedLeaveDays, 0),
+      pendingCount: initialDocuments.filter((document) => document.status === "PENDING").length,
+      submittedThisMonth: monthDocuments.length,
+      approvedThisMonth: monthDocuments.filter((document) => document.status === "APPROVED")
+        .length,
+      rejectedThisMonth: monthDocuments.filter((document) => document.status === "REJECTED")
+        .length,
+      upcomingDays: Number(formatLeaveSummaryDays(upcomingDays)),
+    };
   }
 
   return (
-    <DocsHubClientPage
-      initialPages={initialPages}
-      initialApprovals={initialApprovals}
-      currentUserId={currentUserId}
+    <DocPage
+      initialDocuments={initialDocuments}
+      initialSelectedDocumentId={
+        approvalIdParam
+          ? initialDocuments.find((document) => document.approvalId === approvalIdParam)?.id ?? null
+          : null
+      }
+      stats={stats}
+      members={members}
+      approverName={approverName}
       isAdmin={isAdmin}
     />
   );
