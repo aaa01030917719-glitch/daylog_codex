@@ -155,11 +155,11 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-[80] flex w-[20rem] flex-col border-r border-white/8 bg-[var(--sidebar-bg)] text-white transition-transform duration-300 md:hidden",
+          "fixed inset-y-0 left-0 z-[80] flex w-[20rem] flex-col bg-[var(--sidebar-bg)] text-white transition-transform duration-300 md:hidden",
           open ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        <div className="flex items-center justify-between border-b border-white/8 px-5 py-5">
+        <div className="flex items-center justify-between px-5 py-5">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,124,255,0.28)]">
               DL
@@ -222,7 +222,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
         </nav>
 
         {isAdmin && showAdminCenterMenu ? (
-          <div className="border-t border-white/8 px-4 py-3">
+          <div className="px-4 py-3">
             <div className="sidebar-section-label px-0 pb-2">관리 센터</div>
             <div className="space-y-1.5">
               <Link href="/admin/dashboard" className="sidebar-nav-link group flex items-center gap-3 rounded-[14px] px-4 py-3 text-[13px] font-medium text-white/72 transition-all hover:bg-[var(--sidebar-hover)] hover:text-white">
@@ -237,7 +237,7 @@ export function MobileSidebar({ open, onClose, userRole, userName }: MobileSideb
           </div>
         ) : null}
 
-        <div className="border-t border-white/8 px-4 py-4">
+        <div className="px-4 py-4">
           <div>
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white">

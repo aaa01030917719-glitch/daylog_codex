@@ -137,8 +137,8 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
   ];
 
   return (
-    <aside className="flex h-screen w-[17rem] flex-col border-r border-white/5 bg-[var(--sidebar-bg)] text-white">
-      <div className="border-b border-white/8 px-5 py-5">
+    <aside className="flex h-screen w-[17rem] flex-col bg-[var(--sidebar-bg)] text-white">
+      <div className="px-5 py-5">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent)] text-sm font-bold text-white shadow-[0_12px_24px_rgba(79,124,255,0.28)]">
             DL
@@ -198,7 +198,7 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
       </nav>
 
       {isAdmin && showAdminCenterMenu ? (
-        <div className="border-t border-white/8 px-4 py-3">
+        <div className="px-4 py-3">
           <div className="sidebar-section-label px-0 pb-2">관리 센터</div>
           <div className="space-y-1.5">
             <Link href="/admin/dashboard" className="sidebar-nav-link group flex items-center gap-3 rounded-[14px] px-4 py-3 text-[13px] font-medium text-white/72 transition-all hover:bg-[var(--sidebar-hover)] hover:text-white">
