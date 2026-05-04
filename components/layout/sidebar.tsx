@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import { useEffect, useState } from "react";
 import {
+  AlertCircle,
   LogOut,
   Settings,
   ShieldCheck,
@@ -85,31 +86,54 @@ function NavItem({
   );
 }
 
+function ErrorReportButton() {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        (
+          window as typeof window & {
+            ErrorReportModal?: { open: () => void };
+          }
+        ).ErrorReportModal?.open();
+      }}
+      className="sidebar-nav-link group relative flex w-full items-center gap-3 rounded-[14px] px-4 py-3 text-left text-[13px] font-medium text-white/58 transition-all duration-150 hover:bg-[var(--sidebar-hover)] hover:text-white"
+    >
+      <span className="absolute inset-y-2 left-0 w-1 rounded-full bg-[var(--accent)] opacity-0 transition-opacity group-hover:opacity-60" />
+      <AlertCircle size={17} className="text-white/55 group-hover:text-white" />
+      <span className="flex-1">피드백 보내기</span>
+    </button>
+  );
+}
+
 export function Sidebar({ userRole, userName }: SidebarProps) {
   const pathname = usePathname();
   const [source, setSource] = useState<string | null>(null);
   const isAdmin = userRole === "ADMIN" || userRole === "OWNER";
-  const isOwner = userRole === "OWNER";
+  const canOpenSettings = Boolean(userRole);
   const showAdminCenterMenu = false;
 
   useEffect(() => {
     setSource(new URLSearchParams(window.location.search).get("source"));
   }, [pathname]);
 
-  const workspaceItems: NavItemConfig[] = [
-    { href: "/", icon: "🏠", label: "내 워크스페이스" },
-    { href: "/notices", icon: "📢", label: "공지사항" },
-    { href: "/docs", icon: "📝", label: "문서 작성" },
-    { href: "/memo", icon: "🗒️", label: "메모" },
-  ];
-
-  const projectItems: NavItemConfig[] = [
-    { href: "/projects", icon: "📋", label: "프로젝트" },
-  ];
-
-  const documentItems: NavItemConfig[] = [
-    { href: "/ideas", icon: "💡", label: "아이디어" },
+  const mainItems: NavItemConfig[] = [
+    { href: "/", icon: "🏠", label: "홈" },
     { href: "/notifications", icon: "📨", label: "전달함" },
+    { href: "/notices", icon: "📢", label: "공지사항" },
+    { href: "/memo", icon: "🗒️", label: "내 메모" },
+    { href: "/calendar", icon: "📅", label: "일정관리" },
+  ];
+
+  const workItems: NavItemConfig[] = [
+    { href: "/projects", icon: "📋", label: "프로젝트" },
+    { href: "/ideas", icon: "💡", label: "아이디어" },
+    ...(isAdmin ? [{ href: "/subscriptions", icon: "💳", label: "구독 서비스" }] : []),
+  ];
+
+  const attendanceItems: NavItemConfig[] = [
+    { href: "/attendance", icon: "🕐", label: "팀 출퇴근" },
+    { href: "/docs", icon: "📝", label: "휴가·결재" },
   ];
 
   return (
@@ -129,49 +153,33 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
       <nav className="custom-scroll flex-1 overflow-y-auto px-3 py-4">
         <div className="space-y-6">
           <section className="space-y-2">
-            <div className="sidebar-section-label">바로가기</div>
-              <ul className="space-y-1.5">
-                {workspaceItems.map((item) => (
-                  <NavItem key={item.href} pathname={pathname} source={source} {...item} />
-                ))}
-              </ul>
-            </section>
+            <div className="sidebar-section-label">주요 메뉴</div>
+            <ul className="space-y-1.5">
+              {mainItems.map((item) => (
+                <NavItem key={item.href} pathname={pathname} source={source} {...item} />
+              ))}
+            </ul>
+          </section>
 
           <section className="space-y-2">
-            <div className="sidebar-section-label">워크스페이스</div>
-              <ul className="space-y-1.5">
-                {projectItems.map((item) => (
-                  <NavItem key={item.href} pathname={pathname} source={source} {...item} />
-                ))}
-              </ul>
-              <ul className="space-y-1.5">
-                <NavItem pathname={pathname} source={source} href="/attendance" icon="🕐" label="출퇴근" />
-              </ul>
-              <ul className="space-y-1.5">
-                {documentItems.map((item) => (
-                  <NavItem key={item.label} pathname={pathname} source={source} {...item} />
-                ))}
-              </ul>
-            </section>
-
-            {/* 이거 삭제 예정*/}
-            {/*<section className="space-y-2">
-              <div className="sidebar-section-label">근무관리</div>
-              <ul className="space-y-1.5">
-                <NavItem pathname={pathname} href="/attendance" icon="🕐" label="출퇴근 현황" />
-              </ul>
-            </section> 
+            <div className="sidebar-section-label">업무 관리</div>
+            <ul className="space-y-1.5">
+              {workItems.map((item) => (
+                <NavItem key={item.href} pathname={pathname} source={source} {...item} />
+              ))}
+            </ul>
+          </section>
 
           <section className="space-y-2">
-            <div className="sidebar-section-label">전달문서</div>
-              <ul className="space-y-1.5">
-                {documentItems.map((item) => (
-                  <NavItem key={item.label} pathname={pathname} source={source} {...item} />
-                ))}
-              </ul>
-            </section> */}
+            <div className="sidebar-section-label">근태·결재</div>
+            <ul className="space-y-1.5">
+              {attendanceItems.map((item) => (
+                <NavItem key={item.href} pathname={pathname} source={source} {...item} />
+              ))}
+            </ul>
+          </section>
 
-          {isOwner ? (
+          {canOpenSettings ? (
             <section className="space-y-2">
               <div className="sidebar-section-label">설정</div>
               <ul className="space-y-1.5">
@@ -179,6 +187,13 @@ export function Sidebar({ userRole, userName }: SidebarProps) {
               </ul>
             </section>
           ) : null}
+
+          <section className="space-y-2">
+            <div className="sidebar-section-label">지원</div>
+            <div className="space-y-1.5">
+              <ErrorReportButton />
+            </div>
+          </section>
         </div>
       </nav>
 
