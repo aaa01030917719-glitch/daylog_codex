@@ -39,6 +39,10 @@ model User {
   boardReads        BoardRead[]
   detailComments    DetailComment[]
   errorReports                ErrorReport[]
+  managedSubscriptionServices SubscriptionService[]    @relation("SubscriptionManager")
+  createdSubscriptionServices SubscriptionService[]    @relation("SubscriptionCreatedBy")
+  updatedSubscriptionServices SubscriptionService[]    @relation("SubscriptionUpdatedBy")
+  subscriptionServiceLogs     SubscriptionServiceLog[] @relation("SubscriptionLogActor")
   pushSubscriptions PushSubscription[]
 }
 
@@ -104,6 +108,8 @@ model Workspace {
   pages       Page[]
   notices     Notice[]
   boardPosts  BoardPost[]
+  subscriptionServices    SubscriptionService[]
+  subscriptionServiceLogs SubscriptionServiceLog[]
 }
 
 model WorkspaceMember {
@@ -331,6 +337,85 @@ model ErrorReport {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+enum SubscriptionBillingCycle {
+  MONTHLY
+  YEARLY
+  QUARTERLY
+  HALF_YEARLY
+  ONE_TIME
+}
+
+enum SubscriptionServiceStatus {
+  REVIEW
+  ACTIVE
+  CANCEL_SCHEDULED
+  ENDED
+}
+
+enum SubscriptionServiceLogAction {
+  CREATED
+  UPDATED
+  STATUS_CHANGED
+  ENDED
+  DELETED
+}
+
+model SubscriptionService {
+  id                    String                    @id @default(cuid())
+  serviceName           String
+  websiteUrl            String?
+  category              String?
+  planName              String?
+  billingAmount         Float
+  currency              String
+  billingCycle          SubscriptionBillingCycle
+  firstPaidAt           DateTime?
+  nextBillingAt         DateTime
+  monthlyCostNormalized Float
+  annualCostNormalized  Float
+  managerUserId         String?
+  teamName              String?
+  purpose               String?
+  status                SubscriptionServiceStatus
+  cancellationMethod    String?
+  memo                  String?
+  endedAt               DateTime?
+  deletedAt             DateTime?
+  workspaceId           String
+  createdById           String
+  updatedById           String
+  createdAt             DateTime                  @default(now())
+  updatedAt             DateTime                  @updatedAt
+
+  workspace   Workspace                @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  managerUser User?                    @relation("SubscriptionManager", fields: [managerUserId], references: [id])
+  createdBy   User                     @relation("SubscriptionCreatedBy", fields: [createdById], references: [id])
+  updatedBy   User                     @relation("SubscriptionUpdatedBy", fields: [updatedById], references: [id])
+  logs        SubscriptionServiceLog[]
+
+  @@index([workspaceId, deletedAt])
+  @@index([workspaceId, status])
+  @@index([managerUserId])
+}
+
+model SubscriptionServiceLog {
+  id            String                       @id @default(cuid())
+  serviceId     String
+  workspaceId   String
+  actorId       String
+  actionType    SubscriptionServiceLogAction
+  changedFields Json?
+  createdAt     DateTime                     @default(now())
+
+  service   SubscriptionService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  workspace Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actor     User                @relation("SubscriptionLogActor", fields: [actorId], references: [id])
+
+  @@index([serviceId, createdAt])
+  @@index([workspaceId, createdAt])
+  @@index([actorId])
 }
 
 model Mention {
