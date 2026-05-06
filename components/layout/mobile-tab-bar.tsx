@@ -1,9 +1,10 @@
 ﻿"use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Bell, FileText, FolderKanban, LayoutDashboard, Megaphone } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNavigationItemActive } from "@/components/layout/navigation-state";
 
 const tabItems = [
   { href: "/", icon: LayoutDashboard, label: "홈" },
@@ -15,12 +16,14 @@ const tabItems = [
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const source = searchParams.get("source");
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-[var(--border)] bg-[rgba(255,255,255,0.96)] px-2 py-2 backdrop-blur md:hidden">
       <div className="grid grid-cols-5 gap-1">
         {tabItems.map(({ href, icon: Icon, label }) => {
-          const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const isActive = isNavigationItemActive(pathname, href, source);
           return (
             <Link
               key={href}

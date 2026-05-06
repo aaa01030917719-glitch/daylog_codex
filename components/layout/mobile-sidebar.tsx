@@ -1,8 +1,8 @@
 ﻿"use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   AlertCircle,
@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { isNavigationItemActive } from "@/components/layout/navigation-state";
 
 const ROLE_LABELS: Record<string, string> = {
   OWNER: "대표",
@@ -32,27 +33,6 @@ type NavItemConfig = {
   label: string;
 };
 
-function isActivePath(pathname: string, href: string, source: string | null = null) {
-  const [basePath] = href.split("?");
-  if (basePath === "/") {
-    return pathname === "/";
-  }
-
-  const isMeetingNoteFromNotices =
-    pathname.startsWith("/docs/") &&
-    (source === "notices" || source === "meeting-note");
-
-  if (basePath === "/notices") {
-    return pathname.startsWith("/notices") || isMeetingNoteFromNotices;
-  }
-
-  if (basePath === "/docs") {
-    return pathname === "/docs" || (pathname.startsWith("/docs/") && !isMeetingNoteFromNotices);
-  }
-
-  return pathname.startsWith(basePath);
-}
-
 function NavItem({
   pathname,
   href,
@@ -60,7 +40,7 @@ function NavItem({
   label,
   source,
 }: NavItemConfig & { pathname: string; source: string | null }) {
-  const isActive = isActivePath(pathname, href, source);
+  const isActive = isNavigationItemActive(pathname, href, source);
 
   return (
     <li>
@@ -110,18 +90,16 @@ function ErrorReportButton() {
 
 export function MobileSidebar({ open, onClose, userRole, userName }: MobileSidebarProps) {
   const pathname = usePathname();
-  const [source, setSource] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const search = searchParams.toString();
+  const source = searchParams.get("source");
   const isAdmin = userRole === "ADMIN" || userRole === "OWNER";
   const canOpenSettings = Boolean(userRole);
   const showAdminCenterMenu = false;
 
   useEffect(() => {
-    setSource(new URLSearchParams(window.location.search).get("source"));
-  }, [pathname]);
-
-  useEffect(() => {
     onClose();
-  }, [onClose, pathname]);
+  }, [onClose, pathname, search]);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";

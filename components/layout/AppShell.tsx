@@ -16,14 +16,33 @@ import {
   normalizeThemeColor,
 } from "@/lib/utils";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+type AppShellUser = {
+  name?: string | null;
+  role?: string | null;
+  image?: string | null;
+  workspaceId?: string | null;
+};
+
+export function AppShell({
+  children,
+  initialUser,
+}: {
+  children: React.ReactNode;
+  initialUser?: AppShellUser | null;
+}) {
   const { data: session } = useSession();
   const pathname = usePathname();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [themeColor, setThemeColor] = useState<string | null>(null);
   usePushNotification();
 
-  const user = session?.user;
+  const sessionUser = session?.user;
+  const resolvedUser = {
+    name: sessionUser?.name ?? initialUser?.name ?? undefined,
+    role: sessionUser?.role ?? initialUser?.role ?? undefined,
+    image: sessionUser?.image ?? initialUser?.image ?? undefined,
+    workspaceId: sessionUser?.workspaceId ?? initialUser?.workspaceId ?? undefined,
+  };
   const isCalendarRoute = pathname.startsWith("/calendar");
 
   useEffect(() => {
@@ -50,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user?.workspaceId) {
+    if (!resolvedUser.workspaceId) {
       setThemeColor(null);
       return;
     }
@@ -85,7 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.workspaceId]);
+  }, [resolvedUser.workspaceId]);
 
   return (
     <div
@@ -94,17 +113,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <div className="hidden md:flex md:shrink-0">
         <Sidebar
-          userRole={user?.role}
-          userName={user?.name ?? undefined}
-          userImage={user?.image ?? undefined}
+          userRole={resolvedUser.role}
+          userName={resolvedUser.name}
+          userImage={resolvedUser.image}
         />
       </div>
 
       <MobileSidebar
         open={mobileSidebarOpen}
         onClose={() => setMobileSidebarOpen(false)}
-        userRole={user?.role}
-        userName={user?.name ?? undefined}
+        userRole={resolvedUser.role}
+        userName={resolvedUser.name}
       />
 
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -112,13 +131,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="md:hidden">
             <Header
               onMenuClick={() => setMobileSidebarOpen(true)}
-              userRole={user?.role}
+              userRole={resolvedUser.role}
             />
           </div>
         ) : (
           <Header
             onMenuClick={() => setMobileSidebarOpen(true)}
-            userRole={user?.role}
+            userRole={resolvedUser.role}
           />
         )}
 
