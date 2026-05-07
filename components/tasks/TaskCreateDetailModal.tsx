@@ -433,10 +433,11 @@ export function TaskCreateDetailModal({
       });
 
       if (!response.ok) {
+        const errorMessage = await readError(response);
         if (validationMode === "alert") {
-          window.alert("업무 등록 중 문제가 발생했습니다. 다시 시도해주세요.");
+          window.alert(errorMessage);
         } else {
-          setError(await readError(response));
+          setError(errorMessage);
         }
         return;
       }
@@ -1218,8 +1219,6 @@ export function TaskCreateDetailModal({
             </div>
 
             <div className="prop-row">
-              <div className="prop-label">마감일</div>
-            <div className="prop-row">
               <div className="prop-label">시작일</div>
               <div className="date-chip">
                 <CalendarDays size={13} />
@@ -1232,6 +1231,8 @@ export function TaskCreateDetailModal({
               </div>
             </div>
 
+            <div className="prop-row">
+              <div className="prop-label">마감일</div>
               <div className={`date-chip ${dueTone}`}>
                 <CalendarDays size={13} />
                 <input
@@ -1268,19 +1269,6 @@ export function TaskCreateDetailModal({
                   <span>{resolvedProjectName}</span>
                 </div>
               )}
-            </div>
-
-            <div className="prop-row">
-              <div className="prop-label">시작일</div>
-              <div className="date-chip">
-                <CalendarDays size={13} />
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(event) => setStartDate(event.target.value)}
-                  className="w-full bg-transparent text-[13px] outline-none"
-                />
-              </div>
             </div>
 
             <div className="divider" />

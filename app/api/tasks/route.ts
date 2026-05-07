@@ -71,6 +71,17 @@ const taskApprovalFallback = {
   rejectedReason: null,
 };
 
+function getTaskApprovalFallback(task: {
+  status: TaskStatus;
+  requiresApproval: boolean;
+}) {
+  return {
+    ...taskApprovalFallback,
+    isApprovalRequested:
+      task.status === TaskStatus.IN_REVIEW && Boolean(task.requiresApproval),
+  };
+}
+
 function normalizeTaskStatus(value: unknown, progress: number) {
   const status =
     typeof value === "string" && TASK_STATUSES.has(value as TaskStatus)
@@ -115,7 +126,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     tasks: tasks.map((task) => ({
       ...task,
-      ...taskApprovalFallback,
+      ...getTaskApprovalFallback(task),
     })),
   });
 }
@@ -217,42 +228,79 @@ export async function POST(req: NextRequest) {
       : previousProjectStartDate;
 
     await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`
-        INSERT INTO "Task" (
-          "id",
-          "title",
-          "description",
-          "status",
-          "priority",
-          "requiresApproval",
-          "budget",
-          "startDate",
-          "dueDate",
-          "createdAt",
-          "updatedAt",
-          "projectId",
-          "assigneeId",
-          "creatorId",
-          "progress"
-        )
-        VALUES (
-          ${taskId},
-          ${trimmedTitle},
-          ${description ?? null},
-          ${normalizedStatus}::"TaskStatus",
-          ${normalizedPriority}::"Priority",
-          ${requiresApproval ?? false},
-          ${budget ?? null},
-          ${parsedStartDate.value},
-          ${parsedDueDate.value},
-          NOW(),
-          NOW(),
-          ${projectId},
-          ${trimmedAssigneeId},
-          ${session.user.id},
-          ${finalProgress}
-        )
-      `;
+      if (taskColumnSupport.startDate) {
+        await tx.$executeRaw`
+          INSERT INTO "Task" (
+            "id",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "requiresApproval",
+            "budget",
+            "startDate",
+            "dueDate",
+            "createdAt",
+            "updatedAt",
+            "projectId",
+            "assigneeId",
+            "creatorId",
+            "progress"
+          )
+          VALUES (
+            ${taskId},
+            ${trimmedTitle},
+            ${description ?? null},
+            ${normalizedStatus}::"TaskStatus",
+            ${normalizedPriority}::"Priority",
+            ${requiresApproval ?? false},
+            ${budget ?? null},
+            ${parsedStartDate.value},
+            ${parsedDueDate.value},
+            NOW(),
+            NOW(),
+            ${projectId},
+            ${trimmedAssigneeId},
+            ${session.user.id},
+            ${finalProgress}
+          )
+        `;
+      } else {
+        await tx.$executeRaw`
+          INSERT INTO "Task" (
+            "id",
+            "title",
+            "description",
+            "status",
+            "priority",
+            "requiresApproval",
+            "budget",
+            "dueDate",
+            "createdAt",
+            "updatedAt",
+            "projectId",
+            "assigneeId",
+            "creatorId",
+            "progress"
+          )
+          VALUES (
+            ${taskId},
+            ${trimmedTitle},
+            ${description ?? null},
+            ${normalizedStatus}::"TaskStatus",
+            ${normalizedPriority}::"Priority",
+            ${requiresApproval ?? false},
+            ${budget ?? null},
+            ${parsedDueDate.value},
+            NOW(),
+            NOW(),
+            ${projectId},
+            ${trimmedAssigneeId},
+            ${session.user.id},
+            ${finalProgress}
+          )
+        `;
+      }
 
       if (shouldAdjustProjectStartDate && parsedStartDate.value) {
         await tx.project.update({
@@ -278,7 +326,7 @@ export async function POST(req: NextRequest) {
       {
         task: {
           ...task,
-          ...taskApprovalFallback,
+          ...getTaskApprovalFallback(task),
         },
         projectStartDateAdjusted: shouldAdjustProjectStartDate,
         previousProjectStartDate: serializeDateMeta(previousProjectStartDate),

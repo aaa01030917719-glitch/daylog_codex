@@ -838,6 +838,18 @@ export function ProjectDetailView({
             </div>
           </div>
 
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void handleConfirmRequest()}
+              disabled={requestingConfirm}
+              className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-3)] disabled:cursor-default disabled:opacity-60"
+            >
+              <Check size={15} />
+              {requestingConfirm ? "요청 중..." : "컨펌 요청"}
+            </button>
+          </div>
+
           <div className="mt-8 flex overflow-x-auto border-b border-[var(--border-light)]">
             {[
               { id: "overview" as const, label: "개요" },
@@ -1063,15 +1075,6 @@ export function ProjectDetailView({
 
         <div className="flex items-center justify-between gap-4 border-t border-[var(--border-light)] bg-white px-7 py-4">
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => void handleConfirmRequest()}
-              disabled={requestingConfirm}
-              className="inline-flex items-center gap-2 rounded-[10px] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-3)] disabled:cursor-default disabled:opacity-60"
-            >
-              <Check size={15} />
-              {requestingConfirm ? "요청 중..." : "컨펌 요청"}
-            </button>
             {canDelete ? (
               <button
                 type="button"

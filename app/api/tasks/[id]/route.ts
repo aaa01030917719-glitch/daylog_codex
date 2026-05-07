@@ -72,6 +72,17 @@ const taskApprovalFallback = {
   rejectedReason: null,
 };
 
+function getTaskApprovalFallback(task: {
+  status: TaskStatus;
+  requiresApproval: boolean;
+}) {
+  return {
+    ...taskApprovalFallback,
+    isApprovalRequested:
+      task.status === TaskStatus.IN_REVIEW && Boolean(task.requiresApproval),
+  };
+}
+
 function normalizeTaskStatus(value: unknown, fallback: TaskStatus) {
   return typeof value === "string" && TASK_STATUSES.has(value as TaskStatus)
     ? (value as TaskStatus)
@@ -105,7 +116,7 @@ export async function GET(
     return NextResponse.json({
       task: {
         ...task,
-        ...taskApprovalFallback,
+        ...getTaskApprovalFallback(task),
         project: {
           id: task.project.id,
           name: task.project.name,
@@ -283,7 +294,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({
-      task: { ...updated, ...taskApprovalFallback },
+      task: { ...updated, ...getTaskApprovalFallback(updated) },
       projectStartDateAdjusted: shouldAdjustProjectStartDate,
       previousProjectStartDate: serializeDateMeta(previousProjectStartDate),
       nextProjectStartDate: serializeDateMeta(nextProjectStartDate),
