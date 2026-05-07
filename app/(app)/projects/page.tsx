@@ -172,6 +172,7 @@ export default async function ProjectsPage({
     <ProjectsTaskBoard
       initialGroups={groups}
       members={members.map((member) => member.user)}
+      isAdmin={session.user.role === "ADMIN" || session.user.role === "OWNER"}
       currentUserId={session.user.id}
       initialStatus={initialStatus}
       initialView={initialView}

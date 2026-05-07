@@ -436,19 +436,23 @@ export function TaskDetailModal({
   }, [initialTask, isOpen, taskId]);
 
   const canDelete = Boolean(task && (isAdmin || task.creatorId === currentUserId));
+  const isApprovalPending = Boolean(
+    task &&
+      ((task.isApprovalRequested ?? false) ||
+        (status === "IN_REVIEW" && task.requiresApproval))
+  );
   const canRequestConfirm = Boolean(
     task &&
       currentUserId &&
       status !== "DONE" &&
       (task.assigneeId === currentUserId || task.creatorId === currentUserId) &&
-      !task.isApprovalRequested
+      !isApprovalPending
   );
   const canReviewConfirm = Boolean(
     task &&
       isAdmin &&
       status === "IN_REVIEW" &&
-      task.isApprovalRequested &&
-      task.assigneeId !== currentUserId
+      isApprovalPending
   );
   const doneCount = subTasks.filter((item) => item.isDone).length;
   const progressPct = subTasks.length > 0 ? Math.round((doneCount / subTasks.length) * 100) : 0;
@@ -476,6 +480,54 @@ export function TaskDetailModal({
       ...comments.map((comment) => ({ id: comment.id, label: `${comment.author}님이 댓글을 남겼습니다.`, time: formatDateTime(comment.createdAt) })),
     ];
   }, [comments, dueDate, task]);
+  const approvalSection =
+    task &&
+    (task.requiresApproval || isApprovalPending || canRequestConfirm || canReviewConfirm) ? (
+      <div className="mt-4 space-y-3">
+        <div className="confirm-banner">
+          <div className="flex items-start gap-2">
+            <Info size={15} className="mt-[1px] shrink-0" />
+            <div>
+              <p className="font-semibold">확인 요청</p>
+              <p className="mt-1">
+                {isApprovalPending
+                  ? "대표 또는 권한 있는 사용자의 확인을 기다리고 있어요."
+                  : "완료 전 확인이 필요하면 요청을 보낼 수 있어요."}
+              </p>
+            </div>
+          </div>
+        </div>
+        {canReviewConfirm ? (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className="btn-modal btn-modal-ghost justify-center"
+              onClick={() => void handleApprovalDecision("REJECT")}
+              disabled={decisionLoading !== null}
+            >
+              {decisionLoading === "REJECT" ? "전달 중..." : "수정 요청"}
+            </button>
+            <button
+              type="button"
+              className="btn-modal btn-modal-primary justify-center"
+              onClick={() => void handleApprovalDecision("APPROVE")}
+              disabled={decisionLoading !== null}
+            >
+              {decisionLoading === "APPROVE" ? "처리 중..." : "확인 완료"}
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="btn-modal btn-modal-primary w-full justify-center"
+            onClick={() => void handleConfirmRequest()}
+            disabled={confirming || isApprovalPending}
+          >
+            {confirming ? "요청 중..." : isApprovalPending ? "요청됨" : "확인 요청"}
+          </button>
+        )}
+      </div>
+    ) : null;
 
   useEffect(() => {
     const resolvedTaskId = task?.id ?? taskId;
@@ -903,6 +955,7 @@ export function TaskDetailModal({
               <button type="button" className="btn-icon-sm close" aria-label="닫기" onClick={onClose}><X size={18} /></button>
             </div>
           </div>
+          {approvalSection}
           <div className="modal-tabs mt-4">
             <button type="button" className={`modal-tab-btn ${activeTab === "detail" ? "active" : ""}`} onClick={() => setActiveTab("detail")}>상세</button>
             <button type="button" className={`modal-tab-btn ${activeTab === "comments" ? "active" : ""}`} onClick={() => setActiveTab("comments")}>
@@ -1185,53 +1238,6 @@ export function TaskDetailModal({
                   </p>
                 ) : null}
 
-                {(task.requiresApproval || task.isApprovalRequested || canRequestConfirm || canReviewConfirm) ? (
-                  <>
-                    <div className="divider" />
-                    <div className="confirm-banner">
-                      <div className="flex items-start gap-2">
-                        <Info size={15} className="mt-[1px] shrink-0" />
-                        <div>
-                          <p className="font-semibold">확인 요청</p>
-                          <p className="mt-1">
-                            {task.isApprovalRequested || status === "IN_REVIEW"
-                              ? "대표 또는 권한 있는 사용자의 확인을 기다리고 있어요."
-                              : "완료 전 확인이 필요하면 요청을 보낼 수 있어요."}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    {canReviewConfirm ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          className="btn-modal btn-modal-ghost justify-center"
-                          onClick={() => void handleApprovalDecision("REJECT")}
-                          disabled={decisionLoading !== null}
-                        >
-                          {decisionLoading === "REJECT" ? "전달 중..." : "수정 요청"}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn-modal btn-modal-primary justify-center"
-                          onClick={() => void handleApprovalDecision("APPROVE")}
-                          disabled={decisionLoading !== null}
-                        >
-                          {decisionLoading === "APPROVE" ? "처리 중..." : "확인 완료"}
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn-modal btn-modal-primary w-full justify-center"
-                        onClick={() => void handleConfirmRequest()}
-                        disabled={confirming || task.isApprovalRequested || status === "IN_REVIEW"}
-                      >
-                        {confirming ? "요청 중..." : task.isApprovalRequested || status === "IN_REVIEW" ? "요청됨" : "확인 요청"}
-                      </button>
-                    )}
-                  </>
-                ) : null}
               </div>
 
               <div className="custom-scroll overflow-y-auto bg-[var(--surface-2)] px-5 py-[22px] max-[680px]:hidden">

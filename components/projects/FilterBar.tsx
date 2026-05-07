@@ -62,6 +62,7 @@ export interface ProjectTaskGroup {
 interface ProjectsTaskBoardProps {
   initialGroups: ProjectTaskGroup[];
   members: ProjectMemberOption[];
+  isAdmin: boolean;
   currentUserId: string;
   initialStatus: BoardStatus;
   initialView: ProjectTaskViewMode;
@@ -508,6 +509,7 @@ function TimelineGanttView({
 export function ProjectsTaskBoard({
   initialGroups,
   members,
+  isAdmin,
   currentUserId,
   initialStatus,
   initialView,
@@ -936,6 +938,7 @@ export function ProjectsTaskBoard({
           taskId={selectedTask.id}
           projectName={selectedTask.projectName}
           members={members}
+          isAdmin={isAdmin}
           currentUserId={currentUserId}
           onClose={() => setSelectedTask(null)}
           onUpdated={(task) => handleTaskUpdated(task as unknown as Record<string, unknown>)}
