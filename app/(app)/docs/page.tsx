@@ -30,10 +30,6 @@ type ApprovalDocumentRow = {
   };
 };
 
-function isAdminRole(role?: string | null) {
-  return role === "ADMIN" || role === "OWNER";
-}
-
 function mapApprovalTypeToDocumentType(
   approvalType: string,
   leaveType: string | null
@@ -114,7 +110,6 @@ export default async function DocsPage({
     session.user.workspaceId
   );
   const currentUserId = session.user.id;
-  const isAdmin = isAdminRole(session.user.role);
   const approvalIdParam = Array.isArray(searchParams?.approvalId)
     ? searchParams.approvalId[0]
     : searchParams?.approvalId;
@@ -136,12 +131,10 @@ export default async function DocsPage({
   if (workspaceId) {
     const [approvalRows, memberRows] = await Promise.all([
       prisma.approval.findMany({
-        where: isAdmin
-          ? { requester: { members: { some: { workspaceId } } } }
-          : {
-              requesterId: currentUserId,
-              requester: { members: { some: { workspaceId } } },
-            },
+        where: {
+          requesterId: currentUserId,
+          requester: { members: { some: { workspaceId } } },
+        },
         include: {
           requester: {
             select: { id: true, name: true },
@@ -247,7 +240,6 @@ export default async function DocsPage({
       stats={stats}
       members={members}
       approverName={approverName}
-      isAdmin={isAdmin}
     />
   );
 }

@@ -31,7 +31,6 @@ interface DocPageProps {
   stats: DocumentStats;
   members: DocumentMemberOption[];
   approverName: string;
-  isAdmin: boolean;
 }
 
 type ListFilter = "ALL" | "LEAVE" | "APPROVAL";
@@ -92,7 +91,6 @@ export function DocPage({
   stats,
   members,
   approverName,
-  isAdmin,
 }: DocPageProps) {
   const [documents, setDocuments] = useState(initialDocuments);
   const [filter, setFilter] = useState<ListFilter>("ALL");
@@ -254,7 +252,7 @@ export function DocPage({
           <div className="page-header__meta">
             <div className="page-header__eyebrow">Document Workflow</div>
             <h1 className="page-title">휴가·결재</h1>
-            <p className="page-subtitle">팀 문서는 이곳에서 관리하세요🌳</p>
+            <p className="page-subtitle">내 신청 문서는 이곳에서 관리하세요</p>
           </div>
           <div className="page-actions">
             <button
@@ -329,9 +327,7 @@ export function DocPage({
   <div className="min-w-0">
     <h2 className="card-title">신청 내역</h2>
     <p className="card-description">
-      {isAdmin
-        ? `팀 문서 ${filteredDocuments.length}건`
-        : `내 문서 ${filteredDocuments.length}건`}
+      {`내 문서 ${filteredDocuments.length}건`}
     </p>
   </div>
 
@@ -385,7 +381,6 @@ export function DocPage({
                               {document.title}
                             </div>
                             <div className="mt-1 text-xs text-[var(--text-muted)]">
-                              {isAdmin ? `${document.authorName} · ` : ""}
                               {formatDocumentReasonPreview(document.reason) || "적어둔 내용이 없어요"}
                             </div>
                           </div>
@@ -525,7 +520,7 @@ export function DocPage({
         open={selectedDocument !== null}
         document={selectedDocument}
         submitting={detailSubmitting}
-        canDecide={isAdmin}
+        canDecide={false}
         onClose={() => setDetailDocumentId(null)}
         onCancel={handleCancelDocument}
         onApprove={(document) => handleDecideDocument(document, "APPROVED")}

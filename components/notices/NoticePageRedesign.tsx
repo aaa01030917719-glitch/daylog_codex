@@ -21,6 +21,7 @@ interface NoticePageProps {
   initialLeaveStatuses: NoticePageLeaveStatus[];
   initialMinutes: NoticeMinuteSummary[];
   isAdmin: boolean;
+  isOwner: boolean;
 }
 
 type NoticeTabValue = "NOTICES" | "LEAVE" | "MINUTES";
@@ -91,6 +92,7 @@ export function NoticePage({
   initialLeaveStatuses,
   initialMinutes,
   isAdmin,
+  isOwner,
 }: NoticePageProps) {
   const [activeTab, setActiveTab] = useState<NoticeTabValue>("NOTICES");
   const [categoryFilter, setCategoryFilter] = useState<NoticeCategoryFilter>("전체");
@@ -173,7 +175,7 @@ export function NoticePage({
         ...current,
       ]);
       setMinuteModalOpen(false);
-      setActiveTab("MINUTES");
+      window.location.href = `/docs/${page.id}?source=notices`;
     } catch (requestError) {
       console.error("[MINUTE_CREATE]", requestError);
       setMinuteError("회의록을 저장하지 못했어요.");
@@ -529,13 +531,34 @@ export function NoticePage({
                 </h2>
                 <p className="mt-1 text-xs text-[var(--text-muted)]">팀 연차 현황을 한 번에 볼 수 있어요</p>
               </div>
-              {isAdmin ? (
+              {isOwner ? (
                 <button type="button" className="secondary-button">
                   내려받기
                 </button>
               ) : null}
             </div>
-            {initialLeaveStatuses.length === 0 ? (
+            {!isOwner ? (
+              <div className="p-5">
+                <div className="flex min-h-[220px] flex-col items-center justify-center rounded-[14px] border border-dashed border-[var(--border)] bg-[var(--surface-2)] px-6 py-10 text-center">
+                  <FileText size={34} className="text-[var(--text-muted)]" />
+                  <p className="mt-4 text-base font-semibold text-[var(--text-primary)]">
+                    휴가·결재에서 확인해주세요
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                    내 연차현황과 신청내역은 휴가·결재 페이지에서 확인할 수 있어요.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.location.href = "/docs";
+                    }}
+                    className="primary-button mt-5 px-[18px] py-[9px]"
+                  >
+                    휴가·결재에서 확인하기
+                  </button>
+                </div>
+              </div>
+            ) : initialLeaveStatuses.length === 0 ? (
               <div className="p-5">
                 <EmptyPanel
                   title="연차 현황이 아직 없어요"
@@ -594,18 +617,16 @@ export function NoticePage({
                 <h2 className="text-[15px] font-semibold text-[var(--text-primary)]">회의록</h2>
                 <p className="mt-1 text-xs text-[var(--text-muted)]">회의록을 최신순으로 볼 수 있어요</p>
               </div>
-              {isAdmin ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMinuteError(null);
-                    setMinuteModalOpen(true);
-                  }}
-                  className="primary-button"
-                >
-                  기록하기
-                </button>
-              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setMinuteError(null);
+                  setMinuteModalOpen(true);
+                }}
+                className="primary-button"
+              >
+                기록하기
+              </button>
             </div>
             <div className="space-y-3 p-5">
               {minutes.length === 0 ? (

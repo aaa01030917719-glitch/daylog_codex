@@ -14,6 +14,10 @@ function isAdminRole(role?: string | null) {
   return role === "ADMIN" || role === "OWNER";
 }
 
+function isOwnerRole(role?: string | null) {
+  return role === "OWNER";
+}
+
 export default async function NoticesPage() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -26,6 +30,7 @@ export default async function NoticesPage() {
   );
   const currentUserId = session.user.id;
   const isAdmin = isAdminRole(session.user.role);
+  const isOwner = isOwnerRole(session.user.role);
 
   let initialNotices: NoticePageNotice[] = [];
   let initialLeaveStatuses: NoticePageLeaveStatus[] = [];
@@ -62,24 +67,26 @@ export default async function NoticesPage() {
           },
         },
       }),
-      prisma.approval.findMany({
-        where: {
-          type: "LEAVE_REQUEST",
-          requester: {
-            members: {
-              some: {
-                workspaceId,
+      isOwner
+        ? prisma.approval.findMany({
+            where: {
+              type: "LEAVE_REQUEST",
+              requester: {
+                members: {
+                  some: {
+                    workspaceId,
+                  },
+                },
               },
             },
-          },
-        },
-        include: {
-          requester: {
-            select: { id: true, name: true },
-          },
-        },
-        orderBy: [{ leaveStart: "desc" }, { createdAt: "desc" }],
-      }),
+            include: {
+              requester: {
+                select: { id: true, name: true },
+              },
+            },
+            orderBy: [{ leaveStart: "desc" }, { createdAt: "desc" }],
+          })
+        : Promise.resolve([]),
       prisma.page.findMany({
         where: {
           workspaceId,
@@ -147,9 +154,7 @@ export default async function NoticesPage() {
     });
 
     const currentYear = new Date().getFullYear();
-    const visibleMembers = isAdmin
-      ? memberRows
-      : memberRows.filter((member) => member.userId === currentUserId);
+    const visibleMembers = isOwner ? memberRows : [];
 
     initialLeaveStatuses = visibleMembers.map((member) => {
       const memberApprovals = leaveApprovals.filter(
@@ -221,6 +226,7 @@ export default async function NoticesPage() {
       initialLeaveStatuses={initialLeaveStatuses}
       initialMinutes={initialMinutes}
       isAdmin={isAdmin}
+      isOwner={isOwner}
     />
   );
 }

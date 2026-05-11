@@ -139,15 +139,12 @@ export async function GET() {
     return NextResponse.json({ documents: [] });
   }
 
-  const isAdmin = session.user.role === "ADMIN" || session.user.role === "OWNER";
   const approverName = await getApproverName(workspaceId);
   const approvals = await prisma.approval.findMany({
-    where: isAdmin
-      ? { requester: { members: { some: { workspaceId } } } }
-      : {
-          requesterId: session.user.id,
-          requester: { members: { some: { workspaceId } } },
-        },
+    where: {
+      requesterId: session.user.id,
+      requester: { members: { some: { workspaceId } } },
+    },
     include: {
       requester: {
         select: { id: true, name: true },
