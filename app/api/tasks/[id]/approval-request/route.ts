@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { TaskStatus } from "@prisma/client";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveWorkspaceIdForUser } from "@/lib/workspace-membership";
 
 function canRequestTaskApproval(task: { assigneeId: string | null; creatorId: string }, userId: string) {
-  return task.assigneeId === userId || task.creatorId === userId;
+  return task.creatorId === userId;
 }
 
 function buildTaskInclude() {
@@ -33,9 +34,15 @@ export async function POST(
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const workspaceId = session.user.workspaceId;
+  const workspaceId = await resolveWorkspaceIdForUser(
+    session.user.id,
+    session.user.workspaceId
+  );
   if (!workspaceId) {
-    return NextResponse.json({ error: "워크스페이스 정보가 없습니다." }, { status: 400 });
+    return NextResponse.json(
+      { error: "워크스페이스 정보를 확인하지 못했습니다." },
+      { status: 400 }
+    );
   }
 
   try {
@@ -60,6 +67,13 @@ export async function POST(
       return NextResponse.json({ error: "이미 완료된 업무입니다." }, { status: 400 });
     }
 
+    if (task.status === TaskStatus.IN_REVIEW && task.requiresApproval) {
+      return NextResponse.json(
+        { error: "이미 확인 요청이 진행 중입니다." },
+        { status: 409 }
+      );
+    }
+
     const reviewers = await prisma.workspaceMember.findMany({
       where: {
         workspaceId,
@@ -69,31 +83,31 @@ export async function POST(
       select: { userId: true },
     });
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const nextTask = await tx.task.update({
-        where: { id: task.id },
-        data: {
-          status: TaskStatus.IN_REVIEW,
-          progress: Math.min(task.progress ?? 0, 99),
-          requiresApproval: true,
-        },
-        select: buildTaskInclude(),
-      });
+    const updated = await prisma.task.update({
+      where: { id: task.id },
+      data: {
+        status: TaskStatus.IN_REVIEW,
+        progress: Math.min(task.progress ?? 0, 99),
+        requiresApproval: true,
+      },
+      select: buildTaskInclude(),
+    });
 
-      if (reviewers.length > 0) {
-        await tx.notification.createMany({
+    if (reviewers.length > 0) {
+      try {
+        await prisma.notification.createMany({
           data: reviewers.map((reviewer) => ({
             userId: reviewer.userId,
             type: "TASK_APPROVAL_REQUEST",
             title: "업무 확인 요청",
-            body: `${task.title} 확인을 요청했어요.`,
+            body: `${task.title} 확인 요청이 도착했어요.`,
             link: `/projects/${task.projectId}?taskId=${task.id}`,
           })),
         });
+      } catch (notificationError) {
+        console.error("[TASK APPROVAL REQUEST][NOTIFICATION]", notificationError);
       }
-
-      return nextTask;
-    });
+    }
 
     return NextResponse.json({
       task: {

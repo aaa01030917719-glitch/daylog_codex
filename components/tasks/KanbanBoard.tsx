@@ -328,6 +328,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
           projectName={project.name}
           defaultStatus={createForStatus}
           members={members}
+          currentUserId={currentUserId}
           onCreated={handleTaskCreated}
           onClose={() => setCreateForStatus(null)}
         />

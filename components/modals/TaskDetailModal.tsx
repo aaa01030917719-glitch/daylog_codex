@@ -435,17 +435,18 @@ export function TaskDetailModal({
     };
   }, [initialTask, isOpen, taskId]);
 
-  const canDelete = Boolean(task && (isAdmin || task.creatorId === currentUserId));
+  const canEditTask = Boolean(task && currentUserId && task.creatorId === currentUserId);
+  const canDelete = canEditTask;
   const isApprovalPending = Boolean(
     task &&
       ((task.isApprovalRequested ?? false) ||
         (status === "IN_REVIEW" && task.requiresApproval))
   );
   const canRequestConfirm = Boolean(
-    task &&
+      task &&
       currentUserId &&
       status !== "DONE" &&
-      (task.assigneeId === currentUserId || task.creatorId === currentUserId) &&
+      task.creatorId === currentUserId &&
       !isApprovalPending
   );
   const canReviewConfirm = Boolean(
@@ -454,12 +455,16 @@ export function TaskDetailModal({
       status === "IN_REVIEW" &&
       isApprovalPending
   );
+  const approvalRowLabel = isApprovalPending ? "요청됨" : "확인 요청";
+  const approvalRowMessage = isApprovalPending
+    ? "대표 또는 권한 있는 사용자의 확인을 기다리고 있어요."
+    : "완료 전 확인이 필요하면 요청을 보낼 수 있어요.";
   const doneCount = subTasks.filter((item) => item.isDone).length;
   const progressPct = subTasks.length > 0 ? Math.round((doneCount / subTasks.length) * 100) : 0;
   const resolvedProjectName = projectName || task?.project?.name || "프로젝트";
   const dueTone = getDueTone(dueDate);
   const isProgressEditable = status === "IN_PROGRESS";
-  const isDirty = originalSnapshot
+  const isDirty = canEditTask && originalSnapshot
     ? originalSnapshot.title !== title ||
       originalSnapshot.description !== description ||
       originalSnapshot.status !== status ||
@@ -483,49 +488,55 @@ export function TaskDetailModal({
   const approvalSection =
     task &&
     (task.requiresApproval || isApprovalPending || canRequestConfirm || canReviewConfirm) ? (
-      <div className="mt-4 space-y-3">
-        <div className="confirm-banner">
-          <div className="flex items-start gap-2">
-            <Info size={15} className="mt-[1px] shrink-0" />
-            <div>
-              <p className="font-semibold">확인 요청</p>
-              <p className="mt-1">
-                {isApprovalPending
-                  ? "대표 또는 권한 있는 사용자의 확인을 기다리고 있어요."
-                  : "완료 전 확인이 필요하면 요청을 보낼 수 있어요."}
+      <div className="mt-3 rounded-[12px] border border-[var(--border-light)] bg-[var(--surface-2)] px-3 py-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-start gap-2">
+            <Info size={14} className="mt-0.5 shrink-0 text-[var(--warning)]" />
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-[var(--text-secondary)]">
+                {approvalRowLabel}
+              </p>
+              <p className="text-[13px] leading-5 text-[var(--text-muted)]">
+                {approvalRowMessage}
               </p>
             </div>
           </div>
-        </div>
-        {canReviewConfirm ? (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className="btn-modal btn-modal-ghost justify-center"
-              onClick={() => void handleApprovalDecision("REJECT")}
-              disabled={decisionLoading !== null}
-            >
-              {decisionLoading === "REJECT" ? "전달 중..." : "수정 요청"}
-            </button>
-            <button
-              type="button"
-              className="btn-modal btn-modal-primary justify-center"
-              onClick={() => void handleApprovalDecision("APPROVE")}
-              disabled={decisionLoading !== null}
-            >
-              {decisionLoading === "APPROVE" ? "처리 중..." : "확인 완료"}
-            </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {canReviewConfirm ? (
+              <>
+                <button
+                  type="button"
+                  className="btn-modal btn-modal-ghost h-8 justify-center px-3 text-[12px]"
+                  onClick={() => void handleApprovalDecision("REJECT")}
+                  disabled={decisionLoading !== null}
+                >
+                  {decisionLoading === "REJECT" ? "전달 중..." : "수정 요청"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-modal btn-modal-primary h-8 justify-center px-3 text-[12px]"
+                  onClick={() => void handleApprovalDecision("APPROVE")}
+                  disabled={decisionLoading !== null}
+                >
+                  {decisionLoading === "APPROVE" ? "처리 중..." : "확인 완료"}
+                </button>
+              </>
+            ) : isApprovalPending ? (
+              <span className="inline-flex h-8 items-center rounded-[10px] border border-[#f2d58a] bg-[#fff8dd] px-3 text-[12px] font-semibold text-[#8a6116]">
+                요청됨
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="btn-modal btn-modal-ghost h-8 justify-center px-3 text-[12px]"
+                onClick={() => void handleConfirmRequest()}
+                disabled={confirming}
+              >
+                {confirming ? "요청 중..." : "확인 요청"}
+              </button>
+            )}
           </div>
-        ) : (
-          <button
-            type="button"
-            className="btn-modal btn-modal-primary w-full justify-center"
-            onClick={() => void handleConfirmRequest()}
-            disabled={confirming || isApprovalPending}
-          >
-            {confirming ? "요청 중..." : isApprovalPending ? "요청됨" : "확인 요청"}
-          </button>
-        )}
+        </div>
       </div>
     ) : null;
 
@@ -539,6 +550,10 @@ export function TaskDetailModal({
   }, [attachments, attachmentsReady, task?.id, taskId]);
 
   async function syncTask(payload: Record<string, unknown>) {
+    if (!canEditTask) {
+      throw new Error("이 업무는 작성자만 수정할 수 있어요.");
+    }
+
     const response = await fetch(`/api/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -572,6 +587,8 @@ export function TaskDetailModal({
   }
 
   async function handleStatusToggle() {
+    if (!canEditTask) return;
+
     const nextStatus: TaskStatus = status === "DONE" ? "TODO" : "DONE";
     const previousStatus = status;
     const previousProgress = progress;
@@ -588,6 +605,8 @@ export function TaskDetailModal({
   }
 
   function applyStatus(nextStatus: TaskStatus) {
+    if (!canEditTask) return;
+
     setStatus(nextStatus);
     setProgress((current) => {
       if (nextStatus === "DONE") {
@@ -607,6 +626,8 @@ export function TaskDetailModal({
   }
 
   function applyProgress(nextProgress: number) {
+    if (!canEditTask) return;
+
     const normalized = normalizeTaskProgress(nextProgress);
     setProgress(normalized);
     if (normalized >= 100) {
@@ -617,6 +638,8 @@ export function TaskDetailModal({
   }
 
   function handleAddLink() {
+    if (!canEditTask) return;
+
     const normalizedUrl = normalizeTaskLinkUrl(linkUrl);
     if (!normalizedUrl) {
       setLinkError("공유 링크 주소를 확인해주세요.");
@@ -638,6 +661,11 @@ export function TaskDetailModal({
   }
 
   async function handleSave() {
+    if (!canEditTask) {
+      setError("이 업무는 작성자만 수정할 수 있어요.");
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setSuccessMessage(null);
@@ -673,6 +701,11 @@ export function TaskDetailModal({
   }
 
   async function handleDelete() {
+    if (!canEditTask) {
+      setError("이 업무는 작성자만 삭제할 수 있어요.");
+      return;
+    }
+
     if (!task || !window.confirm("이 업무를 삭제할까요?")) return;
     setDeleting(true);
     setError(null);
@@ -692,6 +725,7 @@ export function TaskDetailModal({
     if (!task) return;
     setConfirming(true);
     setError(null);
+    setSuccessMessage(null);
     try {
       const response = await fetch(`/api/tasks/${task.id}/approval-request`, {
         method: "POST",
@@ -703,22 +737,35 @@ export function TaskDetailModal({
           taskId: task.id,
         }),
       });
-      if (!response.ok) throw new Error(await readError(response, "컨펌 요청을 보내지 못했습니다."));
+      if (!response.ok) {
+        throw new Error(await readError(response, "확인 요청을 보내지 못했습니다."));
+      }
+      const data = (await response.json().catch(() => null)) as
+        | { task?: Partial<TaskRecord> }
+        | null;
+      const nextProgress = normalizeTaskProgress(
+        data?.task?.progress ?? Math.min(progress, 99),
+        Math.min(progress, 99)
+      );
       const nextTask = {
         ...task,
+        ...data?.task,
         status: "IN_REVIEW" as TaskStatus,
-        progress: Math.min(progress, 99),
+        progress: nextProgress,
         requiresApproval: true,
         isApprovalRequested: true,
       };
       setTask(nextTask);
-      setStatus("IN_REVIEW");
+      setStatus(nextTask.status);
       setProgress(nextTask.progress);
       setOriginalSnapshot(toEditableSnapshot(nextTask));
       onUpdated?.(nextTask);
-      setSuccessMessage("확인 요청을 보냈습니다.");
     } catch (confirmError) {
-      setError(confirmError instanceof Error ? confirmError.message : "컨펌 요청을 보내지 못했습니다.");
+      setError(
+        confirmError instanceof Error
+          ? confirmError.message
+          : "확인 요청을 보내지 못했습니다."
+      );
     } finally {
       setConfirming(false);
     }
@@ -771,6 +818,8 @@ export function TaskDetailModal({
   }
 
   function handleAddSubTask() {
+    if (!canEditTask) return;
+
     const nextTitle = newSubTaskTitle.trim();
     if (!nextTitle) return;
     setSubTasks((current) => [...current, { id: `sub-${Date.now()}`, title: nextTitle, isDone: false, assigneeId: assigneeId || undefined }]);
@@ -779,6 +828,8 @@ export function TaskDetailModal({
   }
 
   function handleApplyFormat(action: TaskEditorAction) {
+    if (!canEditTask) return;
+
     const editor = descriptionRef.current;
     if (!editor) {
       return;
@@ -806,6 +857,8 @@ export function TaskDetailModal({
   }
 
   function handleDescriptionInput(event: React.FormEvent<HTMLDivElement>) {
+    if (!canEditTask) return;
+
     if (isComposingRef.current) {
       return;
     }
@@ -819,12 +872,16 @@ export function TaskDetailModal({
   }
 
   function handleDescriptionCompositionEnd(event: React.CompositionEvent<HTMLDivElement>) {
+    if (!canEditTask) return;
+
     isComposingRef.current = false;
     setDescription(normalizeTaskDescriptionHtml(event.currentTarget.innerHTML));
     updateActiveFormats();
   }
 
   function handleDescriptionPaste(event: React.ClipboardEvent<HTMLDivElement>) {
+    if (!canEditTask) return;
+
     event.preventDefault();
     const pastedText = event.clipboardData.getData("text/plain");
     document.execCommand("insertText", false, pastedText);
@@ -863,11 +920,18 @@ export function TaskDetailModal({
   }
 
   function handleOpenImagePicker() {
+    if (!canEditTask) return;
+
     updateActiveFormats();
     imageInputRef.current?.click();
   }
 
   async function handleImageSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!canEditTask) {
+      event.target.value = "";
+      return;
+    }
+
     const files = Array.from(event.target.files ?? []).filter((file) =>
       file.type.startsWith("image/")
     );
@@ -902,6 +966,11 @@ export function TaskDetailModal({
   }
 
   function handleAttachmentSelect(event: React.ChangeEvent<HTMLInputElement>) {
+    if (!canEditTask) {
+      event.target.value = "";
+      return;
+    }
+
     const files = event.target.files;
     if (!files || files.length === 0) {
       return;
@@ -935,7 +1004,7 @@ export function TaskDetailModal({
                 <span className="truncate">{title || task?.title || "업무 상세"}</span>
               </div>
               <div className="flex items-start gap-3">
-                <button type="button" onClick={() => void handleStatusToggle()} className={`status-circle ${status === "DONE" ? "done" : ""}`} aria-label={status === "DONE" ? "완료 취소" : "완료 처리"} title={status === "DONE" ? "업무를 미완료로 표시" : "업무를 완료로 표시"}>
+                <button type="button" onClick={() => void handleStatusToggle()} disabled={!canEditTask} className={`status-circle ${status === "DONE" ? "done" : ""} ${canEditTask ? "" : "cursor-default opacity-70"}`} aria-label={status === "DONE" ? "완료 취소" : "완료 처리"} title={canEditTask ? (status === "DONE" ? "업무를 미완료로 표시" : "업무를 완료로 표시") : "작성자만 수정할 수 있어요."}>
                   <Check size={12} className="text-white" />
                 </button>
                 <h2
@@ -951,11 +1020,16 @@ export function TaskDetailModal({
             </div>
             <div className="flex items-center gap-1.5">
               <button type="button" className="btn-icon-sm" aria-label="복사" onClick={() => void navigator.clipboard?.writeText(title || task?.title || "")}><Copy size={16} /></button>
-              <button type="button" className="btn-icon-sm" aria-label="더보기"><MoreVertical size={16} /></button>
+              {canEditTask ? <button type="button" className="btn-icon-sm" aria-label="더보기"><MoreVertical size={16} /></button> : null}
               <button type="button" className="btn-icon-sm close" aria-label="닫기" onClick={onClose}><X size={18} /></button>
             </div>
           </div>
           {approvalSection}
+          {task && !canEditTask ? (
+            <p className="mt-3 inline-flex rounded-full border border-[var(--border-light)] bg-[var(--surface-2)] px-3 py-1 text-[12px] font-medium text-[var(--text-muted)]">
+              이 업무는 작성자만 수정할 수 있어요.
+            </p>
+          ) : null}
           <div className="modal-tabs mt-4">
             <button type="button" className={`modal-tab-btn ${activeTab === "detail" ? "active" : ""}`} onClick={() => setActiveTab("detail")}>상세</button>
             <button type="button" className={`modal-tab-btn ${activeTab === "comments" ? "active" : ""}`} onClick={() => setActiveTab("comments")}>
@@ -990,6 +1064,7 @@ export function TaskDetailModal({
                         className="hidden"
                         onChange={handleImageSelect}
                       />
+                      {canEditTask ? (
                       <div className="editor-toolbar">
                         <button type="button" className={`toolbar-btn ${activeFormats.bold ? "is-active" : ""}`} aria-label="굵게" title="굵게" onMouseDown={(event) => event.preventDefault()} onClick={() => handleApplyFormat("bold")}><Bold size={13} /></button>
                         <button type="button" className={`toolbar-btn ${activeFormats.italic ? "is-active" : ""}`} aria-label="기울임" title="기울임" onMouseDown={(event) => event.preventDefault()} onClick={() => handleApplyFormat("italic")}><Italic size={13} /></button>
@@ -1001,11 +1076,12 @@ export function TaskDetailModal({
                         <button type="button" className="toolbar-btn" aria-label="사진 추가" title="사진 추가" onClick={handleOpenImagePicker}><ImageIcon size={13} /></button>
                         <button type="button" className="toolbar-btn" aria-label="멘션 추가" title="멘션 추가" onMouseDown={(event) => event.preventDefault()} onClick={() => handleApplyFormat("mention")}><AtSign size={13} /></button>
                       </div>
+                      ) : null}
                       <div
                         ref={descriptionRef}
-                        contentEditable
+                        contentEditable={canEditTask}
                         suppressContentEditableWarning
-                        className="desc-area"
+                        className={`desc-area ${canEditTask ? "" : "cursor-default bg-[var(--surface-2)]"}`}
                         data-placeholder="업무 설명을 적어주세요"
                         onInput={handleDescriptionInput}
                         onCompositionStart={handleDescriptionCompositionStart}
@@ -1026,16 +1102,18 @@ export function TaskDetailModal({
                       <div className="checklist">
                         {subTasks.length === 0 ? <div className="rounded-[10px] border border-[var(--border-light)] bg-[var(--surface-2)] px-4 py-4 text-sm text-[var(--text-muted)]">아직 등록된 하위 업무가 없습니다.</div> : subTasks.map((item, index) => (
                           <div key={item.id} className="check-item">
-                            <button type="button" className={`check-box ${item.isDone ? "checked" : ""}`} onClick={() => setSubTasks((current) => current.map((subTask) => subTask.id === item.id ? { ...subTask, isDone: !subTask.isDone } : subTask))} aria-label={`${item.title} 완료 여부 토글`} title={item.isDone ? "하위 업무를 미완료로 표시" : "하위 업무를 완료로 표시"}><Check size={11} className="text-white" /></button>
+                            <button type="button" className={`check-box ${item.isDone ? "checked" : ""}`} onClick={() => setSubTasks((current) => current.map((subTask) => subTask.id === item.id ? { ...subTask, isDone: !subTask.isDone } : subTask))} disabled={!canEditTask} aria-label={`${item.title} 완료 여부 토글`} title={canEditTask ? (item.isDone ? "하위 업무를 미완료로 표시" : "하위 업무를 완료로 표시") : "작성자만 수정할 수 있어요."}><Check size={11} className="text-white" /></button>
                             <div className={`check-text ${item.isDone ? "done" : ""}`}>{item.title}</div>
                             {item.assigneeId ? <span className={`avatar avatar-sm ${getAvatarTone(index)}`}>{(members.find((member) => member.id === item.assigneeId)?.name ?? "U").slice(0, 1)}</span> : null}
-                            <button type="button" className="btn-icon-sm" aria-label="하위 업무 삭제" onClick={() => setSubTasks((current) => current.filter((subTask) => subTask.id !== item.id))}><Trash2 size={14} /></button>
+                            {canEditTask ? <button type="button" className="btn-icon-sm" aria-label="하위 업무 삭제" onClick={() => setSubTasks((current) => current.filter((subTask) => subTask.id !== item.id))}><Trash2 size={14} /></button> : null}
                           </div>
                         ))}
+                        {canEditTask ? (
                         <div className="mt-2 flex gap-2">
                           <input ref={subTaskInputRef} value={newSubTaskTitle} onChange={(event) => setNewSubTaskTitle(event.target.value)} placeholder="새 하위 업무를 입력해 주세요" className="form-input h-[40px] flex-1" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); handleAddSubTask(); } }} />
                           <button type="button" className="btn-modal btn-modal-ghost" onClick={handleAddSubTask} disabled={!newSubTaskTitle.trim()}><Plus size={15} />하위 업무 추가</button>
                         </div>
+                        ) : null}
                       </div>
                     </section>
 
@@ -1043,21 +1121,23 @@ export function TaskDetailModal({
                       <div className="section-label">태그</div>
                       <div className="flex flex-wrap gap-2">
                         {tags.map((tag) => <span key={tag.id} className="inline-flex items-center rounded-full border px-3 py-1.5 text-[12px] font-semibold" style={{ background: `${tag.color ?? "#4f7cff"}14`, color: tag.color ?? "#4f7cff", borderColor: `${tag.color ?? "#4f7cff"}33` }}>{`#${tag.name}`}</span>)}
-                        <button type="button" className="btn-modal btn-modal-ghost" onClick={() => setTagModalOpen(true)}><Plus size={14} />태그 추가</button>
+                        {canEditTask ? <button type="button" className="btn-modal btn-modal-ghost" onClick={() => setTagModalOpen(true)}><Plus size={14} />태그 추가</button> : null}
                       </div>
                     </section>
 
                     <section>
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <div className="section-label mb-0">첨부파일</div>
-                        <button
-                          type="button"
-                          className="btn-modal btn-modal-ghost"
-                          onClick={() => attachmentInputRef.current?.click()}
-                        >
-                          <Paperclip size={14} />
-                          첨부파일
-                        </button>
+                        {canEditTask ? (
+                          <button
+                            type="button"
+                            className="btn-modal btn-modal-ghost"
+                            onClick={() => attachmentInputRef.current?.click()}
+                          >
+                            <Paperclip size={14} />
+                            첨부파일
+                          </button>
+                        ) : null}
                       </div>
                       <div className="rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3">
                         {attachments.length === 0 ? (
@@ -1079,18 +1159,20 @@ export function TaskDetailModal({
                                     {Math.max(1, Math.round(attachment.size / 1024))}KB
                                   </p>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="btn-icon-sm"
-                                  aria-label={`${attachment.name} 첨부 제거`}
-                                  onClick={() =>
-                                    setAttachments((current) =>
-                                      current.filter((item) => item.id !== attachment.id)
-                                    )
-                                  }
-                                >
-                                  <X size={14} />
-                                </button>
+                                {canEditTask ? (
+                                  <button
+                                    type="button"
+                                    className="btn-icon-sm"
+                                    aria-label={`${attachment.name} 첨부 제거`}
+                                    onClick={() =>
+                                      setAttachments((current) =>
+                                        current.filter((item) => item.id !== attachment.id)
+                                      )
+                                    }
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -1106,6 +1188,7 @@ export function TaskDetailModal({
                         </span>
                       </div>
                       <div className="space-y-3 rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3">
+                        {canEditTask ? (
                         <div className="grid gap-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto]">
                           <input
                             type="text"
@@ -1146,13 +1229,14 @@ export function TaskDetailModal({
                             링크 추가
                           </button>
                         </div>
-                        {linkError ? (
+                        ) : null}
+                        {canEditTask && linkError ? (
                           <p className="text-[12px] font-medium text-[var(--danger)]">{linkError}</p>
-                        ) : (
+                        ) : canEditTask ? (
                           <p className="text-[12px] text-[var(--text-muted)]">
                             공유 문서, 피그마, 참고 링크를 함께 남길 수 있습니다.
                           </p>
-                        )}
+                        ) : null}
                         {links.length > 0 ? (
                           <div className="space-y-2">
                             {links.map((link) => (
@@ -1173,18 +1257,20 @@ export function TaskDetailModal({
                                     {link.url}
                                   </a>
                                 </div>
-                                <button
-                                  type="button"
-                                  className="btn-icon-sm"
-                                  aria-label={`${link.title} 링크 제거`}
-                                  onClick={() =>
-                                    setLinks((current) =>
-                                      current.filter((item) => item.id !== link.id)
-                                    )
-                                  }
-                                >
-                                  <X size={14} />
-                                </button>
+                                {canEditTask ? (
+                                  <button
+                                    type="button"
+                                    className="btn-icon-sm"
+                                    aria-label={`${link.title} 링크 제거`}
+                                    onClick={() =>
+                                      setLinks((current) =>
+                                        current.filter((item) => item.id !== link.id)
+                                      )
+                                    }
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                ) : null}
                               </div>
                             ))}
                           </div>
@@ -1243,77 +1329,111 @@ export function TaskDetailModal({
               <div className="custom-scroll overflow-y-auto bg-[var(--surface-2)] px-5 py-[22px] max-[680px]:hidden">
                 <div className="prop-row">
                   <div className="prop-label">상태</div>
-                  <div className="relative">
-                    <select value={status} onChange={(event) => applyStatus(event.target.value as TaskStatus)} className="status-select appearance-none pr-10">
-                      {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                    <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--accent)]" />
-                  </div>
+                  {canEditTask ? (
+                    <div className="relative">
+                      <select value={status} onChange={(event) => applyStatus(event.target.value as TaskStatus)} className="status-select appearance-none pr-10">
+                        {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--accent)]" />
+                    </div>
+                  ) : (
+                    <div className="assignee-chip cursor-default">{STATUS_LABELS[status]}</div>
+                  )}
                 </div>
 
                 <div className="prop-row">
                   <div className="prop-label">우선순위</div>
-                  <div className="relative">
-                    <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)} className="status-select appearance-none pr-10 !bg-[var(--warning-light)] !text-[var(--warning)]">
-                      {Object.entries(PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                    <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--warning)]" />
-                  </div>
+                  {canEditTask ? (
+                    <div className="relative">
+                      <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)} className="status-select appearance-none pr-10 !bg-[var(--warning-light)] !text-[var(--warning)]">
+                        {Object.entries(PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--warning)]" />
+                    </div>
+                  ) : (
+                    <div className="assignee-chip cursor-default">{PRIORITY_LABELS[priority]}</div>
+                  )}
                 </div>
 
                 <div className="prop-row">
                   <div className="prop-label">진행률</div>
-                  <div
-                    className={`rounded-[var(--radius-sm)] border border-[var(--border-light)] bg-white px-3 py-2 ${
-                      isProgressEditable ? "" : "opacity-70"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min={0}
-                        max={100}
-                        step={5}
-                        value={progress}
-                        onChange={(event) => applyProgress(normalizeTaskProgress(event.target.value))}
-                        className="h-1.5 flex-1 accent-[var(--accent)]"
-                        disabled={!isProgressEditable}
-                        aria-label="업무 진행률"
-                      />
-                      <span className="min-w-[38px] text-right text-[13px] font-semibold text-[var(--accent)]">
-                        {progress}%
-                      </span>
+                  {canEditTask ? (
+                    <div
+                      className={`rounded-[var(--radius-sm)] border border-[var(--border-light)] bg-white px-3 py-2 ${
+                        isProgressEditable ? "" : "opacity-70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={progress}
+                          onChange={(event) => applyProgress(normalizeTaskProgress(event.target.value))}
+                          className="h-1.5 flex-1 accent-[var(--accent)]"
+                          disabled={!isProgressEditable}
+                          aria-label="업무 진행률"
+                        />
+                        <span className="min-w-[38px] text-right text-[13px] font-semibold text-[var(--accent)]">
+                          {progress}%
+                        </span>
+                      </div>
+                      <p className="mt-2 text-[11px] text-[var(--text-muted)]">
+                        {status === "IN_PROGRESS"
+                          ? "진행중 상태에서 바로 진행률을 조정할 수 있습니다."
+                          : status === "DONE"
+                            ? "완료 상태는 진행률이 100%로 고정됩니다."
+                            : "진행중으로 변경하면 진행률을 입력할 수 있습니다."}
+                      </p>
                     </div>
-                    <p className="mt-2 text-[11px] text-[var(--text-muted)]">
-                      {status === "IN_PROGRESS"
-                        ? "진행중 상태에서 바로 진행률을 조정할 수 있습니다."
-                        : status === "DONE"
-                          ? "완료 상태는 진행률이 100%로 고정됩니다."
-                          : "진행중으로 변경하면 진행률을 입력할 수 있습니다."}
-                    </p>
-                  </div>
+                  ) : (
+                    <div className="rounded-[var(--radius-sm)] border border-[var(--border-light)] bg-white px-3 py-2">
+                      <div className="mb-2 flex items-center justify-between text-[13px] font-semibold text-[var(--accent)]">
+                        <span>진행률</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-[var(--surface-3)]">
+                        <div className="h-full rounded-full bg-[var(--accent)]" style={{ width: `${progress}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="divider" />
 
                 <div className="prop-row">
                   <div className="prop-label">담당자</div>
-                  <label className="assignee-chip">
-                    <span className={`avatar avatar-sm ${getAvatarTone(1)}`}>{(members.find((member) => member.id === assigneeId)?.name ?? task.assignee?.name ?? "U").slice(0, 1)}</span>
-                    <select value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} className="w-full appearance-none bg-transparent text-[13px] font-medium text-[var(--text-primary)] outline-none">
-                      <option value="">담당자 없음</option>
-                      {members.map((member) => <option key={member.id} value={member.id}>{member.name ?? "이름 없음"}</option>)}
-                    </select>
-                    <ChevronDown size={14} className="text-[var(--text-muted)]" />
-                  </label>
+                  {canEditTask ? (
+                    <label className="assignee-chip">
+                      <span className={`avatar avatar-sm ${getAvatarTone(1)}`}>{(members.find((member) => member.id === assigneeId)?.name ?? task.assignee?.name ?? "U").slice(0, 1)}</span>
+                      <select value={assigneeId} onChange={(event) => setAssigneeId(event.target.value)} className="w-full appearance-none bg-transparent text-[13px] font-medium text-[var(--text-primary)] outline-none">
+                        <option value="">담당자 없음</option>
+                        {members.map((member) => <option key={member.id} value={member.id}>{member.name ?? "이름 없음"}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="text-[var(--text-muted)]" />
+                    </label>
+                  ) : (
+                    <div className="assignee-chip cursor-default">
+                      <span className={`avatar avatar-sm ${getAvatarTone(1)}`}>{(members.find((member) => member.id === assigneeId)?.name ?? task.assignee?.name ?? "U").slice(0, 1)}</span>
+                      <span>{members.find((member) => member.id === assigneeId)?.name ?? task.assignee?.name ?? "담당자 없음"}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="prop-row">
                   <div className="prop-label">마감일</div>
-                  <div className={`date-chip ${dueTone}`}>
-                    <CalendarDays size={14} />
-                    <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="w-full bg-transparent text-[13px] outline-none" />
-                  </div>
+                  {canEditTask ? (
+                    <div className={`date-chip ${dueTone}`}>
+                      <CalendarDays size={14} />
+                      <input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="w-full bg-transparent text-[13px] outline-none" />
+                    </div>
+                  ) : (
+                    <div className={`date-chip cursor-default ${dueTone}`}>
+                      <CalendarDays size={14} />
+                      <span>{formatDateOnly(dueDate)}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="prop-row">
@@ -1346,21 +1466,25 @@ export function TaskDetailModal({
               <div>{canDelete ? <button type="button" className="btn-modal btn-modal-danger" onClick={() => void handleDelete()} disabled={deleting}><Trash2 size={15} />{deleting ? "삭제 중..." : "삭제"}</button> : null}</div>
               <div className="flex items-center gap-2">
                 <button type="button" className="btn-modal btn-modal-ghost" onClick={onClose}>닫기</button>
-                <button type="button" className="btn-modal btn-modal-primary" onClick={() => void handleSave()} disabled={!isDirty || saving || Boolean(successMessage)}>{saving ? "저장 중..." : "저장"}</button>
+                {canEditTask ? (
+                  <button type="button" className="btn-modal btn-modal-primary" onClick={() => void handleSave()} disabled={!isDirty || saving || Boolean(successMessage)}>{saving ? "저장 중..." : "저장"}</button>
+                ) : null}
               </div>
             </div>
-            <TaskTagModal
-              isOpen={tagModalOpen}
-              existingNames={tags.map((tag) => tag.name)}
-              onClose={() => setTagModalOpen(false)}
-              onSubmit={(name) => {
-                setTags((current) => [
-                  ...current,
-                  { id: `tag-${Date.now()}`, name, color: "#4f7cff" },
-                ]);
-                setTagModalOpen(false);
-              }}
-            />
+            {canEditTask ? (
+              <TaskTagModal
+                isOpen={tagModalOpen}
+                existingNames={tags.map((tag) => tag.name)}
+                onClose={() => setTagModalOpen(false)}
+                onSubmit={(name) => {
+                  setTags((current) => [
+                    ...current,
+                    { id: `tag-${Date.now()}`, name, color: "#4f7cff" },
+                  ]);
+                  setTagModalOpen(false);
+                }}
+              />
+            ) : null}
           </>
         )}
       </div>

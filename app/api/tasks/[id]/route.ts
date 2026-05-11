@@ -167,6 +167,13 @@ export async function PATCH(
       return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
     }
 
+    if (task.creatorId !== session.user.id) {
+      return NextResponse.json(
+        { error: "이 업무는 작성자만 수정할 수 있습니다." },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const {
       status,
@@ -335,11 +342,11 @@ export async function DELETE(
       return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
     }
 
-    const isCreator = task.creatorId === session.user.id;
-    const isAdmin = session.user.role === "ADMIN" || session.user.role === "OWNER";
-
-    if (!isCreator && !isAdmin) {
-      return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
+    if (task.creatorId !== session.user.id) {
+      return NextResponse.json(
+        { error: "이 업무는 작성자만 삭제할 수 있습니다." },
+        { status: 403 }
+      );
     }
 
     await prisma.$executeRaw`

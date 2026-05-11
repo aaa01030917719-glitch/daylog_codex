@@ -10,12 +10,14 @@ interface ProjectDetailPageActionsProps {
   project: ProjectSummary;
   members: ProjectMember[];
   canManage: boolean;
+  currentUserId: string;
 }
 
 export function ProjectDetailPageActions({
   project,
   members,
   canManage,
+  currentUserId,
 }: ProjectDetailPageActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -127,6 +129,7 @@ export function ProjectDetailPageActions({
           projectName={project.name}
           defaultStatus="IN_PROGRESS"
           members={members}
+          currentUserId={currentUserId}
           onClose={() => setTaskOpen(false)}
           onCreated={() => window.location.reload()}
         />

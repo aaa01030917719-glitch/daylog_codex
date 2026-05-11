@@ -954,6 +954,7 @@ export function ProjectsTaskBoard({
           validationMode="alert"
           members={members}
           projects={projectOptions}
+          currentUserId={currentUserId}
           onClose={() => setCreateTaskProjectId(null)}
           onCreated={(task) => {
             const nextTask = normalizeTaskFromApi(task as unknown as Record<string, unknown>);

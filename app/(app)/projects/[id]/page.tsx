@@ -86,6 +86,7 @@ export default async function ProjectDetailPage({
           project={projectSummary}
           members={memberOptions}
           canManage={isAdmin}
+          currentUserId={session.user.id}
         />
       </section>
 

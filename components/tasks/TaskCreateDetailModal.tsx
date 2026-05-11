@@ -12,7 +12,6 @@ import {
   Copy,
   FolderOpen,
   Image as ImageIcon,
-  Info,
   Italic,
   Link2,
   List,
@@ -82,6 +81,7 @@ interface TaskCreateDetailModalProps {
   validationMode?: "inline" | "alert";
   members: Member[];
   projects?: Project[];
+  currentUserId?: string;
   onCreated: (task: Task) => void;
   onClose: () => void;
 }
@@ -165,21 +165,26 @@ export function TaskCreateDetailModal({
   validationMode = "inline",
   members,
   projects,
+  currentUserId,
   onCreated,
   onClose,
 }: TaskCreateDetailModalProps) {
+  const defaultAssigneeId =
+    currentUserId && members.some((member) => member.id === currentUserId)
+      ? currentUserId
+      : "";
+  const defaultStartDate = format(new Date(), "yyyy-MM-dd");
+  const defaultDueDate = "";
   const [activeTab, setActiveTab] = useState<TabKey>("detail");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<TaskStatus>(defaultStatus);
   const [priority, setPriority] = useState<Priority>("MEDIUM");
   const [progress, setProgress] = useState(defaultStatus === "DONE" ? 100 : 0);
-  const [assigneeId, setAssigneeId] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const defaultDueDate = validationMode === "alert" ? "" : format(new Date(), "yyyy-MM-dd");
+  const [assigneeId, setAssigneeId] = useState(defaultAssigneeId);
+  const [startDate, setStartDate] = useState(defaultStartDate);
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [selectedProjectId, setSelectedProjectId] = useState(initialProjectId ?? "");
-  const [requiresApproval, setRequiresApproval] = useState(false);
   const [comments, setComments] = useState<DraftComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
   const [subTasks, setSubTasks] = useState<DraftSubTask[]>([]);
@@ -220,11 +225,10 @@ export function TaskCreateDetailModal({
     status !== defaultStatus ||
     priority !== "MEDIUM" ||
     progress !== 0 ||
-    assigneeId !== "" ||
-    startDate !== "" ||
+    assigneeId !== defaultAssigneeId ||
+    startDate !== defaultStartDate ||
     dueDate !== defaultDueDate ||
     selectedProjectId !== (initialProjectId ?? "") ||
-    requiresApproval ||
     tags.length > 0 ||
     links.length > 0 ||
     linkTitle.trim().length > 0 ||
@@ -428,7 +432,7 @@ export function TaskCreateDetailModal({
           priority,
           progress,
           assigneeId: assigneeId || null,
-          requiresApproval,
+          requiresApproval: false,
         }),
       });
 
@@ -1289,27 +1293,6 @@ export function TaskCreateDetailModal({
               <div className="prop-value">저장 전</div>
             </div>
 
-            <div className="divider" />
-
-            <button
-              type="button"
-              className="mb-3 w-full rounded-[8px] border border-[var(--border-light)] bg-white px-3 py-2 text-left text-[12px] font-semibold text-[var(--text-secondary)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-              onClick={() => setRequiresApproval((current) => !current)}
-            >
-              {requiresApproval ? "컨펌 필요 해제" : "컨펌 필요로 설정"}
-            </button>
-
-            {requiresApproval ? (
-              <div className="confirm-banner">
-                <div className="flex items-start gap-2">
-                  <Info size={15} className="mt-[1px] shrink-0" />
-                  <div>
-                    <p className="font-semibold">컨펌 대기 예정</p>
-                    <p className="mt-1">저장 후 최종 승인을 요청할 수 있는 업무로 생성됩니다.</p>
-                  </div>
-                </div>
-              </div>
-            ) : null}
           </div>
         </div>
 

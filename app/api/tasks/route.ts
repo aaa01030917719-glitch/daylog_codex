@@ -150,7 +150,6 @@ export async function POST(req: NextRequest) {
       priority,
       status,
       budget,
-      requiresApproval,
       progress,
     } = body;
 
@@ -253,7 +252,7 @@ export async function POST(req: NextRequest) {
             ${description ?? null},
             ${normalizedStatus}::"TaskStatus",
             ${normalizedPriority}::"Priority",
-            ${requiresApproval ?? false},
+            ${false},
             ${budget ?? null},
             ${parsedStartDate.value},
             ${parsedDueDate.value},
@@ -289,7 +288,7 @@ export async function POST(req: NextRequest) {
             ${description ?? null},
             ${normalizedStatus}::"TaskStatus",
             ${normalizedPriority}::"Priority",
-            ${requiresApproval ?? false},
+            ${false},
             ${budget ?? null},
             ${parsedDueDate.value},
             NOW(),
