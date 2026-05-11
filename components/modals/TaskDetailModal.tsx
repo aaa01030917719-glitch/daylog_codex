@@ -393,10 +393,13 @@ export function TaskDetailModal({
   }, [isOpen, onClose, successMessage]);
 
   useEffect(() => {
-    if (!isOpen || initialTask) return;
+    if (!isOpen) return;
     let active = true;
+    const shouldShowLoading = !initialTask;
     async function loadTask() {
-      setLoading(true);
+      if (shouldShowLoading) {
+        setLoading(true);
+      }
       setError(null);
       try {
         const response = await fetch(`/api/tasks/${taskId}`);
@@ -426,7 +429,7 @@ export function TaskDetailModal({
         if (!active) return;
         setError(loadError instanceof Error ? loadError.message : "업무 정보를 불러오지 못했습니다.");
       } finally {
-        if (active) setLoading(false);
+        if (active && shouldShowLoading) setLoading(false);
       }
     }
     void loadTask();

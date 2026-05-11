@@ -299,6 +299,44 @@ function normalizeTaskFromApi(task: Record<string, unknown>): WorkTaskItem | nul
   };
 }
 
+function buildInitialTaskForDetail(task: WorkTaskItem) {
+  const assignee = task.assignees[0]
+    ? {
+        id: task.assignees[0].id,
+        name: task.assignees[0].name,
+        image: null,
+      }
+    : null;
+
+  return {
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    status: task.status,
+    priority: task.priority,
+    requiresApproval: Boolean(task.requiresApproval),
+    isApprovalRequested: Boolean(task.isApprovalRequested),
+    approvedAt: task.approvedAt ?? null,
+    rejectedReason: task.rejectedReason ?? null,
+    budget: null,
+    dueDate: task.endDate,
+    progress: task.progress,
+    createdAt: task.startDate ?? task.updatedAt,
+    updatedAt: task.updatedAt,
+    projectId: task.projectId,
+    assigneeId: assignee?.id ?? null,
+    creatorId: "",
+    assignee,
+    creator: null,
+    project: {
+      id: task.projectId,
+      name: task.projectName,
+      color: task.projectColor,
+    },
+    tags: [],
+  };
+}
+
 function SummaryCards({ groups }: { groups: ProjectTaskGroup[] }) {
   const tasks = flattenGroups(groups);
   const total = tasks.length;
@@ -815,6 +853,10 @@ export function ProjectsTaskBoard({
     color: group.projectColor,
   }));
   const createTaskProject = groups.find((group) => group.projectId === createTaskProjectId);
+  const selectedInitialTask = useMemo(
+    () => (selectedTask ? buildInitialTaskForDetail(selectedTask) : null),
+    [selectedTask]
+  );
 
   return (
     <div
@@ -949,6 +991,7 @@ export function ProjectsTaskBoard({
           isOpen
           taskId={selectedTask.id}
           projectName={selectedTask.projectName}
+          initialTask={selectedInitialTask}
           members={members}
           isAdmin={isAdmin}
           currentUserId={currentUserId}
