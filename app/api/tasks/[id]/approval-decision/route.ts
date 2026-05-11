@@ -14,6 +14,10 @@ function buildTaskInclude() {
     status: true,
     progress: true,
     requiresApproval: true,
+    isApprovalRequested: true,
+    approvedBy: true,
+    approvedAt: true,
+    rejectedReason: true,
     assigneeId: true,
     creatorId: true,
     projectId: true,
@@ -63,21 +67,39 @@ export async function POST(
       return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
     }
 
-    const targetUserId = task.assigneeId || task.creatorId;
+    const isPendingReview =
+      task.status === TaskStatus.IN_REVIEW &&
+      (task.requiresApproval || task.isApprovalRequested);
+    if (!isPendingReview) {
+      return NextResponse.json(
+        { error: "진행 중인 확인 요청이 없습니다." },
+        { status: 400 }
+      );
+    }
+
+    const targetUserId = task.creatorId;
+    const decidedAt = new Date();
     const updated = await prisma.$transaction(async (tx) => {
       const nextTask = await tx.task.update({
         where: { id: task.id },
         data:
           decision === "APPROVE"
             ? {
-                status: TaskStatus.DONE,
-                progress: 100,
+                status: TaskStatus.IN_REVIEW,
                 requiresApproval: false,
+                isApprovalRequested: false,
+                approvedBy: session.user.id,
+                approvedAt: decidedAt,
+                rejectedReason: null,
               }
             : {
                 status: TaskStatus.IN_PROGRESS,
                 progress: Math.min(task.progress ?? 0, 99),
                 requiresApproval: false,
+                isApprovalRequested: false,
+                approvedBy: null,
+                approvedAt: null,
+                rejectedReason: reason || null,
               },
         select: buildTaskInclude(),
       });
@@ -104,9 +126,9 @@ export async function POST(
       task: {
         ...updated,
         isApprovalRequested: false,
-        approvedBy: decision === "APPROVE" ? session.user.id : null,
-        approvedAt: decision === "APPROVE" ? new Date() : null,
-        rejectedReason: decision === "REJECT" ? reason || null : null,
+        approvedBy: updated.approvedBy ?? null,
+        approvedAt: updated.approvedAt ?? null,
+        rejectedReason: updated.rejectedReason ?? null,
         project: {
           id: updated.project.id,
           name: updated.project.name,

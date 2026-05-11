@@ -44,19 +44,31 @@ function getDday(value: string | null) {
 }
 
 function getTaskBadgeLabel(task: WorkTaskItem) {
-  if (isOverdue(task)) return "지연";
   if (task.status === "DONE") return "완료";
+  if (isTaskReviewCompleted(task)) return "검토완료";
+  if (isOverdue(task)) return "지연";
   if (task.status === "IN_REVIEW") return "검토중";
   if (task.status === "IN_PROGRESS") return "진행중";
   return "예정";
 }
 
 function getTaskBadgeClassName(task: WorkTaskItem) {
-  if (isOverdue(task)) return "bg-[var(--danger-light)] text-[var(--danger)]";
   if (task.status === "DONE") return "bg-[var(--success-light)] text-[var(--success)]";
+  if (isTaskReviewCompleted(task)) return "bg-[var(--success-light)] text-[var(--success)]";
+  if (isOverdue(task)) return "bg-[var(--danger-light)] text-[var(--danger)]";
   if (task.status === "IN_REVIEW") return "bg-[var(--yellow-light)] text-[#a16207]";
   if (task.status === "IN_PROGRESS") return "bg-[var(--accent-light)] text-[var(--accent)]";
   return "bg-[var(--surface-3)] text-[var(--text-secondary)]";
+}
+
+function isTaskReviewCompleted(task: WorkTaskItem) {
+  return (
+    task.status === "IN_REVIEW" &&
+    Boolean(task.approvedAt) &&
+    !task.requiresApproval &&
+    !task.isApprovalRequested &&
+    !task.rejectedReason
+  );
 }
 
 function getProgressClassName(progress: number) {

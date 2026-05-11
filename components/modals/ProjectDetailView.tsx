@@ -43,6 +43,9 @@ interface ProjectTaskDetail {
   status: string;
   priority?: string | null;
   requiresApproval?: boolean | null;
+  isApprovalRequested?: boolean | null;
+  approvedAt?: string | Date | null;
+  rejectedReason?: string | null;
   dueDate?: string | Date | null;
   createdAt?: string | Date | null;
   assigneeId?: string | null;
@@ -89,11 +92,41 @@ type NormalizedTask = {
   status: string;
   priority: string;
   requiresApproval: boolean;
+  isApprovalRequested: boolean;
+  approvedAt: string | Date | null;
+  rejectedReason: string | null;
   dueDate: string | Date | null;
   createdAt: string | Date | null;
   assigneeId: string | null;
   assigneeName: string | null;
 };
+
+function isTaskReviewCompleted(task: {
+  status: string;
+  requiresApproval?: boolean | null;
+  isApprovalRequested?: boolean | null;
+  approvedAt?: string | Date | null;
+  rejectedReason?: string | null;
+}) {
+  return (
+    task.status === "IN_REVIEW" &&
+    Boolean(task.approvedAt) &&
+    !task.requiresApproval &&
+    !task.isApprovalRequested &&
+    !task.rejectedReason
+  );
+}
+
+function getTaskStatusMeta(task: NormalizedTask) {
+  if (isTaskReviewCompleted(task)) {
+    return {
+      label: "검토완료",
+      className: "bg-[var(--success-light)] text-[var(--success)]",
+    };
+  }
+
+  return TASK_STATUS_META[task.status] ?? TASK_STATUS_META.TODO;
+}
 
 const BOARD_STATUS_LABELS: Record<ProjectSummary["boardStatus"], string> = {
   ONGOING: "진행중",
@@ -233,6 +266,9 @@ function buildFallbackTasks(project: ProjectSummary): NormalizedTask[] {
     status: task.status,
     priority: "MEDIUM",
     requiresApproval: false,
+    isApprovalRequested: false,
+    approvedAt: null,
+    rejectedReason: null,
     dueDate: task.endDate,
     createdAt: task.startDate ?? project.createdAt,
     assigneeId: null,
@@ -346,6 +382,9 @@ export function ProjectDetailView({
         status: task.status,
         priority: task.priority ?? "MEDIUM",
         requiresApproval: Boolean(task.requiresApproval),
+        isApprovalRequested: Boolean(task.isApprovalRequested),
+        approvedAt: task.approvedAt ?? null,
+        rejectedReason: task.rejectedReason ?? null,
         dueDate: task.dueDate ?? null,
         createdAt: task.createdAt ?? null,
         assigneeId: task.assignee?.id ?? task.assigneeId ?? null,
@@ -444,6 +483,9 @@ export function ProjectDetailView({
     status: string;
     priority?: string | null;
     requiresApproval?: boolean | null;
+    isApprovalRequested?: boolean | null;
+    approvedAt?: string | Date | null;
+    rejectedReason?: string | null;
     dueDate?: string | Date | null;
     createdAt?: string | Date | null;
     assigneeId?: string | null;
@@ -468,6 +510,9 @@ export function ProjectDetailView({
             status: task.status,
             priority: task.priority ?? "MEDIUM",
             requiresApproval: Boolean(task.requiresApproval),
+            isApprovalRequested: Boolean(task.isApprovalRequested),
+            approvedAt: task.approvedAt ?? null,
+            rejectedReason: task.rejectedReason ?? null,
             dueDate: task.dueDate ?? null,
             createdAt: task.createdAt ?? new Date().toISOString(),
             assigneeId: task.assigneeId ?? null,
@@ -1211,7 +1256,7 @@ function TaskTable({
         </thead>
         <tbody>
           {tasks.map((task) => {
-            const statusMeta = TASK_STATUS_META[task.status] ?? TASK_STATUS_META.TODO;
+            const statusMeta = getTaskStatusMeta(task);
             const priorityMeta = PRIORITY_META[task.priority] ?? PRIORITY_META.MEDIUM;
 
             return (
