@@ -442,12 +442,20 @@ export function TaskDetailModal({
       ((task.isApprovalRequested ?? false) ||
         (status === "IN_REVIEW" && task.requiresApproval))
   );
+  const isReviewCompleted = Boolean(
+    task &&
+      status === "IN_REVIEW" &&
+      task.approvedAt &&
+      !isApprovalPending &&
+      !task.rejectedReason
+  );
   const canRequestConfirm = Boolean(
-      task &&
+    task &&
       currentUserId &&
       status !== "DONE" &&
       task.creatorId === currentUserId &&
-      !isApprovalPending
+      !isApprovalPending &&
+      !isReviewCompleted
   );
   const canReviewConfirm = Boolean(
     task &&
@@ -455,9 +463,16 @@ export function TaskDetailModal({
       status === "IN_REVIEW" &&
       isApprovalPending
   );
-  const approvalRowLabel = isApprovalPending ? "요청됨" : "확인 요청";
+  const displayStatusLabel = isReviewCompleted ? "검토완료" : STATUS_LABELS[status];
+  const approvalRowLabel = isApprovalPending
+    ? `요청됨 ${formatDateOnly(task?.updatedAt ?? task?.createdAt)}`
+    : isReviewCompleted
+      ? "검토완료"
+      : "확인 요청";
   const approvalRowMessage = isApprovalPending
     ? "대표 또는 권한 있는 사용자의 확인을 기다리고 있어요."
+    : isReviewCompleted
+      ? `${formatDateOnly(task?.approvedAt)} 확인이 완료됐어요. 작성자가 완료 상태로 변경할 수 있어요.`
     : "완료 전 확인이 필요하면 요청을 보낼 수 있어요.";
   const doneCount = subTasks.filter((item) => item.isDone).length;
   const progressPct = subTasks.length > 0 ? Math.round((doneCount / subTasks.length) * 100) : 0;
@@ -487,7 +502,7 @@ export function TaskDetailModal({
   }, [comments, dueDate, task]);
   const approvalSection =
     task &&
-    (task.requiresApproval || isApprovalPending || canRequestConfirm || canReviewConfirm) ? (
+    (task.requiresApproval || isApprovalPending || isReviewCompleted || canRequestConfirm || canReviewConfirm) ? (
       <div className="mt-3 rounded-[12px] border border-[var(--border-light)] bg-[var(--surface-2)] px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -524,6 +539,10 @@ export function TaskDetailModal({
             ) : isApprovalPending ? (
               <span className="inline-flex h-8 items-center rounded-[10px] border border-[#f2d58a] bg-[#fff8dd] px-3 text-[12px] font-semibold text-[#8a6116]">
                 요청됨
+              </span>
+            ) : isReviewCompleted ? (
+              <span className="inline-flex h-8 items-center rounded-[10px] border border-[#b7e4c7] bg-[var(--success-light)] px-3 text-[12px] font-semibold text-[#15803d]">
+                검토완료
               </span>
             ) : (
               <button
@@ -1332,12 +1351,16 @@ export function TaskDetailModal({
                   {canEditTask ? (
                     <div className="relative">
                       <select value={status} onChange={(event) => applyStatus(event.target.value as TaskStatus)} className="status-select appearance-none pr-10">
-                        {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>
+                            {value === "IN_REVIEW" && isReviewCompleted ? "검토완료" : label}
+                          </option>
+                        ))}
                       </select>
                       <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--accent)]" />
                     </div>
                   ) : (
-                    <div className="assignee-chip cursor-default">{STATUS_LABELS[status]}</div>
+                    <div className="assignee-chip cursor-default">{displayStatusLabel}</div>
                   )}
                 </div>
 

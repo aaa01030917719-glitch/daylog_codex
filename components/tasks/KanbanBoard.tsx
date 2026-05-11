@@ -69,6 +69,16 @@ const PRIORITY_STYLES: Record<Priority, { bg: string; text: string; label: strin
   URGENT: { bg: "#FDECEA", text: "#D93025", label: "긴급" },
 };
 
+function isTaskReviewCompleted(task: Task) {
+  return (
+    task.status === "IN_REVIEW" &&
+    Boolean(task.approvedAt) &&
+    !task.requiresApproval &&
+    !task.isApprovalRequested &&
+    !task.rejectedReason
+  );
+}
+
 export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUserId, showHeader = true, initialSelectedTaskId = null }: Props) {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -92,6 +102,7 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
     const newStatus = result.destination.droppableId as TaskStatus;
     const task = tasks.find((t) => t.id === taskId);
     if (!task || task.status === newStatus) return;
+    if (task.creatorId !== currentUserId) return;
 
     const nextProgress =
       newStatus === "DONE"
@@ -107,11 +118,14 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
     );
 
     try {
-      await fetch(`/api/tasks/${taskId}`, {
+      const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus, progress: nextProgress }),
       });
+      if (!response.ok) {
+        throw new Error();
+      }
     } catch {
       // Revert on error
       setTasks((prev) =>
@@ -208,7 +222,12 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                       }}
                     >
                       {colTasks.map((task, index) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
+                        <Draggable
+                          key={task.id}
+                          draggableId={task.id}
+                          index={index}
+                          isDragDisabled={task.creatorId !== currentUserId}
+                        >
                           {(provided, snapshot) => (
                             <div
                               ref={provided.innerRef}
@@ -231,18 +250,34 @@ export function KanbanBoard({ project, initialTasks, members, isAdmin, currentUs
                               </p>
 
                               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.25rem" }}>
-                                <span
-                                  style={{
-                                    fontSize: "0.6875rem",
-                                    fontWeight: 600,
-                                    padding: "0.125rem 0.375rem",
-                                    borderRadius: "9999px",
-                                    background: PRIORITY_STYLES[task.priority].bg,
-                                    color: PRIORITY_STYLES[task.priority].text,
-                                  }}
-                                >
-                                  {PRIORITY_STYLES[task.priority].label}
-                                </span>
+                                <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                                  <span
+                                    style={{
+                                      fontSize: "0.6875rem",
+                                      fontWeight: 600,
+                                      padding: "0.125rem 0.375rem",
+                                      borderRadius: "9999px",
+                                      background: PRIORITY_STYLES[task.priority].bg,
+                                      color: PRIORITY_STYLES[task.priority].text,
+                                    }}
+                                  >
+                                    {PRIORITY_STYLES[task.priority].label}
+                                  </span>
+                                  {isTaskReviewCompleted(task) ? (
+                                    <span
+                                      style={{
+                                        fontSize: "0.6875rem",
+                                        fontWeight: 600,
+                                        padding: "0.125rem 0.375rem",
+                                        borderRadius: "9999px",
+                                        background: "var(--success-light)",
+                                        color: "var(--success)",
+                                      }}
+                                    >
+                                      검토완료
+                                    </span>
+                                  ) : null}
+                                </div>
 
                                 <div style={{ display: "flex", alignItems: "center", gap: "0.375rem" }}>
                                   {task.dueDate && (

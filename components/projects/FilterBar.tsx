@@ -37,6 +37,10 @@ export interface WorkTaskItem {
   title: string;
   description: string | null;
   status: TaskStatusCode;
+  requiresApproval?: boolean;
+  isApprovalRequested?: boolean;
+  approvedAt?: string | null;
+  rejectedReason?: string | null;
   boardStatus: Exclude<BoardStatus, "ALL">;
   priority: TaskPriority;
   assignees: WorkAssignee[];
@@ -245,6 +249,10 @@ function normalizeTaskFromApi(task: Record<string, unknown>): WorkTaskItem | nul
 
   const assignee = task.assignee as { id?: string; name?: string | null } | null | undefined;
   const status = (typeof task.status === "string" ? task.status : "TODO") as TaskStatusCode;
+  const requiresApproval = Boolean(task.requiresApproval);
+  const isApprovalRequested = Boolean(task.isApprovalRequested);
+  const approvedAt = typeof task.approvedAt === "string" ? task.approvedAt : null;
+  const rejectedReason = typeof task.rejectedReason === "string" ? task.rejectedReason : null;
   const dueDate = typeof task.dueDate === "string" ? task.dueDate : null;
   const createdAt =
     typeof task.createdAt === "string" ? task.createdAt : new Date().toISOString();
@@ -268,6 +276,10 @@ function normalizeTaskFromApi(task: Record<string, unknown>): WorkTaskItem | nul
     title: task.title,
     description: typeof task.description === "string" ? task.description : null,
     status,
+    requiresApproval,
+    isApprovalRequested,
+    approvedAt,
+    rejectedReason,
     boardStatus: getBoardStatus(status),
     priority: (typeof task.priority === "string" ? task.priority : "MEDIUM") as TaskPriority,
     assignees: assignee?.id

@@ -49,6 +49,10 @@ function getTaskDetailSelect(taskColumnSupport: TaskColumnSupport) {
     status: true,
     priority: true,
     requiresApproval: true,
+    isApprovalRequested: true,
+    approvedBy: true,
+    approvedAt: true,
+    rejectedReason: true,
     budget: true,
     ...(taskColumnSupport.startDate ? { startDate: true } : {}),
     dueDate: true,
@@ -65,21 +69,23 @@ function getTaskDetailSelect(taskColumnSupport: TaskColumnSupport) {
   } as const;
 }
 
-const taskApprovalFallback = {
-  isApprovalRequested: false,
-  approvedBy: null,
-  approvedAt: null,
-  rejectedReason: null,
-};
-
-function getTaskApprovalFallback(task: {
+function normalizeTaskApprovalMeta(task: {
   status: TaskStatus;
   requiresApproval: boolean;
+  isApprovalRequested?: boolean | null;
+  approvedBy?: string | null;
+  approvedAt?: Date | null;
+  rejectedReason?: string | null;
 }) {
+  const isApprovalRequested =
+    task.status === TaskStatus.IN_REVIEW &&
+    Boolean(task.requiresApproval || task.isApprovalRequested);
+
   return {
-    ...taskApprovalFallback,
-    isApprovalRequested:
-      task.status === TaskStatus.IN_REVIEW && Boolean(task.requiresApproval),
+    isApprovalRequested,
+    approvedBy: task.approvedBy ?? null,
+    approvedAt: task.approvedAt ?? null,
+    rejectedReason: task.rejectedReason ?? null,
   };
 }
 
@@ -116,7 +122,7 @@ export async function GET(
     return NextResponse.json({
       task: {
         ...task,
-        ...getTaskApprovalFallback(task),
+        ...normalizeTaskApprovalMeta(task),
         project: {
           id: task.project.id,
           name: task.project.name,
@@ -301,7 +307,7 @@ export async function PATCH(
     });
 
     return NextResponse.json({
-      task: { ...updated, ...getTaskApprovalFallback(updated) },
+      task: { ...updated, ...normalizeTaskApprovalMeta(updated) },
       projectStartDateAdjusted: shouldAdjustProjectStartDate,
       previousProjectStartDate: serializeDateMeta(previousProjectStartDate),
       nextProjectStartDate: serializeDateMeta(nextProjectStartDate),

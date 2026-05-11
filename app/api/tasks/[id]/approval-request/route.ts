@@ -15,6 +15,10 @@ function buildTaskInclude() {
     status: true,
     progress: true,
     requiresApproval: true,
+    isApprovalRequested: true,
+    approvedBy: true,
+    approvedAt: true,
+    rejectedReason: true,
     assigneeId: true,
     creatorId: true,
     projectId: true,
@@ -67,7 +71,10 @@ export async function POST(
       return NextResponse.json({ error: "이미 완료된 업무입니다." }, { status: 400 });
     }
 
-    if (task.status === TaskStatus.IN_REVIEW && task.requiresApproval) {
+    if (
+      task.status === TaskStatus.IN_REVIEW &&
+      (task.requiresApproval || task.isApprovalRequested)
+    ) {
       return NextResponse.json(
         { error: "이미 확인 요청이 진행 중입니다." },
         { status: 409 }
@@ -89,6 +96,10 @@ export async function POST(
         status: TaskStatus.IN_REVIEW,
         progress: Math.min(task.progress ?? 0, 99),
         requiresApproval: true,
+        isApprovalRequested: true,
+        approvedBy: null,
+        approvedAt: null,
+        rejectedReason: null,
       },
       select: buildTaskInclude(),
     });
