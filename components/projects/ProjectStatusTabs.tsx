@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import type { ProjectBoardStatus } from "@/components/projects/project-board-types";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 
 interface ProjectStatusTabsProps {
   activeStatus: ProjectBoardStatus;
@@ -16,27 +17,22 @@ const STATUS_LABELS: Record<ProjectBoardStatus, string> = {
   UPCOMING: "예정",
 };
 
+const STATUS_ITEMS = (Object.keys(STATUS_LABELS) as ProjectBoardStatus[]).map((status) => ({
+  value: status,
+  label: STATUS_LABELS[status],
+}));
+
 export function ProjectStatusTabs({
   activeStatus,
   counts,
   onChange,
 }: ProjectStatusTabsProps) {
   return (
-    <div className="pill-group">
-      {(Object.keys(STATUS_LABELS) as ProjectBoardStatus[]).map((status) => {
-        const isActive = activeStatus === status;
-
-        return (
-          <button
-            key={status}
-            type="button"
-            onClick={() => onChange(status)}
-            className={`pill-tab ${isActive ? "is-active" : ""}`}
-          >
-            {STATUS_LABELS[status]} {counts[status]}
-          </button>
-        );
-      })}
-    </div>
+    <FilterChipGroup
+      aria-label="프로젝트 상태 필터"
+      items={STATUS_ITEMS.map((item) => ({ ...item, count: counts[item.value] }))}
+      activeValue={activeStatus}
+      onChange={onChange}
+    />
   );
 }

@@ -7,6 +7,7 @@ import { AttendanceDashboardCalendar } from "@/components/attendance/AttendanceD
 import { AttendanceDashboardList } from "@/components/attendance/AttendanceDashboardList";
 import { AttendanceExportAction } from "@/components/attendance/AttendanceExportAction";
 import { TodayAttendanceCard } from "@/components/attendance/TodayAttendanceCard";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useDirtyLeaveGuard } from "@/hooks/useDirtyLeaveGuard";
 import {
@@ -36,6 +37,11 @@ interface AttendanceDashboardPageProps {
 type ViewMode = "calendar" | "list";
 
 type FeedbackState = { type: "success" | "error"; message: string } | null;
+
+const VIEW_ITEMS: Array<{ value: ViewMode; label: string }> = [
+  { value: "calendar", label: "달력" },
+  { value: "list", label: "목록" },
+];
 
 function toTodayRows(
   todayRecords: AttendanceRecord[],
@@ -693,14 +699,13 @@ export function AttendanceDashboardPage({
         </div>
 
         <div className="page-actions">
-          <div className="view-toggle">
-            <button type="button" onClick={() => setView("calendar")} className={`view-chip ${view === "calendar" ? "is-active" : ""}`}>
-              달력
-            </button>
-            <button type="button" onClick={() => setView("list")} className={`view-chip ${view === "list" ? "is-active" : ""}`}>
-              목록
-            </button>
-          </div>
+          <FilterChipGroup
+            aria-label="출퇴근 보기 전환"
+            items={VIEW_ITEMS}
+            activeValue={view}
+            onChange={setView}
+            variant="view"
+          />
           <AttendanceExportAction
             records={records}
             userName={selectedUserName}

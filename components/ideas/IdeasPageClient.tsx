@@ -8,6 +8,7 @@ import { CommentPanel } from "@/components/comments/CommentPanel";
 
 import { IdeaPostModal } from "@/components/ideas/IdeaPostModal";
 import type { IdeaPostPayload, IdeaPostSummary, IdeasTab } from "@/components/ideas/types";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 
 interface IdeasPageClientProps {
   initialPosts: IdeaPostSummary[];
@@ -24,6 +25,11 @@ const TAB_LABELS: Record<IdeasTab, string> = {
   SHARED: "팀 공유",
   PRIVATE: "나만 보기",
 };
+
+const TAB_ITEMS = (Object.keys(TAB_LABELS) as IdeasTab[]).map((tab) => ({
+  value: tab,
+  label: TAB_LABELS[tab],
+}));
 
 const EMPTY_MESSAGES: Record<IdeasTab, { title: string; description: string }> = {
   ALL: {
@@ -293,22 +299,12 @@ export function IdeasPageClient({
         </section>
 
         <section className="page-control-strip">
-          <div className="pill-group">
-            {(Object.keys(TAB_LABELS) as IdeasTab[]).map((tab) => {
-              const isActive = activeTab === tab;
-
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`pill-tab ${isActive ? "is-active" : ""}`}
-                >
-                  {TAB_LABELS[tab]} {tabCounts[tab]}
-                </button>
-              );
-            })}
-          </div>
+          <FilterChipGroup
+            aria-label="아이디어 필터"
+            items={TAB_ITEMS.map((item) => ({ ...item, count: tabCounts[item.value] }))}
+            activeValue={activeTab}
+            onChange={setActiveTab}
+          />
         </section>
 
         {error ? (

@@ -15,6 +15,7 @@ import { ko } from "date-fns/locale";
 import { CalendarRange, FileText, Plus } from "lucide-react";
 import { DocCreateModal } from "@/components/docs/DocCreateModal";
 import { DocDetailModal } from "@/components/docs/DocDetailModal";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import {
   formatDocumentReasonPreview,
   getDocumentStatusLabel,
@@ -34,6 +35,12 @@ interface DocPageProps {
 }
 
 type ListFilter = "ALL" | "LEAVE" | "APPROVAL";
+
+const LIST_FILTER_ITEMS: Array<{ value: ListFilter; label: string }> = [
+  { value: "ALL", label: "전체" },
+  { value: "LEAVE", label: "연차" },
+  { value: "APPROVAL", label: "결재" },
+];
 
 function statusTone(status: DocumentSummary["status"]) {
   switch (status) {
@@ -331,22 +338,13 @@ export function DocPage({
     </p>
   </div>
 
-  <div className="pill-group !w-auto !justify-end !self-start">
-    {[
-      { value: "ALL", label: "전체" },
-      { value: "LEAVE", label: "연차" },
-      { value: "APPROVAL", label: "결재" },
-    ].map((item) => (
-      <button
-        key={item.value}
-        type="button"
-        onClick={() => setFilter(item.value as ListFilter)}
-        className={`pill-tab ${filter === item.value ? "is-active" : ""}`}
-      >
-        {item.label}
-      </button>
-    ))}
-  </div>
+  <FilterChipGroup
+    aria-label="휴가 결재 문서 필터"
+    className="!w-auto !justify-end !self-start"
+    items={LIST_FILTER_ITEMS}
+    activeValue={filter}
+    onChange={setFilter}
+  />
 </div>
 
             {filteredDocuments.length === 0 ? (

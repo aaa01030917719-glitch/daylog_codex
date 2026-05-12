@@ -1,14 +1,19 @@
 ﻿"use client";
 
-import { CalendarDays, ChartNoAxesGantt, LayoutList } from "lucide-react";
+import { CalendarDays, ChartNoAxesGantt, LayoutList, type LucideIcon } from "lucide-react";
 import type { ProjectViewMode } from "@/components/projects/project-board-types";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 
 interface ProjectViewToggleProps {
   viewMode: ProjectViewMode;
   onChange: (view: ProjectViewMode) => void;
 }
 
-const VIEWS: { value: ProjectViewMode; label: string; icon: React.ElementType }[] = [
+const VIEWS: {
+  value: ProjectViewMode;
+  label: string;
+  icon: LucideIcon;
+}[] = [
   { value: "LIST", label: "목록", icon: LayoutList },
   { value: "CALENDAR", label: "달력", icon: CalendarDays },
   { value: "GANTT", label: "간트", icon: ChartNoAxesGantt },
@@ -19,22 +24,12 @@ export function ProjectViewToggle({
   onChange,
 }: ProjectViewToggleProps) {
   return (
-    <div className="view-toggle">
-      {VIEWS.map(({ value, label, icon: Icon }) => {
-        const isActive = viewMode === value;
-
-        return (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onChange(value)}
-            className={`view-chip ${isActive ? "is-active" : ""}`}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        );
-      })}
-    </div>
+    <FilterChipGroup
+      aria-label="프로젝트 보기 전환"
+      items={VIEWS}
+      activeValue={viewMode}
+      onChange={onChange}
+      variant="view"
+    />
   );
 }
