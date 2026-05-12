@@ -7,6 +7,7 @@ import { BellRing, CheckCheck, FileText, Megaphone, Plus } from "lucide-react";
 import { NoticeDetailModal } from "@/components/notices/NoticeDetailRedesign";
 import { MinuteWriteModal } from "@/components/notices/MinuteWriteModal";
 import { NoticeWriteModal } from "@/components/notices/NoticeWriteRedesign";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { getPriorityLabel } from "@/lib/notices";
 import type {
@@ -41,6 +42,16 @@ const TAB_LABELS: Record<NoticeTabValue, string> = {
 };
 
 const CATEGORY_FILTERS: NoticeCategoryFilter[] = ["전체", "공지", "일정", "시설", "인사"];
+
+const TAB_ITEMS = (Object.keys(TAB_LABELS) as NoticeTabValue[]).map((tab) => ({
+  value: tab,
+  label: TAB_LABELS[tab],
+}));
+
+const CATEGORY_FILTER_ITEMS = CATEGORY_FILTERS.map((category) => ({
+  value: category,
+  label: category,
+}));
 
 function getCategoryTone(category: NoticePageNotice["category"]) {
   switch (category) {
@@ -323,22 +334,12 @@ export function NoticePage({
         </section>
 
         <section className="w-full">
-          <div className="flex w-full flex-wrap justify-start gap-2">
-            {(Object.keys(TAB_LABELS) as NoticeTabValue[]).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-full border-[1.5px] px-4 py-2 text-sm font-semibold transition ${
-                  activeTab === tab
-                    ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                    : "border-[var(--border)] bg-white text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                }`}
-              >
-                {TAB_LABELS[tab]}
-              </button>
-            ))}
-          </div>
+          <FilterChipGroup
+            aria-label="공지사항 화면 탭"
+            items={TAB_ITEMS}
+            activeValue={activeTab}
+            onChange={setActiveTab}
+          />
         </section>
 
         {error ? (
@@ -358,22 +359,13 @@ export function NoticePage({
                       총 {notices.length}건 · 아직 안 읽은 공지 {unreadCount}건
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {CATEGORY_FILTERS.map((category) => (
-                      <button
-                        key={category}
-                        type="button"
-                        onClick={() => setCategoryFilter(category)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                          categoryFilter === category
-                            ? "border-[var(--accent)] bg-[var(--accent-light)] text-[var(--accent)]"
-                            : "border-[var(--border)] bg-white text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-                        }`}
-                      >
-                        {category}
-                      </button>
-                    ))}
-                  </div>
+                  <FilterChipGroup
+                    aria-label="공지 카테고리 필터"
+                    items={CATEGORY_FILTER_ITEMS}
+                    activeValue={categoryFilter}
+                    onChange={setCategoryFilter}
+                    size="sm"
+                  />
                 </div>
               </div>
 
