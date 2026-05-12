@@ -140,9 +140,10 @@ export async function GET() {
   }
 
   const approverName = await getApproverName(workspaceId);
+  const isOwner = session.user.role === "OWNER";
   const approvals = await prisma.approval.findMany({
     where: {
-      requesterId: session.user.id,
+      ...(isOwner ? {} : { requesterId: session.user.id }),
       requester: { members: { some: { workspaceId } } },
     },
     include: {

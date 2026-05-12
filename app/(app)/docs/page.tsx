@@ -110,6 +110,7 @@ export default async function DocsPage({
     session.user.workspaceId
   );
   const currentUserId = session.user.id;
+  const isOwner = session.user.role === "OWNER";
   const approvalIdParam = Array.isArray(searchParams?.approvalId)
     ? searchParams.approvalId[0]
     : searchParams?.approvalId;
@@ -132,7 +133,7 @@ export default async function DocsPage({
     const [approvalRows, memberRows] = await Promise.all([
       prisma.approval.findMany({
         where: {
-          requesterId: currentUserId,
+          ...(isOwner ? {} : { requesterId: currentUserId }),
           requester: { members: { some: { workspaceId } } },
         },
         include: {
@@ -180,6 +181,7 @@ export default async function DocsPage({
     monthStart.setHours(0, 0, 0, 0);
     const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
     const myDocuments = initialDocuments.filter((document) => document.authorId === currentUserId);
+    const scopedDocuments = isOwner ? initialDocuments : myDocuments;
 
     const approvedLeaveDays = myDocuments.reduce((total, document) => {
       const startDate = toDate(document.startDate);
@@ -209,7 +211,7 @@ export default async function DocsPage({
       return total + calculateLeaveDays(document.type, startDate, endDate);
     }, 0);
 
-    const monthDocuments = myDocuments.filter((document) => {
+    const monthDocuments = scopedDocuments.filter((document) => {
       const createdAt = new Date(document.createdAt);
       return createdAt >= monthStart && createdAt < monthEnd;
     });
@@ -219,7 +221,7 @@ export default async function DocsPage({
       annualLeave,
       usedDays: Number(formatLeaveSummaryDays(approvedLeaveDays)),
       remainingDays: Math.max(annualLeave - approvedLeaveDays, 0),
-      pendingCount: initialDocuments.filter((document) => document.status === "PENDING").length,
+      pendingCount: scopedDocuments.filter((document) => document.status === "PENDING").length,
       submittedThisMonth: monthDocuments.length,
       approvedThisMonth: monthDocuments.filter((document) => document.status === "APPROVED")
         .length,

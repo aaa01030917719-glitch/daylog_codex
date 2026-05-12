@@ -22,6 +22,7 @@ interface NoticePageProps {
   initialMinutes: NoticeMinuteSummary[];
   isAdmin: boolean;
   isOwner: boolean;
+  initialTab?: NoticeTabValue;
 }
 
 type NoticeTabValue = "NOTICES" | "LEAVE" | "MINUTES";
@@ -93,8 +94,9 @@ export function NoticePage({
   initialMinutes,
   isAdmin,
   isOwner,
+  initialTab = "NOTICES",
 }: NoticePageProps) {
-  const [activeTab, setActiveTab] = useState<NoticeTabValue>("NOTICES");
+  const [activeTab, setActiveTab] = useState<NoticeTabValue>(initialTab);
   const [categoryFilter, setCategoryFilter] = useState<NoticeCategoryFilter>("전체");
   const [notices, setNotices] = useState(initialNotices);
   const [modalState, setModalState] = useState<ModalState>(null);
@@ -175,7 +177,7 @@ export function NoticePage({
         ...current,
       ]);
       setMinuteModalOpen(false);
-      window.location.href = `/docs/${page.id}?source=notices`;
+      window.location.href = `/docs/${page.id}?source=meeting-note`;
     } catch (requestError) {
       console.error("[MINUTE_CREATE]", requestError);
       setMinuteError("회의록을 저장하지 못했어요.");
@@ -640,7 +642,7 @@ export function NoticePage({
                     key={minute.id}
                     type="button"
                     onClick={() => {
-                      window.location.href = `/docs/${minute.id}?source=notices`;
+                      window.location.href = `/docs/${minute.id}?source=meeting-note`;
                     }}
                     className="w-full rounded-[14px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-4 text-left transition hover:bg-[var(--surface-2)]"
                   >

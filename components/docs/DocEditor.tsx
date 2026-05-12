@@ -67,7 +67,8 @@ export function DocEditor({ page, currentUserId, isAdmin, source }: Props) {
   const [isEditorFocused, setIsEditorFocused] = useState(false);
   const noticeSource =
     source === "notices" || source === "meeting-note" ? source : null;
-  const backHref = noticeSource ? "/notices" : "/docs";
+  const backHref =
+    noticeSource === "meeting-note" ? "/notices?tab=meeting-notes" : noticeSource ? "/notices" : "/docs";
 
   function buildDocHref(pageId: string) {
     if (!noticeSource) {

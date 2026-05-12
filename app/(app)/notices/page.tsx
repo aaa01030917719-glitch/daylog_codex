@@ -18,7 +18,16 @@ function isOwnerRole(role?: string | null) {
   return role === "OWNER";
 }
 
-export default async function NoticesPage() {
+function parseNoticeTab(value?: string | string[]) {
+  const tab = Array.isArray(value) ? value[0] : value;
+  return tab === "meeting-notes" ? "MINUTES" : "NOTICES";
+}
+
+export default async function NoticesPage({
+  searchParams,
+}: {
+  searchParams?: { tab?: string | string[] };
+}) {
   const session = await auth();
   if (!session?.user?.id) {
     redirect("/login");
@@ -227,6 +236,7 @@ export default async function NoticesPage() {
       initialMinutes={initialMinutes}
       isAdmin={isAdmin}
       isOwner={isOwner}
+      initialTab={parseNoticeTab(searchParams?.tab)}
     />
   );
 }
