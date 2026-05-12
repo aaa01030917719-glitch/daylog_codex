@@ -34,6 +34,7 @@ model User {
   notifications     Notification[]
   notices           Notice[]
   noticeReads       NoticeRead[]
+  taskAttachments   TaskAttachment[]  @relation("TaskAttachmentUploader")
   boardPosts        BoardPost[]
   boardLikes        BoardLike[]
   boardReads        BoardRead[]
@@ -202,6 +203,25 @@ model Task {
   comments  Comment[]
   tags      Tag[]
   approvals Approval[]
+  attachments TaskAttachment[]
+}
+
+model TaskAttachment {
+  id          String   @id @default(cuid())
+  taskId      String
+  name        String
+  size        Int      @default(0)
+  mimeType    String?
+  storagePath String?
+  url         String?
+  createdAt   DateTime @default(now())
+  uploaderId  String
+
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploader User @relation("TaskAttachmentUploader", fields: [uploaderId], references: [id], onDelete: Restrict)
+
+  @@index([taskId, createdAt])
+  @@index([uploaderId])
 }
 
 enum TaskStatus {

@@ -31,7 +31,6 @@ import {
   normalizeTaskLinkUrl,
   normalizeTaskProgress,
   readFileAsDataUrl,
-  saveTaskAttachmentMetas,
   saveTaskLinkMetas,
   saveTaskProgress,
   taskDescriptionToPlainText,
@@ -60,6 +59,7 @@ interface Task {
   creatorId: string;
   assignee: { id: string; name: string | null; image: string | null } | null;
   creator: { id: string; name: string | null };
+  attachments?: TaskAttachmentMeta[];
 }
 
 interface Member {
@@ -231,6 +231,7 @@ export function TaskCreateDetailModal({
     selectedProjectId !== (initialProjectId ?? "") ||
     tags.length > 0 ||
     links.length > 0 ||
+    attachments.length > 0 ||
     linkTitle.trim().length > 0 ||
     linkUrl.trim().length > 0 ||
     subTasks.length > 0 ||
@@ -433,6 +434,12 @@ export function TaskCreateDetailModal({
           progress,
           assigneeId: assigneeId || null,
           requiresApproval: false,
+          attachments: attachments.map((attachment) => ({
+            name: attachment.name,
+            size: attachment.size,
+            mimeType: attachment.mimeType ?? null,
+            createdAt: attachment.createdAt,
+          })),
         }),
       });
 
@@ -455,9 +462,6 @@ export function TaskCreateDetailModal({
         progress: normalizeTaskProgress(data.task.progress ?? progress, progress),
       };
       saveTaskProgress(createdTask.id, createdTask.progress);
-      if (attachments.length > 0) {
-        saveTaskAttachmentMetas(createdTask.id, attachments);
-      }
       if (links.length > 0) {
         saveTaskLinkMetas(createdTask.id, links);
       }

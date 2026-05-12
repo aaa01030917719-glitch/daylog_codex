@@ -34,6 +34,41 @@ function serializeDateMeta(value: Date | null) {
   return value ? value.toISOString() : null;
 }
 
+function normalizeAttachmentInputs(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((attachment) => {
+      if (!attachment || typeof attachment !== "object") {
+        return null;
+      }
+
+      const input = attachment as Record<string, unknown>;
+      const name = typeof input.name === "string" ? input.name.trim() : "";
+      if (!name) {
+        return null;
+      }
+
+      const size = Number(input.size);
+      const createdAt =
+        typeof input.createdAt === "string" ? new Date(input.createdAt) : new Date();
+
+      return {
+        id: crypto.randomUUID(),
+        name,
+        size: Number.isFinite(size) && size > 0 ? Math.round(size) : 0,
+        mimeType:
+          typeof input.mimeType === "string" && input.mimeType.trim()
+            ? input.mimeType.trim()
+            : null,
+        createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
+      };
+    })
+    .filter((attachment): attachment is NonNullable<typeof attachment> => Boolean(attachment));
+}
+
 const TASK_STATUSES = new Set<TaskStatus>([
   TaskStatus.TODO,
   TaskStatus.IN_PROGRESS,
@@ -65,6 +100,19 @@ function getTaskListSelect(taskColumnSupport: TaskColumnSupport) {
     assignee: { select: { id: true, name: true, image: true } },
     creator: { select: { id: true, name: true } },
     project: { select: { id: true, name: true, color: true, startDate: true } },
+    attachments: {
+      select: {
+        id: true,
+        name: true,
+        size: true,
+        mimeType: true,
+        storagePath: true,
+        url: true,
+        createdAt: true,
+        uploaderId: true,
+      },
+      orderBy: { createdAt: "asc" },
+    },
   } as const;
 }
 
@@ -157,6 +205,7 @@ export async function POST(req: NextRequest) {
       status,
       budget,
       progress,
+      attachments,
     } = body;
 
     const trimmedTitle = typeof title === "string" ? title.trim() : "";
@@ -221,6 +270,7 @@ export async function POST(req: NextRequest) {
         ? priority
         : Priority.MEDIUM;
     const taskId = crypto.randomUUID();
+    const attachmentInputs = normalizeAttachmentInputs(attachments);
 
     const previousProjectStartDate = project.startDate ?? null;
     const shouldAdjustProjectStartDate = Boolean(
@@ -311,6 +361,16 @@ export async function POST(req: NextRequest) {
         await tx.project.update({
           where: { id: projectId },
           data: { startDate: parsedStartDate.value },
+        });
+      }
+
+      if (attachmentInputs.length > 0) {
+        await tx.taskAttachment.createMany({
+          data: attachmentInputs.map((attachment) => ({
+            ...attachment,
+            taskId,
+            uploaderId: session.user.id,
+          })),
         });
       }
     });

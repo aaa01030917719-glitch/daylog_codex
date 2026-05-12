@@ -12,7 +12,9 @@ export interface TaskAttachmentMeta {
   id: string;
   name: string;
   size: number;
+  mimeType?: string | null;
   createdAt: string;
+  uploaderId?: string | null;
 }
 
 export interface TaskLinkMeta {
@@ -181,45 +183,13 @@ export function toTaskAttachmentMetas(files: FileList | File[]): TaskAttachmentM
     id: `task-file-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     name: file.name,
     size: file.size,
+    mimeType: file.type || null,
     createdAt: new Date().toISOString(),
   }));
 }
 
-function getAttachmentStorageKey(taskId: string) {
-  return `task-attachments:${taskId}`;
-}
-
 function getLinkStorageKey(taskId: string) {
   return `task-links:${taskId}`;
-}
-
-export function loadTaskAttachmentMetas(taskId: string): TaskAttachmentMeta[] {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(getAttachmentStorageKey(taskId));
-    if (!raw) {
-      return [];
-    }
-    const parsed = JSON.parse(raw) as TaskAttachmentMeta[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveTaskAttachmentMetas(taskId: string, attachments: TaskAttachmentMeta[]) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  try {
-    window.localStorage.setItem(getAttachmentStorageKey(taskId), JSON.stringify(attachments));
-  } catch {
-    // ignore local storage failures
-  }
 }
 
 export function loadTaskLinkMetas(taskId: string): TaskLinkMeta[] {

@@ -34,6 +34,41 @@ function serializeDateMeta(value: Date | null) {
   return value ? value.toISOString() : null;
 }
 
+function normalizeAttachmentInputs(value: unknown) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((attachment) => {
+      if (!attachment || typeof attachment !== "object") {
+        return null;
+      }
+
+      const input = attachment as Record<string, unknown>;
+      const name = typeof input.name === "string" ? input.name.trim() : "";
+      if (!name) {
+        return null;
+      }
+
+      const size = Number(input.size);
+      const createdAt =
+        typeof input.createdAt === "string" ? new Date(input.createdAt) : new Date();
+
+      return {
+        id: crypto.randomUUID(),
+        name,
+        size: Number.isFinite(size) && size > 0 ? Math.round(size) : 0,
+        mimeType:
+          typeof input.mimeType === "string" && input.mimeType.trim()
+            ? input.mimeType.trim()
+            : null,
+        createdAt: Number.isNaN(createdAt.getTime()) ? new Date() : createdAt,
+      };
+    })
+    .filter((attachment): attachment is NonNullable<typeof attachment> => Boolean(attachment));
+}
+
 const TASK_STATUSES = new Set<TaskStatus>([
   TaskStatus.TODO,
   TaskStatus.IN_PROGRESS,
@@ -66,6 +101,19 @@ function getTaskDetailSelect(taskColumnSupport: TaskColumnSupport) {
     assignee: { select: { id: true, name: true, image: true } },
     creator: { select: { id: true, name: true, image: true } },
     tags: { select: { id: true, name: true, color: true } },
+    attachments: {
+      select: {
+        id: true,
+        name: true,
+        size: true,
+        mimeType: true,
+        storagePath: true,
+        url: true,
+        createdAt: true,
+        uploaderId: true,
+      },
+      orderBy: { createdAt: "asc" },
+    },
   } as const;
 }
 
@@ -192,7 +240,10 @@ export async function PATCH(
       budget,
       requiresApproval,
       progress,
+      attachments,
     } = body;
+    const hasAttachmentsInput = attachments !== undefined;
+    const attachmentInputs = normalizeAttachmentInputs(attachments);
 
     const hasStatusInput = status !== undefined;
     const hasProgressInput = progress !== undefined;
@@ -277,7 +328,7 @@ export async function PATCH(
       : previousProjectStartDate;
 
     const updated = await prisma.$transaction(async (tx) => {
-      const updatedTask = await tx.task.update({
+      await tx.task.update({
         where: { id: params.id },
         data: {
           ...(shouldSyncStatusAndProgress && {
@@ -293,8 +344,23 @@ export async function PATCH(
           ...(budget !== undefined && { budget }),
           ...(requiresApproval !== undefined && { requiresApproval }),
         },
-        select: getTaskDetailSelect(taskColumnSupport),
       });
+
+      if (hasAttachmentsInput) {
+        await tx.taskAttachment.deleteMany({
+          where: { taskId: params.id },
+        });
+
+        if (attachmentInputs.length > 0) {
+          await tx.taskAttachment.createMany({
+            data: attachmentInputs.map((attachment) => ({
+              ...attachment,
+              taskId: params.id,
+              uploaderId: session.user.id,
+            })),
+          });
+        }
+      }
 
       if (shouldAdjustProjectStartDate && nextStartDate) {
         await tx.project.update({
@@ -303,7 +369,10 @@ export async function PATCH(
         });
       }
 
-      return updatedTask;
+      return tx.task.findUniqueOrThrow({
+        where: { id: params.id },
+        select: getTaskDetailSelect(taskColumnSupport),
+      });
     });
 
     return NextResponse.json({

@@ -28,14 +28,12 @@ import {
 import { TaskTagModal } from "@/components/tasks/TaskTagModal";
 import {
   isTaskDescriptionEmpty,
-  loadTaskAttachmentMetas,
   loadTaskLinkMetas,
   loadTaskProgress,
   normalizeTaskDescriptionHtml,
   normalizeTaskLinkUrl,
   normalizeTaskProgress,
   readFileAsDataUrl,
-  saveTaskAttachmentMetas,
   saveTaskLinkMetas,
   saveTaskProgress,
   toTaskAttachmentMetas,
@@ -89,6 +87,7 @@ interface TaskRecord {
   creator: { id: string; name: string | null; image?: string | null } | null;
   project?: { id: string; name: string; color?: string | null } | null;
   tags?: TaskTag[];
+  attachments?: TaskAttachmentMeta[];
 }
 
 interface SubTask {
@@ -121,6 +120,19 @@ interface EditableSnapshot {
   assigneeId: string;
   dueDate: string;
   progress: number;
+  attachmentsSerialized: string;
+}
+
+function serializeTaskAttachments(attachments: TaskAttachmentMeta[]) {
+  return JSON.stringify(
+    attachments.map((attachment) => ({
+      id: attachment.id,
+      name: attachment.name,
+      size: attachment.size,
+      mimeType: attachment.mimeType ?? null,
+      createdAt: attachment.createdAt,
+    }))
+  );
 }
 
 function serializeTaskLinks(links: TaskLinkMeta[]) {
@@ -196,6 +208,7 @@ function toEditableSnapshot(task: TaskRecord): EditableSnapshot {
     assigneeId: task.assigneeId ?? "",
     dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
     progress: normalizeTaskProgress(task.progress),
+    attachmentsSerialized: serializeTaskAttachments(task.attachments ?? []),
   };
 }
 
@@ -231,8 +244,7 @@ export function TaskDetailModal({
   const [commentDraft, setCommentDraft] = useState("");
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
   const [newSubTaskTitle, setNewSubTaskTitle] = useState("");
-  const [attachments, setAttachments] = useState<TaskAttachmentMeta[]>([]);
-  const [attachmentsReady, setAttachmentsReady] = useState(Boolean(initialTask));
+  const [attachments, setAttachments] = useState<TaskAttachmentMeta[]>(initialTask?.attachments ?? []);
   const [links, setLinks] = useState<TaskLinkMeta[]>([]);
   const [linkTitle, setLinkTitle] = useState("");
   const [linkUrl, setLinkUrl] = useState("");
@@ -350,14 +362,13 @@ export function TaskDetailModal({
     setTags(initialTask.tags ?? []);
     setComments([]);
     setSubTasks([]);
-    setAttachments(loadTaskAttachmentMetas(initialTask.id));
+    setAttachments(initialTask.attachments ?? []);
     const nextLinks = loadTaskLinkMetas(initialTask.id);
     setLinks(nextLinks);
     setOriginalLinksSerialized(serializeTaskLinks(nextLinks));
     setLinkTitle("");
     setLinkUrl("");
     setLinkError(null);
-    setAttachmentsReady(true);
     setCommentDraft("");
     setNewSubTaskTitle("");
     setOriginalSnapshot(toEditableSnapshot({ ...initialTask, progress: nextProgress }));
@@ -416,14 +427,13 @@ export function TaskDetailModal({
         setAssigneeId(data.task.assigneeId ?? "");
         setDueDate(data.task.dueDate ? format(new Date(data.task.dueDate), "yyyy-MM-dd") : "");
         setTags(data.task.tags ?? []);
-        setAttachments(loadTaskAttachmentMetas(data.task.id));
+        setAttachments(data.task.attachments ?? []);
         const nextLinks = loadTaskLinkMetas(data.task.id);
         setLinks(nextLinks);
         setOriginalLinksSerialized(serializeTaskLinks(nextLinks));
         setLinkTitle("");
         setLinkUrl("");
         setLinkError(null);
-        setAttachmentsReady(true);
         setOriginalSnapshot(toEditableSnapshot({ ...data.task, progress: nextProgress }));
       } catch (loadError) {
         if (!active) return;
@@ -490,6 +500,7 @@ export function TaskDetailModal({
       originalSnapshot.progress !== progress ||
       originalSnapshot.assigneeId !== assigneeId ||
       originalSnapshot.dueDate !== dueDate ||
+      originalSnapshot.attachmentsSerialized !== serializeTaskAttachments(attachments) ||
       originalLinksSerialized !== serializeTaskLinks(links) ||
       linkTitle.trim().length > 0 ||
       linkUrl.trim().length > 0
@@ -562,15 +573,6 @@ export function TaskDetailModal({
       </div>
     ) : null;
 
-  useEffect(() => {
-    const resolvedTaskId = task?.id ?? taskId;
-    if (!resolvedTaskId || !attachmentsReady) {
-      return;
-    }
-
-    saveTaskAttachmentMetas(resolvedTaskId, attachments);
-  }, [attachments, attachmentsReady, task?.id, taskId]);
-
   async function syncTask(payload: Record<string, unknown>) {
     if (!canEditTask) {
       throw new Error("이 업무는 작성자만 수정할 수 있어요.");
@@ -603,6 +605,7 @@ export function TaskDetailModal({
     setAssigneeId(data.task.assigneeId ?? "");
     setDueDate(data.task.dueDate ? format(new Date(data.task.dueDate), "yyyy-MM-dd") : "");
     setTags(data.task.tags ?? tags);
+    setAttachments(data.task.attachments ?? []);
     setOriginalSnapshot(toEditableSnapshot(nextTask));
     onUpdated?.(nextTask);
     return nextTask;
@@ -708,6 +711,13 @@ export function TaskDetailModal({
         progress,
         assigneeId: assigneeId || null,
         dueDate: dueDate || null,
+        attachments: attachments.map((attachment) => ({
+          id: attachment.id,
+          name: attachment.name,
+          size: attachment.size,
+          mimeType: attachment.mimeType ?? null,
+          createdAt: attachment.createdAt,
+        })),
       });
       const resolvedTaskId = task?.id ?? taskId;
       if (resolvedTaskId) {
