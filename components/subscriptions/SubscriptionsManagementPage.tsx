@@ -23,6 +23,7 @@ import {
 } from "@/app/(app)/settings/tabs/subscriptions-shared";
 import { SubscriptionsConfirmDialog } from "@/app/(app)/settings/tabs/SubscriptionsConfirmDialog";
 import { SubscriptionsFormDialog } from "@/app/(app)/settings/tabs/SubscriptionsFormDialog";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import {
   SUBSCRIPTION_BILLING_CYCLE_VALUES,
   type SubscriptionAlertLevel,
@@ -46,6 +47,14 @@ const STATUS_LABELS: Record<Exclude<StatusTab, "ALL">, string> = {
   CANCEL_SCHEDULED: "해지 예정",
   ENDED: "종료",
 };
+
+const STATUS_FILTER_ITEMS: Array<{ value: StatusTab; label: string }> = [
+  { value: "ALL", label: "전체" },
+  { value: "ACTIVE", label: STATUS_LABELS.ACTIVE },
+  { value: "REVIEW", label: STATUS_LABELS.REVIEW },
+  { value: "CANCEL_SCHEDULED", label: STATUS_LABELS.CANCEL_SCHEDULED },
+  { value: "ENDED", label: STATUS_LABELS.ENDED },
+];
 
 const BILLING_CYCLE_LABELS: Record<(typeof SUBSCRIPTION_BILLING_CYCLE_VALUES)[number], string> = {
   MONTHLY: "월간",
@@ -503,13 +512,13 @@ export function SubscriptionsManagementPage({
           />
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-2">
-          <StatusTabButton active={activeTab === "ALL"} label={`전체 (${counts.ALL})`} onClick={() => setActiveTab("ALL")} />
-          <StatusTabButton active={activeTab === "ACTIVE"} label={`사용 중 (${counts.ACTIVE})`} onClick={() => setActiveTab("ACTIVE")} />
-          <StatusTabButton active={activeTab === "REVIEW"} label={`검토 중 (${counts.REVIEW})`} onClick={() => setActiveTab("REVIEW")} />
-          <StatusTabButton active={activeTab === "CANCEL_SCHEDULED"} label={`해지 예정 (${counts.CANCEL_SCHEDULED})`} onClick={() => setActiveTab("CANCEL_SCHEDULED")} />
-          <StatusTabButton active={activeTab === "ENDED"} label={`종료 (${counts.ENDED})`} onClick={() => setActiveTab("ENDED")} />
-        </div>
+        <FilterChipGroup
+          aria-label="구독 서비스 상태 필터"
+          className="mt-8"
+          items={STATUS_FILTER_ITEMS.map((item) => ({ ...item, count: counts[item.value] }))}
+          activeValue={activeTab}
+          onChange={setActiveTab}
+        />
 
         <section className="mt-5 rounded-[18px] border border-[var(--border)] bg-white p-5 shadow-[var(--shadow-sm)]">
           <div className="flex flex-wrap items-center gap-3 whitespace-nowrap shrink-0">
@@ -778,30 +787,6 @@ function SummaryCard({
   );
 }
 
-function StatusTabButton({
-  active,
-  label,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-[12px] border px-5 py-3 text-[15px] font-semibold transition ${
-        active
-          ? "border-[#c7d7ff] bg-[var(--accent-light)] text-[var(--accent)]"
-          : "border-transparent text-[var(--text-secondary)] hover:bg-[var(--surface-3)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
 function SubscriptionDetailPanel({
   item,
   loading,
@@ -992,4 +977,3 @@ function DetailRow({
     </div>
   );
 }
-
