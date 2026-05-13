@@ -16,6 +16,7 @@ import {
   resolveUserDisplayName,
   useUserProfilePreferences,
 } from "@/lib/user-profile-preferences";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import { StatusBadge, type StatusBadgeVariant } from "@/components/ui/StatusBadge";
 
 const NOTIFICATION_SYNC_EVENT = "daylog:notifications-sync";
@@ -339,26 +340,6 @@ function getInboxStatusVariant(status: InboxStatus): StatusBadgeVariant {
   }
 }
 
-function filterChipClassName(filter: InboxFilter, activeFilter: InboxFilter) {
-  const baseClassName =
-    "inline-flex h-[26px] items-center rounded-full border px-3 text-[11.5px] font-medium transition";
-
-  if (filter !== activeFilter) {
-    return `${baseClassName} border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[var(--accent)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)]`;
-  }
-
-  switch (filter) {
-    case "review":
-      return `${baseClassName} border-[var(--warning)] bg-[var(--warning-light)] text-[var(--warning)]`;
-    case "approved":
-      return `${baseClassName} border-[var(--success)] bg-[var(--success-light)] text-[var(--success)]`;
-    case "rejected":
-      return `${baseClassName} border-[var(--danger)] bg-[var(--danger-light)] text-[var(--danger)]`;
-    default:
-      return `${baseClassName} border-[var(--accent)] bg-[var(--accent)] text-white`;
-  }
-}
-
 function toneIcon(tone: InboxTone) {
   switch (tone) {
     case "document":
@@ -446,6 +427,16 @@ const FILTER_LABELS: Record<InboxFilter, string> = {
   approved: "승인",
   rejected: "반려",
 };
+
+const TAB_ITEMS = (Object.keys(TAB_LABELS) as InboxTab[]).map((tab) => ({
+  value: tab,
+  label: TAB_LABELS[tab],
+}));
+
+const FILTER_ITEMS = (Object.keys(FILTER_LABELS) as InboxFilter[]).map((filter) => ({
+  value: filter,
+  label: FILTER_LABELS[filter],
+}));
 
 export function NotificationsClientPage({
   initialNotifications,
@@ -848,22 +839,14 @@ export function NotificationsClientPage({
           </aside>
 
           <section className="flex min-w-0 flex-1 flex-col">
-            <div className="flex h-11 shrink-0 items-center gap-1 border-b border-[var(--border)] px-4 md:px-5">
-              {(Object.keys(TAB_LABELS) as InboxTab[]).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => activateTab(tab)}
-                  className={`relative h-11 border-b-2 px-3 text-[13px] font-medium transition ${
-                    activeTab === tab
-                      ? "border-[var(--accent)] font-semibold text-[var(--accent)]"
-                      : "border-transparent text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                  }`}
-                >
-                  {TAB_LABELS[tab]}
-                </button>
-              ))}
-
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-3 md:px-5">
+              <FilterChipGroup
+                aria-label="알림 유형 필터"
+                items={TAB_ITEMS}
+                activeValue={activeTab}
+                onChange={activateTab}
+                size="sm"
+              />
               <div className="ml-auto">
                 {unreadCount > 0 ? (
                   <button
@@ -877,17 +860,14 @@ export function NotificationsClientPage({
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-wrap gap-2 border-b border-[var(--border-light)] px-4 py-3 md:px-5">
-              {(Object.keys(FILTER_LABELS) as InboxFilter[]).map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  onClick={() => setActiveFilter(filter)}
-                  className={filterChipClassName(filter, activeFilter)}
-                >
-                  {FILTER_LABELS[filter]}
-                </button>
-              ))}
+            <div className="shrink-0 border-b border-[var(--border-light)] px-4 py-3 md:px-5">
+              <FilterChipGroup
+                aria-label="알림 상태 필터"
+                items={FILTER_ITEMS}
+                activeValue={activeFilter}
+                onChange={setActiveFilter}
+                size="sm"
+              />
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 md:px-5 md:pb-5">
