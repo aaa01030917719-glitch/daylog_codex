@@ -1,11 +1,25 @@
 import { auth } from "@/auth";
-import { endOfMonth, format, startOfMonth } from "date-fns";
+import {
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameDay,
+  startOfMonth,
+  startOfWeek,
+} from "date-fns";
 import { ko } from "date-fns/locale";
 import { redirect } from "next/navigation";
-import { WorkspaceDashboard } from "@/components/dashboard/WorkspaceDashboard";
-import { buildDashboardStatCards } from "@/components/dashboard/dashboard-stat-cards";
-import { mapProjectRecordToSummary } from "@/components/projects/project-data-mappers";
-import { getProjectBaseSelect, getProjectColumnSupport } from "@/lib/project-column-support";
+import { CalendarEventGroupKind } from "@prisma/client";
+import {
+  HomeDashboardClient,
+  type HomeApprovalItem,
+  type HomeAttendanceItem,
+  type HomeDashboardData,
+  type HomeNoticeItem,
+  type HomeRequestItem,
+  type HomeScheduleItem,
+  type HomeTaskItem,
+} from "@/components/home/HomeDashboardClient";
 import { prisma } from "@/lib/prisma";
 import { getTaskColumnSupport } from "@/lib/task-column-support";
 import { resolveWorkspaceIdForUser } from "@/lib/workspace-membership";
@@ -32,7 +46,7 @@ function getAttendanceTone(status?: string | null) {
     case "OVERTIME":
       return { label: "추가 근무", background: "var(--accent-light)", color: "#C05621" };
     case "ABSENT":
-      return { label: "부재", background: "#FDECEA", color: "#D93025" };
+      return { label: "미출근", background: "#FDECEA", color: "#D93025" };
     default:
       return { label: "미기록", background: "#F3F4F6", color: "#6B7280" };
   }
@@ -41,15 +55,71 @@ function getAttendanceTone(status?: string | null) {
 function getNoticeBadgeTone(badge: string) {
   switch (badge) {
     case "SCHEDULE":
-      return { label: "일정", background: "#EFF6FF", color: "#2563EB" };
+      return { label: "일정" };
     case "FACILITY":
-      return { label: "시설", background: "#EEFBF3", color: "#15803D" };
+      return { label: "시설" };
     case "NOTICE":
-      return { label: "공지", background: "var(--accent-light)", color: "var(--accent)" };
+      return { label: "공지" };
     case "WORK":
-      return { label: "업무", background: "#F5F3FF", color: "#7C3AED" };
+      return { label: "업무" };
     default:
-      return { label: "기타", background: "#F3F4F6", color: "#4B5563" };
+      return { label: "기타" };
+  }
+}
+
+function getApprovalTypeLabel(type: string) {
+  switch (type) {
+    case "LEAVE_REQUEST":
+      return "연차·반차";
+    case "IMPORTANT_EVENT":
+      return "일정 승인";
+    case "DEADLINE_CHANGE":
+      return "마감 변경";
+    case "BUDGET_TASK":
+      return "결재 요청";
+    case "PROJECT_REVIEW":
+      return "업무 검토";
+    default:
+      return "결재";
+  }
+}
+
+function getApprovalStatusLabel(status: string) {
+  switch (status) {
+    case "APPROVED":
+      return "승인";
+    case "REJECTED":
+      return "반려";
+    default:
+      return "대기";
+  }
+}
+
+function getEventGroupLabel(groupKind?: string | null) {
+  switch (groupKind) {
+    case "COMPANY_ALL":
+      return "전사";
+    case "TEAM_SHARED":
+      return "팀공용";
+    case "PROJECT":
+      return "프로젝트";
+    case "CUSTOM":
+      return "그룹";
+    default:
+      return "개인";
+  }
+}
+
+function getTaskStatusLabel(status: string) {
+  switch (status) {
+    case "DONE":
+      return "완료";
+    case "IN_REVIEW":
+      return "검토중";
+    case "IN_PROGRESS":
+      return "진행중";
+    default:
+      return "예정";
   }
 }
 
@@ -74,12 +144,19 @@ function normalizeProgressValue(value: number | null | undefined, fallback: numb
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function formatTaskPeriodLabel(startDate: Date, dueDate: Date | null) {
-  if (!dueDate) {
-    return "마감일 없음";
+function formatDueDateLabel(value: Date | null | undefined) {
+  if (!value) return "마감일 없음";
+  return format(new Date(value), "M월 d일", { locale: ko });
+}
+
+function formatScheduleLabel(startAt: Date, endAt: Date, allDay: boolean) {
+  if (allDay) {
+    return `${format(startAt, "M/d (EEE)", { locale: ko })} 종일`;
   }
 
-  return `${format(startDate, "M.d", { locale: ko })} - ${format(dueDate, "M.d", { locale: ko })}`;
+  return `${format(startAt, "M/d (EEE) HH:mm", { locale: ko })} - ${format(endAt, "HH:mm", {
+    locale: ko,
+  })}`;
 }
 
 export default async function DashboardPage() {
@@ -100,49 +177,28 @@ export default async function DashboardPage() {
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
   const monthStart = startOfMonth(now);
   const monthEnd = endOfMonth(now);
 
   if (!workspaceId) {
-    const emptyTone = getAttendanceTone();
+    const emptyData: HomeDashboardData = {
+      userName,
+      userRole,
+      isAdmin,
+      dateLabel: format(now, "yyyy.MM.dd (EEE)", { locale: ko }),
+      approvals: [],
+      reviewTasks: [],
+      tasks: [],
+      schedules: [],
+      attendanceSummary: { checkedIn: 0, late: 0, absent: 0, leave: 0, total: 0 },
+      attendanceRows: [],
+      notices: [],
+      requests: [],
+    };
 
-    return (
-      <WorkspaceDashboard
-        userName={userName}
-        userRole={userRole}
-        stats={buildDashboardStatCards({
-          ongoingProjects: 0,
-          totalProjects: 0,
-          ideaCount: 0,
-          pendingDocs: 0,
-          remainingLeave: "준비중",
-        })}
-        attendance={{
-          isAdmin,
-          dateLabel: format(now, "yyyy.MM.dd (eee)", { locale: ko }),
-          currentStatusLabel: emptyTone.label,
-          currentStatusTone: {
-            background: emptyTone.background,
-            color: emptyTone.color,
-          },
-          checkInLabel: "-",
-          checkOutLabel: "-",
-          summaryLabel: "워크스페이스 정보가 없습니다.",
-          hasCheckIn: false,
-          hasCheckOut: false,
-          statusCode: null,
-          teamCheckedIn: 0,
-          teamTotal: 0,
-          lateCount: 0,
-          holidayCount: 0,
-          todayRows: [],
-        }}
-        notices={[]}
-        events={[]}
-        leaveMarkers={[]}
-        projects={[]}
-      />
-    );
+    return <HomeDashboardClient data={emptyData} />;
   }
 
   const approvalWhere = isAdmin
@@ -158,15 +214,20 @@ export default async function DashboardPage() {
   const eventWhere = isAdmin
     ? {
         workspaceId,
-        endAt: { gte: todayStart },
+        startAt: { lte: weekEnd },
+        endAt: { gte: weekStart },
       }
     : {
         workspaceId,
-        endAt: { gte: todayStart },
-        OR: [{ creatorId: userId }, { isImportant: true }],
+        startAt: { lte: weekEnd },
+        endAt: { gte: weekStart },
+        OR: [
+          { creatorId: userId },
+          { isImportant: true },
+          { groupKind: { in: [CalendarEventGroupKind.COMPANY_ALL, CalendarEventGroupKind.TEAM_SHARED] } },
+        ],
       };
 
-  const projectColumnSupport = await getProjectColumnSupport();
   const taskColumnSupport = await getTaskColumnSupport();
 
   const [
@@ -177,10 +238,13 @@ export default async function DashboardPage() {
     events,
     approvedApprovals,
     leaveRecords,
+    pendingApprovals,
     rawProjects,
     ongoingTasks,
+    reviewTasks,
     todayTeamRecords,
-    teamMemberCount,
+    teamMembers,
+    myRequests,
   ] = await Promise.all([
     prisma.attendance.findUnique({
       where: { userId_date: { userId, date: todayStart } },
@@ -196,13 +260,14 @@ export default async function DashboardPage() {
     }),
     prisma.notice.findMany({
       where: { workspaceId },
+      include: { author: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 4,
     }),
     prisma.event.findMany({
       where: eventWhere,
       orderBy: [{ startAt: "asc" }, { createdAt: "desc" }],
-      take: 5,
+      take: 8,
     }),
     prisma.approval.findMany({
       where: {
@@ -235,34 +300,30 @@ export default async function DashboardPage() {
       select: { date: true, status: true },
       orderBy: { date: "asc" },
     }),
+    isAdmin
+      ? prisma.approval.findMany({
+          where: approvalWhere,
+          include: {
+            requester: { select: { id: true, name: true, image: true } },
+            task: { select: { id: true, title: true, projectId: true } },
+            event: { select: { id: true, title: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 12,
+        })
+      : Promise.resolve([]),
     prisma.project.findMany({
       where: { workspaceId },
-      select: {
-        ...getProjectBaseSelect(projectColumnSupport),
-        _count: { select: { tasks: true } },
-        tasks: {
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            status: true,
-            ...(taskColumnSupport.startDate ? { startDate: true } : {}),
-            createdAt: true,
-            dueDate: true,
-            assignee: { select: { name: true } },
-            tags: { select: { name: true } },
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 12,
+      select: { id: true },
     }),
     prisma.task.findMany({
       where: {
         project: { workspaceId },
         status: { not: "DONE" },
+        ...(isAdmin ? {} : { assigneeId: userId }),
         OR: [
           { status: "IN_PROGRESS" },
+          { status: "IN_REVIEW" },
           { progress: { gt: 0, lt: 100 } },
         ],
       },
@@ -271,16 +332,40 @@ export default async function DashboardPage() {
         title: true,
         status: true,
         progress: true,
+        requiresApproval: true,
+        isApprovalRequested: true,
         ...(taskColumnSupport.startDate ? { startDate: true } : {}),
         createdAt: true,
         updatedAt: true,
         dueDate: true,
-        assignee: { select: { name: true } },
+        assignee: { select: { id: true, name: true } },
         project: { select: { id: true, name: true, color: true } },
       },
       orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
       take: 8,
     }),
+    isAdmin
+      ? prisma.task.findMany({
+          where: {
+            project: { workspaceId },
+            status: "IN_REVIEW",
+            OR: [{ requiresApproval: true }, { isApprovalRequested: true }],
+          },
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            progress: true,
+            requiresApproval: true,
+            isApprovalRequested: true,
+            dueDate: true,
+            assignee: { select: { id: true, name: true } },
+            project: { select: { id: true, name: true, color: true } },
+          },
+          orderBy: [{ dueDate: "asc" }, { updatedAt: "desc" }],
+          take: 8,
+        })
+      : Promise.resolve([]),
     isAdmin
       ? prisma.attendance.findMany({
           where: {
@@ -291,179 +376,146 @@ export default async function DashboardPage() {
             user: { select: { id: true, name: true } },
           },
           orderBy: [{ checkIn: "asc" }, { createdAt: "asc" }],
-          take: 5,
         })
       : Promise.resolve([]),
-    isAdmin
-      ? prisma.workspaceMember.count({ where: { workspaceId } })
-      : Promise.resolve(0),
+    prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      include: { user: { select: { id: true, name: true } } },
+      orderBy: { joinedAt: "asc" },
+    }),
+    prisma.approval.findMany({
+      where: { requesterId: userId },
+      select: {
+        id: true,
+        type: true,
+        title: true,
+        status: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 6,
+    }),
   ]);
 
-  const projectSummaries = rawProjects.map((project) =>
-    mapProjectRecordToSummary(project, projectColumnSupport)
-  );
+  void pendingDocsCount;
+  void ideaCount;
+  void approvedApprovals;
+  void leaveRecords;
+  void rawProjects;
 
-  const ongoingProjects = projectSummaries.filter((project) => project.boardStatus === "ONGOING");
-  const workspaceProjects = ongoingTasks.map((task) => ({
+  const mapTask = (task: (typeof ongoingTasks)[number] | (typeof reviewTasks)[number]): HomeTaskItem => ({
     id: task.id,
-    name: task.title,
-    tasks: [] as Array<{ id: string; title: string; status: string }>,
-    subtitle: task.project.name,
+    title: task.title,
+    projectId: task.project.id,
+    projectName: task.project.name,
+    projectColor: task.project.color || "var(--accent)",
+    assigneeName: task.assignee?.name?.trim() || "담당자 없음",
+    dueDateLabel: formatDueDateLabel(task.dueDate),
     progress: normalizeProgressValue(task.progress, getTaskProgress(task.status)),
-    assigneeNames: [task.assignee?.name?.trim() || "담당자 미지정"],
-    tags: [formatTaskPeriodLabel(task.startDate ?? task.createdAt, task.dueDate)],
-    color: task.project.color || "var(--accent)",
+    status: task.status,
+    statusLabel: getTaskStatusLabel(task.status),
+    isReviewRequested: Boolean(task.requiresApproval || task.isApprovalRequested),
+  });
+
+  const approvalItems: HomeApprovalItem[] = pendingApprovals.map((approval) => ({
+    id: approval.id,
+    type: approval.type,
+    title: approval.title,
+    description: approval.description,
+    requesterName: approval.requester.name ?? "이름 없음",
+    createdAtLabel: format(approval.createdAt, "M/d HH:mm", { locale: ko }),
+    href: `/approvals/${approval.id}`,
   }));
 
-  const approvalEvents = approvedApprovals
-    .filter((approval) => approval.type !== "LEAVE_REQUEST")
-    .map((approval) => {
-      const startAt = approval.decidedAt ?? approval.leaveStart ?? approval.leaveEnd ?? now;
-      return {
-        id: `approval-${approval.id}`,
-        title: approval.title,
-        startAt,
-        endAt: startAt,
-        allDay: true,
-        color: "var(--accent)",
-      };
-    });
+  const taskItems = ongoingTasks.map(mapTask);
+  const reviewTaskItems = reviewTasks.map(mapTask);
 
-  const mergedEvents = [...events, ...approvalEvents]
-    .sort((left, right) => left.startAt.getTime() - right.startAt.getTime())
-    .slice(0, 8);
+  const scheduleItems: HomeScheduleItem[] = events.map((event) => ({
+    id: event.id,
+    title: event.title,
+    scheduleLabel: formatScheduleLabel(event.startAt, event.endAt, event.allDay),
+    dateDay: format(event.startAt, "d", { locale: ko }),
+    dateWeekday: format(event.startAt, "EEE", { locale: ko }),
+    groupLabel: getEventGroupLabel(event.groupKind),
+    color: event.color || "var(--accent)",
+    isToday: isSameDay(event.startAt, now) || isSameDay(event.endAt, now),
+    href: "/calendar",
+  }));
 
-  const leaveMarkerMap = new Map<string, { date: string; kind: "leave" | "half" }>();
+  const noticeItems: HomeNoticeItem[] = notices.map((notice) => {
+    const badgeTone = getNoticeBadgeTone(notice.badge);
+    return {
+      id: notice.id,
+      title: notice.title,
+      badgeLabel: badgeTone.label,
+      createdAtLabel: format(notice.createdAt, "M/d", { locale: ko }),
+      authorName: notice.author.name ?? "작성자 없음",
+      href: `/notices/${notice.id}`,
+    };
+  });
 
-  for (const record of leaveRecords) {
-    const dateKey = format(record.date, "yyyy-MM-dd");
-    leaveMarkerMap.set(dateKey, {
-      date: dateKey,
-      kind: record.status === "HOLIDAY" ? "leave" : "half",
-    });
-  }
+  const requestItems: HomeRequestItem[] = myRequests.map((request) => ({
+    id: request.id,
+    typeLabel: getApprovalTypeLabel(request.type),
+    title: request.title,
+    status: request.status,
+    statusLabel: getApprovalStatusLabel(request.status),
+    createdAtLabel: format(request.createdAt, "M/d", { locale: ko }),
+    href: `/approvals/${request.id}`,
+  }));
 
-  for (const approval of approvedApprovals) {
-    if (approval.type !== "LEAVE_REQUEST" || !approval.leaveStart) {
-      continue;
-    }
-
-    const current = new Date(approval.leaveStart);
-    const end = approval.leaveEnd ? new Date(approval.leaveEnd) : new Date(approval.leaveStart);
-    const kind = approval.leaveType === "FULL_DAY" ? "leave" : "half";
-
-    while (current <= end) {
-      const dateKey = format(current, "yyyy-MM-dd");
-      leaveMarkerMap.set(dateKey, { date: dateKey, kind });
-      current.setDate(current.getDate() + 1);
-    }
-  }
-
-  const currentAttendanceTone = getAttendanceTone(todayAttendance?.status);
-  const attendance = {
-    isAdmin,
-    dateLabel: format(now, "yyyy.MM.dd (eee)", { locale: ko }),
-    currentStatusLabel: currentAttendanceTone.label,
-    currentStatusTone: {
-      background: currentAttendanceTone.background,
-      color: currentAttendanceTone.color,
-    },
-    checkInLabel: formatTimeLabel(todayAttendance?.checkIn),
-    checkOutLabel: formatTimeLabel(todayAttendance?.checkOut),
-    summaryLabel: todayAttendance?.checkIn
-      ? todayAttendance.checkOut
-        ? "오늘 기록이 완료되었습니다."
-        : "오늘 출근 기록이 등록되었습니다."
-      : "아직 출근 기록이 없습니다.",
-    hasCheckIn: Boolean(todayAttendance?.checkIn),
-    hasCheckOut: Boolean(todayAttendance?.checkOut),
-    statusCode: todayAttendance?.status ?? null,
-    teamCheckedIn: todayTeamRecords.filter((record) => Boolean(record.checkIn)).length,
-    teamTotal: teamMemberCount,
-    lateCount: todayTeamRecords.filter((record) => record.status === "LATE").length,
-    holidayCount: todayTeamRecords.filter((record) => record.status === "HOLIDAY").length,
-    todayRows: isAdmin
-      ? todayTeamRecords.map((record) => {
-          const tone = getAttendanceTone(record.status);
+  const recordByUserId = new Map(todayTeamRecords.map((record) => [record.userId, record]));
+  const attendanceRows: HomeAttendanceItem[] = isAdmin
+    ? teamMembers
+        .filter((member) => member.role !== "OWNER" || member.userId !== userId)
+        .map((member) => {
+          const record = recordByUserId.get(member.userId);
+          const tone = getAttendanceTone(record?.status ?? "ABSENT");
           return {
-            id: record.id,
-            name: record.user.name ?? "이름 없음",
+            id: member.userId,
+            name: member.user.name ?? "이름 없음",
+            status: record?.status ?? "ABSENT",
             statusLabel: tone.label,
+            checkInLabel: record?.checkIn ? formatTimeLabel(record.checkIn) : "-",
             tone: { background: tone.background, color: tone.color },
-            checkInLabel: formatTimeLabel(record.checkIn),
           };
         })
-      : [
-          {
-            id: userId,
-            name: userName,
-            statusLabel: currentAttendanceTone.label,
-            tone: {
-              background: currentAttendanceTone.background,
-              color: currentAttendanceTone.color,
-            },
-            checkInLabel: formatTimeLabel(todayAttendance?.checkIn),
+    : [
+        {
+          id: userId,
+          name: userName,
+          status: todayAttendance?.status ?? "ABSENT",
+          statusLabel: getAttendanceTone(todayAttendance?.status ?? "ABSENT").label,
+          checkInLabel: formatTimeLabel(todayAttendance?.checkIn),
+          tone: {
+            background: getAttendanceTone(todayAttendance?.status ?? "ABSENT").background,
+            color: getAttendanceTone(todayAttendance?.status ?? "ABSENT").color,
           },
-        ],
+        },
+      ];
+
+  const attendanceSummary = {
+    checkedIn: attendanceRows.filter((row) => row.status !== "ABSENT" && row.status !== "HOLIDAY").length,
+    late: attendanceRows.filter((row) => row.status === "LATE").length,
+    absent: attendanceRows.filter((row) => row.status === "ABSENT").length,
+    leave: attendanceRows.filter((row) => row.status === "HOLIDAY" || row.status === "EARLY_LEAVE").length,
+    total: attendanceRows.length,
   };
 
-  return (
-    <WorkspaceDashboard
-      userName={userName}
-      userRole={userRole}
-      stats={buildDashboardStatCards({
-        ongoingProjects: ongoingProjects.length,
-        totalProjects: rawProjects.length,
-        ideaCount,
-        pendingDocs: pendingDocsCount,
-        remainingLeave: "준비중",
-      })}
-      attendance={attendance}
-      notices={notices.map((notice) => {
-        const badgeTone = getNoticeBadgeTone(notice.badge);
-        return {
-          id: notice.id,
-          title: notice.title,
-          badgeLabel: badgeTone.label,
-          badgeTone: {
-            background: badgeTone.background,
-            color: badgeTone.color,
-          },
-          createdAt: format(new Date(notice.createdAt), "M/d", { locale: ko }),
-        };
-      })}
-      events={mergedEvents.map((event) => ({
-        id: event.id,
-        title: event.title,
-        startAt: event.startAt.toISOString(),
-        endAt: event.endAt.toISOString(),
-        allDay: event.allDay,
-        scheduleLabel: event.allDay
-          ? `${format(new Date(event.startAt), "M/d (EEE)", { locale: ko })} · 종일`
-          : `${format(new Date(event.startAt), "M/d (EEE) HH:mm", { locale: ko })} - ${format(new Date(event.endAt), "HH:mm", { locale: ko })}`,
-        color: event.color,
-      }))}
-      leaveMarkers={Array.from(leaveMarkerMap.values())}
-      projects={workspaceProjects.map((project) => ({
-        id: project.id,
-        name: project.name,
-        tasks: project.tasks
-          .filter((task) => task.status === "IN_PROGRESS" || task.status === "IN_REVIEW")
-          .slice(0, 4)
-          .map((task) => ({
-            id: task.id,
-            title: task.title,
-            statusLabel: task.status === "IN_REVIEW" ? "검토 중" : "진행 중",
-          })),
-        subtitle: project.subtitle,
-        progress: project.progress,
-        assigneeLabel:
-          project.assigneeNames.length > 0
-            ? `담당 ${project.assigneeNames.slice(0, 2).join(", ")}`
-            : "담당 미지정",
-        tagLabel: project.tags.length > 0 ? `#${project.tags[0]}` : "#태그없음",
-        color: project.color,
-      }))}
-    />
-  );
+  const data: HomeDashboardData = {
+    userName,
+    userRole,
+    isAdmin,
+    dateLabel: format(now, "yyyy.MM.dd (EEE)", { locale: ko }),
+    approvals: approvalItems,
+    reviewTasks: reviewTaskItems,
+    tasks: taskItems,
+    schedules: scheduleItems,
+    attendanceSummary,
+    attendanceRows,
+    notices: noticeItems,
+    requests: requestItems,
+  };
+
+  return <HomeDashboardClient data={data} />;
 }
