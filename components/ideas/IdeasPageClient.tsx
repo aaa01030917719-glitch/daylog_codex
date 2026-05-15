@@ -298,7 +298,7 @@ export function IdeasPageClient({
           </div>
         </section>
 
-        <section className="page-control-strip">
+        <section className="page-control-strip !items-start !justify-start">
           <FilterChipGroup
             aria-label="아이디어 필터"
             items={TAB_ITEMS.map((item) => ({ ...item, count: tabCounts[item.value] }))}
