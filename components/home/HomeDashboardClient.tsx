@@ -215,6 +215,9 @@ function mapApprovalToDocumentType(approval: HomeApprovalItem): {
 
 function mapApprovalToDocumentSummary(approval: HomeApprovalItem, currentUserId: string): DocumentSummary {
   const mappedType = mapApprovalToDocumentType(approval);
+  const requestedAt = approval.createdAtIso;
+  const startDate = approval.leaveStart ?? requestedAt;
+  const endDate = approval.leaveEnd ?? approval.leaveStart ?? requestedAt;
 
   return {
     id: approval.id,
@@ -226,9 +229,9 @@ function mapApprovalToDocumentSummary(approval: HomeApprovalItem, currentUserId:
     amount: null,
     costType: null,
     attachmentName: null,
-    startDate: approval.leaveStart,
-    endDate: approval.leaveEnd,
-    createdAt: approval.createdAtIso,
+    startDate,
+    endDate,
+    createdAt: requestedAt,
     authorId: approval.requesterId,
     authorName: approval.requesterName,
     approverName: "관리자",
