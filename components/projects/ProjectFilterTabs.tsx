@@ -1,5 +1,7 @@
 "use client";
 
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
+
 type BoardStatus = "ALL" | "ONGOING" | "REVIEW" | "COMPLETED" | "UPCOMING";
 
 interface ProjectFilterTabsProps {
@@ -22,26 +24,15 @@ export function ProjectFilterTabs({
   onChange,
 }: ProjectFilterTabsProps) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
-      {STATUS_TABS.map((tab) => {
-        const isActive = activeStatus === tab.value;
-
-        return (
-          <button
-            key={tab.value}
-            type="button"
-            onClick={() => onChange(tab.value)}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-[11px] py-1 text-[11px] font-medium transition ${
-              isActive
-                ? "border-[var(--accent)] bg-[var(--accent)] text-white"
-                : "border-[var(--border)] bg-white text-[#6b7280] hover:border-[#c7d7ff] hover:text-[#3d6aee]"
-            }`}
-          >
-            <span>{tab.label}</span>
-            <span className="font-semibold opacity-90">{counts[tab.value]}</span>
-          </button>
-        );
-      })}
-    </div>
+    <FilterChipGroup
+      aria-label="프로젝트 업무 상태 필터"
+      items={STATUS_TABS.map((tab) => ({
+        ...tab,
+        count: counts[tab.value],
+      }))}
+      activeValue={activeStatus}
+      onChange={onChange}
+      size="sm"
+    />
   );
 }
