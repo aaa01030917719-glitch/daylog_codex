@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+import { ModalTabGroup } from "@/components/ui/ModalTabGroup";
 import { useDirtyLeaveGuard } from "@/hooks/useDirtyLeaveGuard";
 import {
   NOTICE_CATEGORY_VALUES,
@@ -25,6 +26,11 @@ interface NoticeWriteModalProps {
 }
 
 type DraftTab = "content" | "target";
+
+const DRAFT_TAB_ITEMS: Array<{ value: DraftTab; label: string }> = [
+  { value: "content", label: "내용 작성" },
+  { value: "target", label: "대상 설정" },
+];
 
 function getDefaultValues(): NoticeWritePayload {
   return {
@@ -142,21 +148,13 @@ export function NoticeWriteModal({
             </button>
           </div>
 
-          <div className="mt-5 modal-tabs border-b border-[var(--border-light)]">
-            {[
-              { id: "content" as const, label: "내용 작성" },
-              { id: "target" as const, label: "대상 설정" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`modal-tab-btn ${activeTab === tab.id ? "active" : ""}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+          <ModalTabGroup
+            aria-label="공지 작성 단계"
+            items={DRAFT_TAB_ITEMS}
+            activeValue={activeTab}
+            onChange={setActiveTab}
+            className="mt-5"
+          />
         </div>
 
         <form onSubmit={handleSubmit}>
