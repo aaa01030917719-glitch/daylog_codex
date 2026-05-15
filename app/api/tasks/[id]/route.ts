@@ -127,6 +127,8 @@ function normalizeTaskApprovalMeta(task: {
 }) {
   const isApprovalRequested =
     task.status === TaskStatus.IN_REVIEW &&
+    !task.approvedAt &&
+    !task.rejectedReason &&
     Boolean(task.requiresApproval || task.isApprovalRequested);
 
   return {

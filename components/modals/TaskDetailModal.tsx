@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
+import { useSession } from "next-auth/react";
 import {
   AtSign,
   Bold,
@@ -224,6 +225,7 @@ export function TaskDetailModal({
   onUpdated,
   onDeleted,
 }: TaskDetailModalProps) {
+  const { data: session } = useSession();
   const [activeTab, setActiveTab] = useState<TabKey>("detail");
   const [task, setTask] = useState<TaskRecord | null>(initialTask);
   const [title, setTitle] = useState(initialTask?.title ?? "");
@@ -448,10 +450,13 @@ export function TaskDetailModal({
     };
   }, [initialTask, isOpen, taskId]);
 
-  const canEditTask = Boolean(task && currentUserId && task.creatorId === currentUserId);
+  const effectiveCurrentUserId = currentUserId ?? session?.user?.id;
+  const canEditTask = Boolean(task && effectiveCurrentUserId && task.creatorId === effectiveCurrentUserId);
   const canDelete = canEditTask;
   const isApprovalPending = Boolean(
     task &&
+      !task.approvedAt &&
+      !task.rejectedReason &&
       ((task.isApprovalRequested ?? false) ||
         (status === "IN_REVIEW" && task.requiresApproval))
   );
@@ -464,9 +469,9 @@ export function TaskDetailModal({
   );
   const canRequestConfirm = Boolean(
     task &&
-      currentUserId &&
+      effectiveCurrentUserId &&
       status !== "DONE" &&
-      task.creatorId === currentUserId &&
+      task.creatorId === effectiveCurrentUserId &&
       !isApprovalPending &&
       !isReviewCompleted
   );
