@@ -6,13 +6,11 @@ import {
   AlertCircle,
   ArrowRight,
   CalendarDays,
-  Check,
   ClipboardCheck,
   FileText,
   FolderKanban,
   Megaphone,
   UserCheck,
-  X,
 } from "lucide-react";
 import { TaskDetailModal } from "@/components/modals/TaskDetailModal";
 
@@ -163,7 +161,7 @@ function Panel({
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex min-h-[142px] flex-col items-center justify-center gap-2 px-4 py-8 text-center">
+    <div className="flex min-h-[104px] flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
       <AlertCircle size={20} className="text-[var(--text-muted)]" />
       <p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p>
       <p className="text-xs leading-5 text-[var(--text-muted)]">{description}</p>
@@ -236,7 +234,7 @@ function TaskRows({ tasks, emptyTitle }: { tasks: HomeTaskItem[]; emptyTitle: st
 
 function ScheduleRows({ schedules }: { schedules: HomeScheduleItem[] }) {
   return (
-    <div className="min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+    <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
       {schedules.length === 0 ? (
         <EmptyState title="이번 주 일정이 없습니다" description="개인, 전사, 팀공용 일정이 등록되면 이곳에 표시됩니다." />
       ) : (
@@ -323,8 +321,9 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
   const [activeTab, setActiveTab] = useState<ReviewTab>("LEAVE_REQUEST");
   const [approvals, setApprovals] = useState(data.approvals);
   const [reviewTasks, setReviewTasks] = useState(data.reviewTasks);
-  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [selectedReviewTask, setSelectedReviewTask] = useState<HomeTaskItem | null>(null);
 
   const counts = useMemo(
     () => ({
@@ -342,8 +341,15 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
     return item.type === activeTab;
   });
 
-  async function decideApproval(id: string, status: "APPROVED" | "REJECTED") {
-    setLoadingId(id);
+  function openApprovalDetail(href: string) {
+    window.location.href = href;
+  }
+
+  async function decideApproval(event: React.MouseEvent<HTMLButtonElement>, id: string, status: "APPROVED" | "REJECTED") {
+    event.stopPropagation();
+    const action = status === "APPROVED" ? "approve" : "reject";
+    const actionKey = `approval:${id}:${action}`;
+    setPendingActionKey(actionKey);
     setErrorMessage("");
 
     try {
@@ -360,12 +366,15 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 
       setApprovals((current) => current.filter((item) => item.id !== id));
     } finally {
-      setLoadingId(null);
+      setPendingActionKey(null);
     }
   }
 
-  async function decideTask(id: string, decision: "APPROVE" | "REJECT") {
-    setLoadingId(id);
+  async function decideTask(event: React.MouseEvent<HTMLButtonElement>, id: string, decision: "APPROVE" | "REJECT") {
+    event.stopPropagation();
+    const action = decision === "APPROVE" ? "confirm" : "requestChanges";
+    const actionKey = `task:${id}:${action}`;
+    setPendingActionKey(actionKey);
     setErrorMessage("");
 
     try {
@@ -382,13 +391,21 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 
       setReviewTasks((current) => current.filter((item) => item.id !== id));
     } finally {
-      setLoadingId(null);
+      setPendingActionKey(null);
     }
+  }
+
+  function isActionPending(type: "approval" | "task", id: string, action: string) {
+    return pendingActionKey === `${type}:${id}:${action}`;
+  }
+
+  function isRowPending(type: "approval" | "task", id: string) {
+    return pendingActionKey?.startsWith(`${type}:${id}:`) ?? false;
   }
 
   return (
     <Panel title="검토 대기" icon={<ClipboardCheck size={17} />}>
-      <div className="grid min-h-[286px] flex-1 grid-cols-[138px_minmax(0,1fr)] max-md:grid-cols-1">
+      <div className="grid min-h-[244px] flex-1 grid-cols-[138px_minmax(0,1fr)] max-md:grid-cols-1">
         <nav className="border-r border-[var(--border-light)] bg-[#fafafa] py-2 max-md:border-b max-md:border-r-0 max-md:px-2">
           <div className="flex flex-col max-md:flex-row max-md:overflow-x-auto">
             {REVIEW_TABS.map((tab) => (
@@ -422,37 +439,44 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
               {errorMessage}
             </div>
           ) : null}
-          <div className="divide-y divide-[var(--border-light)]">
+          <div className="max-h-[183px] divide-y divide-[var(--border-light)] overflow-y-auto">
             {activeTab === "PROJECT_REVIEW"
               ? reviewTasks.map((task) => (
-                  <div key={task.id} className="flex items-center gap-3 px-4 py-2.5 max-sm:flex-col max-sm:items-stretch">
+                  <div
+                    key={task.id}
+                    role="button"
+                    tabIndex={0}
+                    className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[var(--surface-2)] max-sm:flex-col max-sm:items-stretch"
+                    onClick={() => setSelectedReviewTask(task)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedReviewTask(task);
+                      }
+                    }}
+                  >
                     <div className="min-w-0 flex-1">
-                      <Link
-                        href={`/projects?projectId=${task.projectId}&taskId=${task.id}`}
-                        className="truncate text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
-                      >
-                        {task.title}
-                      </Link>
+                      <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{task.title}</div>
                       <p className="mt-1 text-xs text-[var(--text-muted)]">
                         {task.projectName} · {task.assigneeName} · {task.dueDateLabel}
                       </p>
                     </div>
-                    <div className="flex shrink-0 gap-2">
+                    <div className="flex shrink-0 items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
                       <button
                         type="button"
-                        className="success-button btn--sm inline-flex items-center gap-1"
-                        disabled={loadingId === task.id}
-                        onClick={() => decideTask(task.id, "APPROVE")}
+                        className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#15803d] transition hover:bg-[var(--success-light)] disabled:cursor-not-allowed"
+                        disabled={isRowPending("task", task.id)}
+                        onClick={(event) => decideTask(event, task.id, "APPROVE")}
                       >
-                        <Check size={13} /> 확인완료
+                        {isActionPending("task", task.id, "confirm") ? "처리 중" : "확인완료"}
                       </button>
                       <button
                         type="button"
-                        className="secondary-button btn--sm inline-flex items-center gap-1"
-                        disabled={loadingId === task.id}
-                        onClick={() => decideTask(task.id, "REJECT")}
+                        className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[var(--danger)] transition hover:bg-[var(--danger-light)] disabled:cursor-not-allowed"
+                        disabled={isRowPending("task", task.id)}
+                        onClick={(event) => decideTask(event, task.id, "REJECT")}
                       >
-                        <X size={13} /> 수정요청
+                        {isActionPending("task", task.id, "requestChanges") ? "처리 중" : "수정요청"}
                       </button>
                     </div>
                   </div>
@@ -460,34 +484,41 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
               : null}
 
             {visibleApprovals.map((approval) => (
-              <div key={approval.id} className="flex items-center gap-3 px-4 py-2.5 max-sm:flex-col max-sm:items-stretch">
+              <div
+                key={approval.id}
+                role="button"
+                tabIndex={0}
+                className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[var(--surface-2)] max-sm:flex-col max-sm:items-stretch"
+                onClick={() => openApprovalDetail(approval.href)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openApprovalDetail(approval.href);
+                  }
+                }}
+              >
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={approval.href}
-                    className="truncate text-sm font-semibold text-[var(--text-primary)] hover:text-[var(--accent)]"
-                  >
-                    {approval.title}
-                  </Link>
+                  <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{approval.title}</div>
                   <p className="mt-1 text-xs text-[var(--text-muted)]">
                     {approval.requesterName} · {approval.createdAtLabel}
                   </p>
                 </div>
-                <div className="flex shrink-0 gap-2">
+                <div className="flex shrink-0 items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
                   <button
                     type="button"
-                    className="primary-button btn--sm"
-                    disabled={loadingId === approval.id}
-                    onClick={() => decideApproval(approval.id, "APPROVED")}
+                    className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#15803d] transition hover:bg-[var(--success-light)] disabled:cursor-not-allowed"
+                    disabled={isRowPending("approval", approval.id)}
+                    onClick={(event) => decideApproval(event, approval.id, "APPROVED")}
                   >
-                    승인
+                    {isActionPending("approval", approval.id, "approve") ? "처리 중" : "승인"}
                   </button>
                   <button
                     type="button"
-                    className="danger-button btn--sm"
-                    disabled={loadingId === approval.id}
-                    onClick={() => decideApproval(approval.id, "REJECTED")}
+                    className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[var(--danger)] transition hover:bg-[var(--danger-light)] disabled:cursor-not-allowed"
+                    disabled={isRowPending("approval", approval.id)}
+                    onClick={(event) => decideApproval(event, approval.id, "REJECTED")}
                   >
-                    반려
+                    {isActionPending("approval", approval.id, "reject") ? "처리 중" : "반려"}
                   </button>
                 </div>
               </div>
@@ -499,6 +530,14 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
           </div>
         </div>
       </div>
+      {selectedReviewTask ? (
+        <TaskDetailModal
+          isOpen={true}
+          onClose={() => setSelectedReviewTask(null)}
+          taskId={selectedReviewTask.id}
+          projectName={selectedReviewTask.projectName}
+        />
+      ) : null}
     </Panel>
   );
 }
