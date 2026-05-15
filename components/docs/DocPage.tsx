@@ -358,9 +358,16 @@ export function DocPage({
                 </div>
               </div>
             ) : (
-              <div className="bg-[var(--surface)]">
+              <div className="overflow-x-auto bg-[var(--surface)]">
                 <div className="border-t border-[var(--border-light)]" />
-                <table className="data-table">
+                <table className="data-table min-w-[760px] table-fixed">
+                  <colgroup>
+                    <col />
+                    <col className="w-[112px]" />
+                    <col className="w-[118px]" />
+                    <col className="w-[112px]" />
+                    <col className="w-[104px]" />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>문서</th>
@@ -373,34 +380,34 @@ export function DocPage({
                   <tbody>
                     {filteredDocuments.map((document) => (
                       <tr key={document.id}>
-                        <td>
+                        <td className="min-w-0">
                           <div className="min-w-0">
                             <div className="truncate font-semibold text-[var(--text-primary)]">
                               {document.title}
                             </div>
-                            <div className="mt-1 text-xs text-[var(--text-muted)]">
+                            <div className="mt-1 truncate text-xs text-[var(--text-muted)]">
                               {formatDocumentReasonPreview(document.reason) || "적어둔 내용이 없어요"}
                             </div>
                           </div>
                         </td>
-                        <td>
-                          <span className={typeTone(document.type)}>
+                        <td className="whitespace-nowrap">
+                          <span className={`${typeTone(document.type)} whitespace-nowrap`}>
                             {getDocumentTypeLabel(document.type)}
                           </span>
                         </td>
-                        <td>
+                        <td className="whitespace-nowrap text-sm text-[var(--text-secondary)]">
                           {format(new Date(document.createdAt), "yyyy.MM.dd", { locale: ko })}
                         </td>
-                        <td>
-                          <span className={statusTone(document.status)}>
+                        <td className="whitespace-nowrap">
+                          <span className={`${statusTone(document.status)} whitespace-nowrap`}>
                             {getDocumentStatusLabel(document.status)}
                           </span>
                         </td>
-                        <td>
+                        <td className="whitespace-nowrap text-right">
                           <button
                             type="button"
                             onClick={() => setDetailDocumentId(document.id)}
-                            className="text-button"
+                            className="text-button whitespace-nowrap"
                           >
                             상세 보기
                           </button>

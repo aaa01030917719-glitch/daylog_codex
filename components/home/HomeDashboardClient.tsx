@@ -12,7 +12,9 @@ import {
   Megaphone,
   UserCheck,
 } from "lucide-react";
+import { DocDetailModal } from "@/components/docs/DocDetailModal";
 import { TaskDetailModal } from "@/components/modals/TaskDetailModal";
+import type { DocumentStatusValue, DocumentSummary, DocumentTypeValue, HalfDayPeriodValue } from "@/lib/documents";
 
 export type HomeRole = "OWNER" | "ADMIN" | "MEMBER" | string;
 
@@ -21,7 +23,14 @@ export interface HomeApprovalItem {
   type: string;
   title: string;
   description: string | null;
+  status: DocumentStatusValue;
+  requesterId: string;
   requesterName: string;
+  leaveType: string | null;
+  leaveStart: string | null;
+  leaveEnd: string | null;
+  decisionNote: string | null;
+  createdAtIso: string;
   createdAtLabel: string;
   href: string;
 }
@@ -82,6 +91,7 @@ export interface HomeRequestItem {
 
 export interface HomeDashboardData {
   userName: string;
+  currentUserId: string;
   userRole?: HomeRole | null;
   isAdmin: boolean;
   dateLabel: string;
@@ -178,6 +188,57 @@ function ProgressBar({ value, color }: { value: number; color?: string }) {
       />
     </div>
   );
+}
+
+function mapApprovalToDocumentType(approval: HomeApprovalItem): {
+  type: DocumentTypeValue;
+  halfDayPeriod: HalfDayPeriodValue | null;
+} {
+  if (approval.type === "LEAVE_REQUEST") {
+    if (approval.leaveType === "HALF_AM") {
+      return { type: "AM_HALF_DAY", halfDayPeriod: "AM" };
+    }
+
+    if (approval.leaveType === "HALF_PM") {
+      return { type: "PM_HALF_DAY", halfDayPeriod: "PM" };
+    }
+
+    return { type: "LEAVE", halfDayPeriod: null };
+  }
+
+  if (approval.type === "DEADLINE_CHANGE" || approval.type === "BUDGET_TASK") {
+    return { type: "APPROVAL", halfDayPeriod: null };
+  }
+
+  return { type: "OTHER", halfDayPeriod: null };
+}
+
+function mapApprovalToDocumentSummary(approval: HomeApprovalItem, currentUserId: string): DocumentSummary {
+  const mappedType = mapApprovalToDocumentType(approval);
+
+  return {
+    id: approval.id,
+    title: approval.title,
+    type: mappedType.type,
+    status: approval.status,
+    halfDayPeriod: mappedType.halfDayPeriod,
+    reason: approval.description ?? "",
+    amount: null,
+    costType: null,
+    attachmentName: null,
+    startDate: approval.leaveStart,
+    endDate: approval.leaveEnd,
+    createdAt: approval.createdAtIso,
+    authorId: approval.requesterId,
+    authorName: approval.requesterName,
+    approverName: "관리자",
+    ccUserId: null,
+    ccUserName: null,
+    approvalId: approval.id,
+    rejectionReason: approval.decisionNote,
+    canCancel: false,
+    isMine: approval.requesterId === currentUserId,
+  };
 }
 
 function TaskRows({ tasks, emptyTitle }: { tasks: HomeTaskItem[]; emptyTitle: string }) {
@@ -324,6 +385,8 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedReviewTask, setSelectedReviewTask] = useState<HomeTaskItem | null>(null);
+  const [selectedApproval, setSelectedApproval] = useState<HomeApprovalItem | null>(null);
+  const [detailSubmitting, setDetailSubmitting] = useState(false);
 
   const counts = useMemo(
     () => ({
@@ -341,32 +404,60 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
     return item.type === activeTab;
   });
 
-  function openApprovalDetail(href: string) {
-    window.location.href = href;
+  function openApprovalDetail(approval: HomeApprovalItem) {
+    setSelectedApproval(approval);
   }
 
-  async function decideApproval(event: React.MouseEvent<HTMLButtonElement>, id: string, status: "APPROVED" | "REJECTED") {
-    event.stopPropagation();
+  async function submitApprovalDecision(id: string, status: "APPROVED" | "REJECTED") {
+    const response = await fetch(`/api/approvals/${id}/decide`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+
+    if (!response.ok) {
+      throw new Error("approval decision failed");
+    }
+  }
+
+  async function decideApproval(
+    event: React.MouseEvent<HTMLButtonElement> | null,
+    id: string,
+    status: "APPROVED" | "REJECTED"
+  ) {
+    event?.stopPropagation();
     const action = status === "APPROVED" ? "approve" : "reject";
     const actionKey = `approval:${id}:${action}`;
     setPendingActionKey(actionKey);
     setErrorMessage("");
 
     try {
-      const response = await fetch(`/api/approvals/${id}/decide`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-
-      if (!response.ok) {
-        setErrorMessage("처리에 실패했습니다. 상세 화면에서 다시 시도해 주세요.");
-        return;
-      }
-
+      await submitApprovalDecision(id, status);
       setApprovals((current) => current.filter((item) => item.id !== id));
+      setSelectedApproval((current) => (current?.id === id ? null : current));
+    } catch {
+      setErrorMessage("처리에 실패했습니다. 상세 화면에서 다시 시도해 주세요.");
     } finally {
       setPendingActionKey(null);
+    }
+  }
+
+  async function decideSelectedApproval(document: DocumentSummary, status: "APPROVED" | "REJECTED") {
+    if (!document.approvalId) {
+      return;
+    }
+
+    setDetailSubmitting(true);
+    setErrorMessage("");
+
+    try {
+      await submitApprovalDecision(document.approvalId, status);
+      setApprovals((current) => current.filter((item) => item.id !== document.approvalId));
+      setSelectedApproval(null);
+    } catch {
+      setErrorMessage("처리에 실패했습니다. 상세 화면에서 다시 시도해 주세요.");
+    } finally {
+      setDetailSubmitting(false);
     }
   }
 
@@ -489,11 +580,11 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
                 role="button"
                 tabIndex={0}
                 className="flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-left transition hover:bg-[var(--surface-2)] max-sm:flex-col max-sm:items-stretch"
-                onClick={() => openApprovalDetail(approval.href)}
+                onClick={() => openApprovalDetail(approval)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
-                    openApprovalDetail(approval.href);
+                    openApprovalDetail(approval);
                   }
                 }}
               >
@@ -508,7 +599,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
                     type="button"
                     className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#15803d] transition hover:bg-[var(--success-light)] disabled:cursor-not-allowed"
                     disabled={isRowPending("approval", approval.id)}
-                    onClick={(event) => decideApproval(event, approval.id, "APPROVED")}
+                    onClick={(event) => void decideApproval(event, approval.id, "APPROVED")}
                   >
                     {isActionPending("approval", approval.id, "approve") ? "처리 중" : "승인"}
                   </button>
@@ -516,7 +607,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
                     type="button"
                     className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[var(--danger)] transition hover:bg-[var(--danger-light)] disabled:cursor-not-allowed"
                     disabled={isRowPending("approval", approval.id)}
-                    onClick={(event) => decideApproval(event, approval.id, "REJECTED")}
+                    onClick={(event) => void decideApproval(event, approval.id, "REJECTED")}
                   >
                     {isActionPending("approval", approval.id, "reject") ? "처리 중" : "반려"}
                   </button>
@@ -536,6 +627,18 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
           onClose={() => setSelectedReviewTask(null)}
           taskId={selectedReviewTask.id}
           projectName={selectedReviewTask.projectName}
+        />
+      ) : null}
+      {selectedApproval ? (
+        <DocDetailModal
+          open={true}
+          document={mapApprovalToDocumentSummary(selectedApproval, data.currentUserId)}
+          submitting={detailSubmitting}
+          canDecide={true}
+          onClose={() => setSelectedApproval(null)}
+          onCancel={() => undefined}
+          onApprove={(document) => decideSelectedApproval(document, "APPROVED")}
+          onReject={(document) => decideSelectedApproval(document, "REJECTED")}
         />
       ) : null}
     </Panel>

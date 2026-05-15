@@ -185,6 +185,7 @@ export default async function DashboardPage() {
   if (!workspaceId) {
     const emptyData: HomeDashboardData = {
       userName,
+      currentUserId: userId,
       userRole,
       isAdmin,
       dateLabel: format(now, "yyyy.MM.dd (EEE)", { locale: ko }),
@@ -422,7 +423,14 @@ export default async function DashboardPage() {
     type: approval.type,
     title: approval.title,
     description: approval.description,
+    status: approval.status,
+    requesterId: approval.requesterId,
     requesterName: approval.requester.name ?? "이름 없음",
+    leaveType: approval.leaveType,
+    leaveStart: approval.leaveStart?.toISOString() ?? null,
+    leaveEnd: approval.leaveEnd?.toISOString() ?? null,
+    decisionNote: approval.decisionNote,
+    createdAtIso: approval.createdAt.toISOString(),
     createdAtLabel: format(approval.createdAt, "M/d HH:mm", { locale: ko }),
     href: `/approvals/${approval.id}`,
   }));
@@ -504,6 +512,7 @@ export default async function DashboardPage() {
 
   const data: HomeDashboardData = {
     userName,
+    currentUserId: userId,
     userRole,
     isAdmin,
     dateLabel: format(now, "yyyy.MM.dd (EEE)", { locale: ko }),
