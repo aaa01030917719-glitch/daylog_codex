@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Loader2, MessageSquareText } from "lucide-react";
 import { CommentCard } from "@/components/comments/CommentCard";
 import { CommentInput } from "@/components/comments/CommentInput";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import { useDirtyLeaveGuard } from "@/hooks/useDirtyLeaveGuard";
 import { useUserProfilePreferences } from "@/lib/user-profile-preferences";
 import type { CommentTargetType, DetailCommentItem } from "@/components/comments/types";
@@ -14,6 +15,11 @@ interface CommentsPanelProps {
   title?: string;
   embedded?: boolean;
 }
+
+const COMMENT_SORT_ITEMS: Array<{ value: "asc" | "desc"; label: string }> = [
+  { value: "asc", label: "등록순" },
+  { value: "desc", label: "최신순" },
+];
 
 function flattenComments(items: DetailCommentItem[]) {
   const result: DetailCommentItem[] = [];
@@ -276,22 +282,14 @@ export function CommentsPanel({
           <div className="text-[13px] font-semibold text-[var(--text-primary)]">
             {title} <span className="text-[var(--accent)]">{totalCommentCount}</span>
           </div>
-          <div className="comment-sort-tabs" aria-label="댓글 정렬">
-            <button
-              type="button"
-              className={`comment-sort-tab ${sortOrder === "asc" ? "active" : ""}`}
-              onClick={() => setSortOrder("asc")}
-            >
-              등록순
-            </button>
-            <button
-              type="button"
-              className={`comment-sort-tab ${sortOrder === "desc" ? "active" : ""}`}
-              onClick={() => setSortOrder("desc")}
-            >
-              최신순
-            </button>
-          </div>
+          <FilterChipGroup
+            aria-label="댓글 정렬"
+            items={COMMENT_SORT_ITEMS}
+            activeValue={sortOrder}
+            onChange={setSortOrder}
+            className="ml-auto"
+            size="sm"
+          />
         </div>
 
         <div>

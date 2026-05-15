@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
 import { MessageSquareText, Send } from "lucide-react";
+import { FilterChipGroup } from "@/components/ui/FilterChipGroup";
 import {
   getUserAccentPalette,
   resolveUserDisplayName,
@@ -42,6 +43,11 @@ const AVATAR_TONES = [
   { bg: "#C8E6C8", text: "#1a4a1a" },
   { bg: "#B8D4F4", text: "#0a3060" },
   { bg: "#D4C8F4", text: "#3a2070" },
+];
+
+const COMMENT_SORT_ITEMS: Array<{ value: "asc" | "desc"; label: string }> = [
+  { value: "asc", label: "등록순" },
+  { value: "desc", label: "최신순" },
 ];
 
 function getAvatarTone(seed: string) {
@@ -192,22 +198,14 @@ export function CommentSection({ pageId, members, currentUserId }: Props) {
         <div className="text-[13px] font-semibold text-[var(--text-primary)]">
           댓글 <span className="text-[var(--accent)]">{comments.length}</span>
         </div>
-        <div className="comment-sort-tabs" aria-label="댓글 정렬">
-          <button
-            type="button"
-            className={`comment-sort-tab ${sortOrder === "asc" ? "active" : ""}`}
-            onClick={() => setSortOrder("asc")}
-          >
-            등록순
-          </button>
-          <button
-            type="button"
-            className={`comment-sort-tab ${sortOrder === "desc" ? "active" : ""}`}
-            onClick={() => setSortOrder("desc")}
-          >
-            최신순
-          </button>
-        </div>
+        <FilterChipGroup
+          aria-label="댓글 정렬"
+          items={COMMENT_SORT_ITEMS}
+          activeValue={sortOrder}
+          onChange={setSortOrder}
+          className="ml-auto"
+          size="sm"
+        />
       </div>
 
       {comments.length === 0 ? (
