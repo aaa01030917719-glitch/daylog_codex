@@ -322,11 +322,9 @@ export default async function DashboardPage() {
         project: { workspaceId },
         status: { not: "DONE" },
         ...(isAdmin ? {} : { assigneeId: userId }),
-        OR: [
-          { status: "IN_PROGRESS" },
-          { status: "IN_REVIEW" },
-          { progress: { gt: 0, lt: 100 } },
-        ],
+        OR: isAdmin
+          ? [{ status: "IN_PROGRESS" }, { status: "IN_REVIEW" }, { progress: { gt: 0, lt: 100 } }]
+          : [{ status: "TODO" }, { status: "IN_PROGRESS" }, { status: "IN_REVIEW" }, { progress: { gt: 0, lt: 100 } }],
       },
       select: {
         id: true,

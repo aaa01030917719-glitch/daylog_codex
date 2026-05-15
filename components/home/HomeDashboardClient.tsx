@@ -241,11 +241,22 @@ function mapApprovalToDocumentSummary(approval: HomeApprovalItem, currentUserId:
   };
 }
 
-function TaskRows({ tasks, emptyTitle }: { tasks: HomeTaskItem[]; emptyTitle: string }) {
+function TaskRows({
+  tasks,
+  emptyTitle,
+  limitRows = false,
+}: {
+  tasks: HomeTaskItem[];
+  emptyTitle: string;
+  limitRows?: boolean;
+}) {
   const [selectedTask, setSelectedTask] = useState<HomeTaskItem | null>(null);
+  const listClassName = limitRows
+    ? "min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
+    : "min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto";
 
   return (
-    <div className="min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+    <div className={listClassName}>
       {tasks.length === 0 ? (
         <EmptyState title={emptyTitle} description="표시할 업무가 생기면 이곳에 compact하게 정리됩니다." />
       ) : (
@@ -648,7 +659,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
   return (
     <Panel title="내 연차·결재 현황" icon={<FileText size={17} />} href="/docs">
-      <div className="min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+      <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
         {requests.length === 0 ? (
           <EmptyState title="최근 요청이 없습니다" description="연차나 결재 요청을 올리면 진행 상태가 표시됩니다." />
         ) : (
@@ -674,7 +685,7 @@ function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
 function NoticePanel({ notices }: { notices: HomeNoticeItem[] }) {
   return (
     <Panel title="팀 공지" icon={<Megaphone size={17} />} href="/notices">
-      <div className="min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+      <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
         {notices.length === 0 ? (
           <EmptyState title="등록된 공지가 없습니다" description="팀 공지가 올라오면 최신순으로 보여드립니다." />
         ) : (
@@ -727,7 +738,7 @@ export function HomeDashboardClient({ data }: { data: HomeDashboardData }) {
         <section className="flex min-h-0 flex-col gap-4">
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
             <Panel title="내 진행 업무" icon={<FolderKanban size={17} />} href="/projects">
-              <TaskRows tasks={data.tasks} emptyTitle="진행 중인 내 업무가 없습니다" />
+              <TaskRows tasks={data.tasks} emptyTitle="진행 중인 내 업무가 없습니다" limitRows={true} />
             </Panel>
             <Panel title="이번 주 일정" icon={<CalendarDays size={17} />} href="/calendar">
               <ScheduleRows schedules={data.schedules} />
