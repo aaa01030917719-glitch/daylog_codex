@@ -54,6 +54,13 @@ export async function POST(
     const decision = body.decision === "REJECT" ? "REJECT" : "APPROVE";
     const reason = typeof body.reason === "string" ? body.reason.trim() : "";
 
+    if (decision === "REJECT" && !reason) {
+      return NextResponse.json(
+        { error: "수정 요청 내용을 입력해주세요." },
+        { status: 400 }
+      );
+    }
+
     const task = await prisma.task.findUnique({
       where: { id: params.id },
       select: buildTaskInclude(),

@@ -261,6 +261,11 @@ export function TaskDetailModal({
   const [deleting, setDeleting] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [decisionLoading, setDecisionLoading] = useState<"APPROVE" | "REJECT" | null>(null);
+  const [reviewDecisionModal, setReviewDecisionModal] = useState<"APPROVE" | "REJECT" | null>(null);
+  const [revisionReasonDraft, setRevisionReasonDraft] = useState("");
+  const [revisionReasonTouched, setRevisionReasonTouched] = useState(false);
+  const [showRevisionReason, setShowRevisionReason] = useState(false);
+  const [revisionReasonAcknowledged, setRevisionReasonAcknowledged] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [activeFormats, setActiveFormats] = useState({
@@ -450,6 +455,10 @@ export function TaskDetailModal({
     };
   }, [initialTask, isOpen, taskId]);
 
+  useEffect(() => {
+    setRevisionReasonAcknowledged(false);
+  }, [task?.id, task?.rejectedReason]);
+
   const effectiveCurrentUserId = currentUserId ?? session?.user?.id;
   const canEditTask = Boolean(task && effectiveCurrentUserId && task.creatorId === effectiveCurrentUserId);
   const canDelete = canEditTask;
@@ -481,16 +490,21 @@ export function TaskDetailModal({
       status === "IN_REVIEW" &&
       isApprovalPending
   );
+  const canViewRevisionRequest = Boolean(task?.rejectedReason && canEditTask);
   const displayStatusLabel = isReviewCompleted ? "검토완료" : STATUS_LABELS[status];
   const approvalRowLabel = isApprovalPending
     ? `요청됨 ${formatDateOnly(task?.updatedAt ?? task?.createdAt)}`
     : isReviewCompleted
       ? "검토완료"
+      : canViewRevisionRequest
+        ? "수정 요청 확인 필요"
       : "확인 요청";
   const approvalRowMessage = isApprovalPending
     ? "대표 또는 권한 있는 사용자의 확인을 기다리고 있어요."
     : isReviewCompleted
       ? `${formatDateOnly(task?.approvedAt)} 확인이 완료됐어요. 작성자가 완료 상태로 변경할 수 있어요.`
+      : canViewRevisionRequest
+        ? "대표가 보낸 수정 요청을 확인하세요."
     : "완료 전 확인이 필요하면 요청을 보낼 수 있어요.";
   const doneCount = subTasks.filter((item) => item.isDone).length;
   const progressPct = subTasks.length > 0 ? Math.round((doneCount / subTasks.length) * 100) : 0;
@@ -521,7 +535,7 @@ export function TaskDetailModal({
   }, [comments, dueDate, task]);
   const approvalSection =
     task &&
-    (task.requiresApproval || isApprovalPending || isReviewCompleted || canRequestConfirm || canReviewConfirm) ? (
+    (task.requiresApproval || isApprovalPending || isReviewCompleted || canViewRevisionRequest || canRequestConfirm || canReviewConfirm) ? (
       <div className="mt-3 rounded-[12px] border border-[var(--border-light)] bg-[var(--surface-2)] px-3 py-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex min-w-0 flex-1 items-start gap-2">
@@ -541,7 +555,11 @@ export function TaskDetailModal({
                 <button
                   type="button"
                   className="btn-modal btn-modal-ghost h-8 justify-center px-3 text-[12px]"
-                  onClick={() => void handleApprovalDecision("REJECT")}
+                  onClick={() => {
+                    setRevisionReasonDraft("");
+                    setRevisionReasonTouched(false);
+                    setReviewDecisionModal("REJECT");
+                  }}
                   disabled={decisionLoading !== null}
                 >
                   {decisionLoading === "REJECT" ? "전달 중..." : "수정 요청"}
@@ -549,7 +567,7 @@ export function TaskDetailModal({
                 <button
                   type="button"
                   className="btn-modal btn-modal-primary h-8 justify-center px-3 text-[12px]"
-                  onClick={() => void handleApprovalDecision("APPROVE")}
+                  onClick={() => setReviewDecisionModal("APPROVE")}
                   disabled={decisionLoading !== null}
                 >
                   {decisionLoading === "APPROVE" ? "처리 중..." : "확인 완료"}
@@ -563,6 +581,25 @@ export function TaskDetailModal({
               <span className="inline-flex h-8 items-center rounded-[10px] border border-[#b7e4c7] bg-[var(--success-light)] px-3 text-[12px] font-semibold text-[#15803d]">
                 검토완료
               </span>
+            ) : canViewRevisionRequest ? (
+              revisionReasonAcknowledged ? (
+                <button
+                  type="button"
+                  className="btn-modal btn-modal-ghost h-8 justify-center px-3 text-[12px]"
+                  onClick={() => void handleConfirmRequest()}
+                  disabled={confirming}
+                >
+                  {confirming ? "요청 중..." : "확인 요청"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-modal btn-modal-ghost h-8 justify-center px-3 text-[12px]"
+                  onClick={() => setShowRevisionReason(true)}
+                >
+                  수정 요청 확인
+                </button>
+              )
             ) : (
               <button
                 type="button"
@@ -808,13 +845,14 @@ export function TaskDetailModal({
     }
   }
 
-  async function handleApprovalDecision(decision: "APPROVE" | "REJECT") {
-    if (!task) return;
+  async function handleApprovalDecision(decision: "APPROVE" | "REJECT", reason = "") {
+    if (!task) return false;
 
-    const reason =
-      decision === "REJECT"
-        ? window.prompt("수정 요청 내용을 입력해주세요. (선택)")?.trim() ?? ""
-        : "";
+    const trimmedReason = reason.trim();
+    if (decision === "REJECT" && !trimmedReason) {
+      setRevisionReasonTouched(true);
+      return false;
+    }
 
     setDecisionLoading(decision);
     setError(null);
@@ -824,7 +862,7 @@ export function TaskDetailModal({
       const response = await fetch(`/api/tasks/${task.id}/approval-decision`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision, reason }),
+        body: JSON.stringify({ decision, reason: trimmedReason }),
       });
       if (!response.ok) {
         throw new Error(await readError(response, "확인 처리를 완료하지 못했습니다."));
@@ -847,8 +885,11 @@ export function TaskDetailModal({
           ? "확인 완료되었습니다."
           : "수정 요청이 전달되었습니다."
       );
+      setReviewDecisionModal(null);
+      return true;
     } catch (decisionError) {
       setError(decisionError instanceof Error ? decisionError.message : "확인 처리를 완료하지 못했습니다.");
+      return false;
     } finally {
       setDecisionLoading(null);
     }
@@ -1512,6 +1553,85 @@ export function TaskDetailModal({
                 ) : null}
               </div>
             </div>
+            {reviewDecisionModal ? (
+              <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-[rgba(16,20,36,0.42)] p-4" onClick={() => decisionLoading === null && setReviewDecisionModal(null)}>
+                <div className="w-full max-w-[420px] rounded-[16px] bg-white p-5 shadow-[0_20px_50px_rgba(0,0,0,0.18)]" onClick={(event) => event.stopPropagation()}>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">
+                    {reviewDecisionModal === "REJECT" ? "수정 요청 보내기" : "확인 완료 처리"}
+                  </h3>
+                  {reviewDecisionModal === "REJECT" ? (
+                    <>
+                      <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                        담당자가 확인할 수정 요청 내용을 입력해주세요.
+                      </p>
+                      <textarea
+                        value={revisionReasonDraft}
+                        onChange={(event) => {
+                          setRevisionReasonDraft(event.target.value);
+                          if (revisionReasonTouched) setRevisionReasonTouched(false);
+                        }}
+                        className="mt-3 min-h-[120px] w-full resize-none rounded-[12px] border border-[var(--border)] px-3 py-2 text-sm outline-none transition focus:border-[var(--accent)]"
+                        placeholder="수정이 필요한 내용을 구체적으로 적어주세요."
+                        disabled={decisionLoading !== null}
+                      />
+                      {revisionReasonTouched && !revisionReasonDraft.trim() ? (
+                        <p className="mt-2 text-xs font-semibold text-[var(--danger)]">수정 요청 내용을 입력해주세요.</p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-[var(--text-muted)]">
+                      이 버튼을 누르면 담당자에게 검토완료로 전달됩니다.
+                    </p>
+                  )}
+                  <div className="mt-5 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      className="btn-modal btn-modal-ghost"
+                      onClick={() => setReviewDecisionModal(null)}
+                      disabled={decisionLoading !== null}
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-modal btn-modal-primary"
+                      onClick={() => void handleApprovalDecision(reviewDecisionModal, revisionReasonDraft)}
+                      disabled={decisionLoading !== null || (reviewDecisionModal === "REJECT" && !revisionReasonDraft.trim())}
+                    >
+                      {decisionLoading === reviewDecisionModal
+                        ? reviewDecisionModal === "REJECT"
+                          ? "전달 중..."
+                          : "처리 중..."
+                        : reviewDecisionModal === "REJECT"
+                          ? "수정 요청"
+                          : "확인 완료"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            {showRevisionReason ? (
+              <div className="fixed inset-0 z-[1300] flex items-center justify-center bg-[rgba(16,20,36,0.42)] p-4" onClick={() => setShowRevisionReason(false)}>
+                <div className="w-full max-w-[420px] rounded-[16px] bg-white p-5 shadow-[0_20px_50px_rgba(0,0,0,0.18)]" onClick={(event) => event.stopPropagation()}>
+                  <h3 className="text-base font-bold text-[var(--text-primary)]">수정 요청 내용</h3>
+                  <div className="mt-3 max-h-[240px] overflow-y-auto whitespace-pre-wrap rounded-[12px] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-sm leading-6 text-[var(--text-primary)]">
+                    {task?.rejectedReason || "전달된 수정 요청 내용이 없습니다."}
+                  </div>
+                  <div className="mt-5 flex justify-end">
+                    <button
+                      type="button"
+                      className="btn-modal btn-modal-primary"
+                      onClick={() => {
+                        setRevisionReasonAcknowledged(true);
+                        setShowRevisionReason(false);
+                      }}
+                    >
+                      확인했습니다
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {canEditTask ? (
               <TaskTagModal
                 isOpen={tagModalOpen}
