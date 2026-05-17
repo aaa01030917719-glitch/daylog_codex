@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { TaskTagModal } from "@/components/tasks/TaskTagModal";
+import { ModalTabGroup } from "@/components/ui/ModalTabGroup";
 import {
   isTaskDescriptionEmpty,
   loadTaskLinkMetas,
@@ -1124,13 +1125,17 @@ export function TaskDetailModal({
               이 업무는 작성자만 수정할 수 있어요.
             </p>
           ) : null}
-          <div className="modal-tabs mt-4">
-            <button type="button" className={`modal-tab-btn ${activeTab === "detail" ? "active" : ""}`} onClick={() => setActiveTab("detail")}>상세</button>
-            <button type="button" className={`modal-tab-btn ${activeTab === "comments" ? "active" : ""}`} onClick={() => setActiveTab("comments")}>
-              댓글 <span className="ml-0.5 text-[11px] font-bold text-[var(--accent)]">{comments.length}</span>
-            </button>
-            <button type="button" className={`modal-tab-btn ${activeTab === "activity" ? "active" : ""}`} onClick={() => setActiveTab("activity")}>활동 기록</button>
-          </div>
+          <ModalTabGroup
+            className="mt-4"
+            aria-label="업무 상세 탭"
+            activeValue={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { value: "detail", label: "상세" },
+              { value: "comments", label: "댓글", count: comments.length },
+              { value: "activity", label: "활동 기록" },
+            ]}
+          />
         </div>
 
         {loading || !task ? (
