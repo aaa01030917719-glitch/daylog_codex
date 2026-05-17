@@ -77,6 +77,7 @@ interface TaskRecord {
   approvedAt?: string | Date | null;
   rejectedReason?: string | null;
   budget: number | null;
+  startDate?: string | Date | null;
   dueDate: string | Date | null;
   progress?: number | null;
   createdAt?: string | Date;
@@ -119,6 +120,7 @@ interface EditableSnapshot {
   status: TaskStatus;
   priority: Priority;
   assigneeId: string;
+  startDate: string;
   dueDate: string;
   progress: number;
   attachmentsSerialized: string;
@@ -207,6 +209,7 @@ function toEditableSnapshot(task: TaskRecord): EditableSnapshot {
     status: task.status,
     priority: task.priority,
     assigneeId: task.assigneeId ?? "",
+    startDate: task.startDate ? format(new Date(task.startDate), "yyyy-MM-dd") : "",
     dueDate: task.dueDate ? format(new Date(task.dueDate), "yyyy-MM-dd") : "",
     progress: normalizeTaskProgress(task.progress),
     attachmentsSerialized: serializeTaskAttachments(task.attachments ?? []),
@@ -238,6 +241,9 @@ export function TaskDetailModal({
     initialTask ? loadTaskProgress(initialTask.id, initialTask.progress ?? 0) : 0
   );
   const [assigneeId, setAssigneeId] = useState(initialTask?.assigneeId ?? "");
+  const [startDate, setStartDate] = useState(
+    initialTask?.startDate ? format(new Date(initialTask.startDate), "yyyy-MM-dd") : ""
+  );
   const [dueDate, setDueDate] = useState(
     initialTask?.dueDate ? format(new Date(initialTask.dueDate), "yyyy-MM-dd") : ""
   );
@@ -365,6 +371,7 @@ export function TaskDetailModal({
     const nextProgress = loadTaskProgress(initialTask.id, initialTask.progress ?? 0);
     setProgress(nextProgress);
     setAssigneeId(initialTask.assigneeId ?? "");
+    setStartDate(initialTask.startDate ? format(new Date(initialTask.startDate), "yyyy-MM-dd") : "");
     setDueDate(initialTask.dueDate ? format(new Date(initialTask.dueDate), "yyyy-MM-dd") : "");
     setTags(initialTask.tags ?? []);
     setComments([]);
@@ -432,6 +439,7 @@ export function TaskDetailModal({
         const nextProgress = loadTaskProgress(data.task.id, data.task.progress ?? 0);
         setProgress(nextProgress);
         setAssigneeId(data.task.assigneeId ?? "");
+        setStartDate(data.task.startDate ? format(new Date(data.task.startDate), "yyyy-MM-dd") : "");
         setDueDate(data.task.dueDate ? format(new Date(data.task.dueDate), "yyyy-MM-dd") : "");
         setTags(data.task.tags ?? []);
         setAttachments(data.task.attachments ?? []);
@@ -510,7 +518,7 @@ export function TaskDetailModal({
   const progressPct = subTasks.length > 0 ? Math.round((doneCount / subTasks.length) * 100) : 0;
   const resolvedProjectName = projectName || task?.project?.name || "프로젝트";
   const dueTone = getDueTone(dueDate);
-  const isProgressEditable = status === "IN_PROGRESS";
+  const isProgressEditable = status === "IN_PROGRESS" || status === "IN_REVIEW";
   const isDirty = canEditTask && originalSnapshot
     ? originalSnapshot.title !== title ||
       originalSnapshot.description !== description ||
@@ -518,6 +526,7 @@ export function TaskDetailModal({
       originalSnapshot.priority !== priority ||
       originalSnapshot.progress !== progress ||
       originalSnapshot.assigneeId !== assigneeId ||
+      originalSnapshot.startDate !== startDate ||
       originalSnapshot.dueDate !== dueDate ||
       originalSnapshot.attachmentsSerialized !== serializeTaskAttachments(attachments) ||
       originalLinksSerialized !== serializeTaskLinks(links) ||
@@ -645,6 +654,7 @@ export function TaskDetailModal({
     setProgress(nextProgress);
     saveTaskProgress(data.task.id, nextProgress);
     setAssigneeId(data.task.assigneeId ?? "");
+    setStartDate(data.task.startDate ? format(new Date(data.task.startDate), "yyyy-MM-dd") : "");
     setDueDate(data.task.dueDate ? format(new Date(data.task.dueDate), "yyyy-MM-dd") : "");
     setTags(data.task.tags ?? tags);
     setAttachments(data.task.attachments ?? []);
@@ -752,6 +762,7 @@ export function TaskDetailModal({
         priority,
         progress,
         assigneeId: assigneeId || null,
+        startDate: startDate || null,
         dueDate: dueDate || null,
         attachments: attachments.map((attachment) => ({
           id: attachment.id,
@@ -1406,6 +1417,20 @@ export function TaskDetailModal({
 
               <div className="custom-scroll overflow-y-auto bg-[var(--surface-2)] px-5 py-[22px] max-[680px]:hidden">
                 <div className="prop-row">
+                  <div className="prop-label">우선순위</div>
+                  {canEditTask ? (
+                    <div className="relative">
+                      <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)} className="status-select appearance-none pr-10 !bg-[var(--warning-light)] !text-[var(--warning)]">
+                        {Object.entries(PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--warning)]" />
+                    </div>
+                  ) : (
+                    <div className="assignee-chip cursor-default">{PRIORITY_LABELS[priority]}</div>
+                  )}
+                </div>
+
+                <div className="prop-row">
                   <div className="prop-label">상태</div>
                   {canEditTask ? (
                     <div className="relative">
@@ -1420,20 +1445,6 @@ export function TaskDetailModal({
                     </div>
                   ) : (
                     <div className="assignee-chip cursor-default">{displayStatusLabel}</div>
-                  )}
-                </div>
-
-                <div className="prop-row">
-                  <div className="prop-label">우선순위</div>
-                  {canEditTask ? (
-                    <div className="relative">
-                      <select value={priority} onChange={(event) => setPriority(event.target.value as Priority)} className="status-select appearance-none pr-10 !bg-[var(--warning-light)] !text-[var(--warning)]">
-                        {Object.entries(PRIORITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                      </select>
-                      <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--warning)]" />
-                    </div>
-                  ) : (
-                    <div className="assignee-chip cursor-default">{PRIORITY_LABELS[priority]}</div>
                   )}
                 </div>
 
@@ -1464,6 +1475,8 @@ export function TaskDetailModal({
                       <p className="mt-2 text-[11px] text-[var(--text-muted)]">
                         {status === "IN_PROGRESS"
                           ? "진행중 상태에서 바로 진행률을 조정할 수 있습니다."
+                          : status === "IN_REVIEW"
+                            ? "검토중 상태에서도 진행률을 조정할 수 있습니다."
                           : status === "DONE"
                             ? "완료 상태는 진행률이 100%로 고정됩니다."
                             : "진행중으로 변경하면 진행률을 입력할 수 있습니다."}
@@ -1499,6 +1512,21 @@ export function TaskDetailModal({
                     <div className="assignee-chip cursor-default">
                       <span className={`avatar avatar-sm ${getAvatarTone(1)}`}>{(members.find((member) => member.id === assigneeId)?.name ?? task.assignee?.name ?? "U").slice(0, 1)}</span>
                       <span>{members.find((member) => member.id === assigneeId)?.name ?? task.assignee?.name ?? "담당자 없음"}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="prop-row">
+                  <div className="prop-label">시작일</div>
+                  {canEditTask ? (
+                    <div className="date-chip">
+                      <CalendarDays size={14} />
+                      <input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} className="w-full bg-transparent text-[13px] outline-none" />
+                    </div>
+                  ) : (
+                    <div className="date-chip cursor-default">
+                      <CalendarDays size={14} />
+                      <span>{formatDateOnly(startDate)}</span>
                     </div>
                   )}
                 </div>

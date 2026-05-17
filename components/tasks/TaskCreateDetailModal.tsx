@@ -218,7 +218,7 @@ export function TaskCreateDetailModal({
   const progressPct =
     subTasks.length > 0 ? Math.round((doneCount / subTasks.length) * 100) : 0;
   const dueTone = getDueTone(dueDate);
-  const isProgressEditable = status === "IN_PROGRESS";
+  const isProgressEditable = status === "IN_PROGRESS" || status === "IN_REVIEW";
   const isDirty =
     title.trim().length > 0 ||
     !isTaskDescriptionEmpty(description) ||
@@ -1131,24 +1131,6 @@ export function TaskCreateDetailModal({
 
           <div className="custom-scroll overflow-y-auto bg-[var(--surface-2)] px-5 py-[22px] max-[680px]:hidden">
             <div className="prop-row">
-              <div className="prop-label">상태</div>
-              <div className="relative">
-                <select
-                  value={status}
-                  onChange={(event) => applyStatus(event.target.value as TaskStatus)}
-                  className="status-select appearance-none pr-10"
-                >
-                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--accent)]" />
-              </div>
-            </div>
-
-            <div className="prop-row">
               <div className="prop-label">우선순위</div>
               <div className="relative">
                 <select
@@ -1163,6 +1145,24 @@ export function TaskCreateDetailModal({
                   ))}
                 </select>
                 <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#c2410c]" />
+              </div>
+            </div>
+
+            <div className="prop-row">
+              <div className="prop-label">상태</div>
+              <div className="relative">
+                <select
+                  value={status}
+                  onChange={(event) => applyStatus(event.target.value as TaskStatus)}
+                  className="status-select appearance-none pr-10"
+                >
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown size={15} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[var(--accent)]" />
               </div>
             </div>
 
@@ -1192,6 +1192,8 @@ export function TaskCreateDetailModal({
                 <p className="mt-2 text-[11px] text-[var(--text-muted)]">
                   {status === "IN_PROGRESS"
                     ? "진행중 상태에서 바로 진행률을 조정할 수 있습니다."
+                    : status === "IN_REVIEW"
+                      ? "검토중 상태에서도 진행률을 조정할 수 있습니다."
                     : status === "DONE"
                       ? "완료 상태는 진행률이 100%로 고정됩니다."
                       : "진행중으로 변경하면 진행률을 입력할 수 있습니다."}
