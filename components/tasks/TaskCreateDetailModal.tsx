@@ -17,7 +17,6 @@ import {
   List,
   ListOrdered,
   MoreVertical,
-  Paperclip,
   Plus,
   SendHorizontal,
   Underline,
@@ -196,6 +195,8 @@ export function TaskCreateDetailModal({
   const [linkUrl, setLinkUrl] = useState("");
   const [linkError, setLinkError] = useState<string | null>(null);
   const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [subTaskInputOpen, setSubTaskInputOpen] = useState(false);
+  const [linkInputOpen, setLinkInputOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -291,6 +292,7 @@ export function TaskCreateDetailModal({
     setLinkTitle("");
     setLinkUrl("");
     setLinkError(null);
+    setLinkInputOpen(false);
   }
 
   useEffect(() => {
@@ -506,7 +508,7 @@ export function TaskCreateDetailModal({
       },
     ]);
     setNewSubTaskTitle("");
-    requestAnimationFrame(() => subTaskInputRef.current?.focus());
+    setSubTaskInputOpen(false);
   }
 
   function handleAddTag() {
@@ -808,7 +810,7 @@ export function TaskCreateDetailModal({
                     onKeyUp={updateActiveFormats}
                     onMouseUp={updateActiveFormats}
                     onPaste={handleDescriptionPaste}
-                    className="desc-area"
+                    className="desc-area min-h-[160px]"
                     data-placeholder="설명을 입력하세요..."
                   />
                 </section>
@@ -856,6 +858,7 @@ export function TaskCreateDetailModal({
                       ))
                     )}
 
+                    {subTaskInputOpen ? (
                     <div className="mt-2 flex gap-2">
                       <input
                         ref={subTaskInputRef}
@@ -880,6 +883,18 @@ export function TaskCreateDetailModal({
                         하위 업무 추가
                       </button>
                     </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="mt-2 text-xs font-semibold text-[var(--accent)] hover:underline"
+                        onClick={() => {
+                          setSubTaskInputOpen(true);
+                          requestAnimationFrame(() => subTaskInputRef.current?.focus());
+                        }}
+                      >
+                        + 하위 업무 추가
+                      </button>
+                    )}
                   </div>
                 </section>
 
@@ -909,11 +924,10 @@ export function TaskCreateDetailModal({
                     <div className="section-label mb-0">첨부파일</div>
                     <button
                       type="button"
-                      className="btn-modal btn-modal-ghost"
+                      className="text-xs font-semibold text-[var(--accent)] hover:underline"
                       onClick={() => attachmentInputRef.current?.click()}
                     >
-                      <Paperclip size={14} />
-                      첨부파일
+                      + 첨부파일 추가
                     </button>
                   </div>
                   <div className="rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3">
@@ -963,6 +977,7 @@ export function TaskCreateDetailModal({
                     </span>
                   </div>
                   <div className="space-y-3 rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3">
+                    {linkInputOpen || linkTitle.trim() || linkUrl.trim() || linkError ? (
                     <div className="grid gap-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto]">
                       <input
                         type="text"
@@ -1003,6 +1018,15 @@ export function TaskCreateDetailModal({
                         링크 추가
                       </button>
                     </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-xs font-semibold text-[var(--accent)] hover:underline"
+                        onClick={() => setLinkInputOpen(true)}
+                      >
+                        + 링크 추가
+                      </button>
+                    )}
                     {linkError ? (
                       <p className="text-[12px] font-medium text-[var(--danger)]">{linkError}</p>
                     ) : (

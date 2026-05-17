@@ -19,7 +19,6 @@ import {
   List,
   ListOrdered,
   MoreVertical,
-  Paperclip,
   Plus,
   SendHorizontal,
   Trash2,
@@ -259,6 +258,8 @@ export function TaskDetailModal({
   const [linkError, setLinkError] = useState<string | null>(null);
   const [originalLinksSerialized, setOriginalLinksSerialized] = useState("[]");
   const [tagModalOpen, setTagModalOpen] = useState(false);
+  const [subTaskInputOpen, setSubTaskInputOpen] = useState(false);
+  const [linkInputOpen, setLinkInputOpen] = useState(false);
   const [originalSnapshot, setOriginalSnapshot] = useState<EditableSnapshot | null>(
     initialTask ? toEditableSnapshot(initialTask) : null
   );
@@ -385,6 +386,8 @@ export function TaskDetailModal({
     setLinkError(null);
     setCommentDraft("");
     setNewSubTaskTitle("");
+    setLinkInputOpen(false);
+    setSubTaskInputOpen(false);
     setOriginalSnapshot(toEditableSnapshot({ ...initialTask, progress: nextProgress }));
     setLoading(false);
     setError(null);
@@ -449,6 +452,7 @@ export function TaskDetailModal({
         setLinkTitle("");
         setLinkUrl("");
         setLinkError(null);
+        setLinkInputOpen(false);
         setOriginalSnapshot(toEditableSnapshot({ ...data.task, progress: nextProgress }));
       } catch (loadError) {
         if (!active) return;
@@ -735,6 +739,7 @@ export function TaskDetailModal({
     setLinkTitle("");
     setLinkUrl("");
     setLinkError(null);
+    setLinkInputOpen(false);
   }
 
   async function handleSave() {
@@ -913,7 +918,7 @@ export function TaskDetailModal({
     if (!nextTitle) return;
     setSubTasks((current) => [...current, { id: `sub-${Date.now()}`, title: nextTitle, isDone: false, assigneeId: assigneeId || undefined }]);
     setNewSubTaskTitle("");
-    requestAnimationFrame(() => subTaskInputRef.current?.focus());
+    setSubTaskInputOpen(false);
   }
 
   function handleApplyFormat(action: TaskEditorAction) {
@@ -1170,7 +1175,7 @@ export function TaskDetailModal({
                         ref={descriptionRef}
                         contentEditable={canEditTask}
                         suppressContentEditableWarning
-                        className={`desc-area ${canEditTask ? "" : "cursor-default bg-[var(--surface-2)]"}`}
+                        className={`desc-area min-h-[160px] ${canEditTask ? "" : "cursor-default bg-[var(--surface-2)]"}`}
                         data-placeholder="업무 설명을 적어주세요"
                         onInput={handleDescriptionInput}
                         onCompositionStart={handleDescriptionCompositionStart}
@@ -1197,11 +1202,22 @@ export function TaskDetailModal({
                             {canEditTask ? <button type="button" className="btn-icon-sm" aria-label="하위 업무 삭제" onClick={() => setSubTasks((current) => current.filter((subTask) => subTask.id !== item.id))}><Trash2 size={14} /></button> : null}
                           </div>
                         ))}
-                        {canEditTask ? (
+                        {canEditTask && subTaskInputOpen ? (
                         <div className="mt-2 flex gap-2">
                           <input ref={subTaskInputRef} value={newSubTaskTitle} onChange={(event) => setNewSubTaskTitle(event.target.value)} placeholder="새 하위 업무를 입력해 주세요" className="form-input h-[40px] flex-1" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); handleAddSubTask(); } }} />
                           <button type="button" className="btn-modal btn-modal-ghost" onClick={handleAddSubTask} disabled={!newSubTaskTitle.trim()}><Plus size={15} />하위 업무 추가</button>
                         </div>
+                        ) : canEditTask ? (
+                          <button
+                            type="button"
+                            className="mt-2 text-xs font-semibold text-[var(--accent)] hover:underline"
+                            onClick={() => {
+                              setSubTaskInputOpen(true);
+                              requestAnimationFrame(() => subTaskInputRef.current?.focus());
+                            }}
+                          >
+                            + 하위 업무 추가
+                          </button>
                         ) : null}
                       </div>
                     </section>
@@ -1220,11 +1236,10 @@ export function TaskDetailModal({
                         {canEditTask ? (
                           <button
                             type="button"
-                            className="btn-modal btn-modal-ghost"
+                            className="text-xs font-semibold text-[var(--accent)] hover:underline"
                             onClick={() => attachmentInputRef.current?.click()}
                           >
-                            <Paperclip size={14} />
-                            첨부파일
+                            + 첨부파일 추가
                           </button>
                         ) : null}
                       </div>
@@ -1277,7 +1292,7 @@ export function TaskDetailModal({
                         </span>
                       </div>
                       <div className="space-y-3 rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3">
-                        {canEditTask ? (
+                        {canEditTask && (linkInputOpen || linkTitle.trim() || linkUrl.trim() || linkError) ? (
                         <div className="grid gap-2 sm:grid-cols-[minmax(0,180px)_minmax(0,1fr)_auto]">
                           <input
                             type="text"
@@ -1318,6 +1333,14 @@ export function TaskDetailModal({
                             링크 추가
                           </button>
                         </div>
+                        ) : canEditTask ? (
+                          <button
+                            type="button"
+                            className="text-xs font-semibold text-[var(--accent)] hover:underline"
+                            onClick={() => setLinkInputOpen(true)}
+                          >
+                            + 링크 추가
+                          </button>
                         ) : null}
                         {canEditTask && linkError ? (
                           <p className="text-[12px] font-medium text-[var(--danger)]">{linkError}</p>
