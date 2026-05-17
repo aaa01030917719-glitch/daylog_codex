@@ -5,12 +5,6 @@ import Link from "next/link";
 import {
   AlertCircle,
   ArrowRight,
-  CalendarDays,
-  ClipboardCheck,
-  FileText,
-  FolderKanban,
-  Megaphone,
-  UserCheck,
 } from "lucide-react";
 import { DocDetailModal } from "@/components/docs/DocDetailModal";
 import { TaskDetailModal } from "@/components/modals/TaskDetailModal";
@@ -149,7 +143,7 @@ function Panel({
     <section className="flex min-h-0 flex-col overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-light)] px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--accent)]">
+          <span className="shrink-0 text-base leading-none" aria-hidden="true">
             {icon}
           </span>
           <h2 className="truncate text-sm font-bold text-[var(--text-primary)]">{title}</h2>
@@ -247,15 +241,15 @@ function mapApprovalToDocumentSummary(approval: HomeApprovalItem, currentUserId:
 function TaskRows({
   tasks,
   emptyTitle,
-  limitRows = false,
+  maxRows,
 }: {
   tasks: HomeTaskItem[];
   emptyTitle: string;
-  limitRows?: boolean;
+  maxRows?: 7;
 }) {
   const [selectedTask, setSelectedTask] = useState<HomeTaskItem | null>(null);
-  const listClassName = limitRows
-    ? "min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
+  const listClassName = maxRows === 7
+    ? "min-h-0 max-h-[426px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
     : "min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto";
 
   return (
@@ -307,9 +301,13 @@ function TaskRows({
   );
 }
 
-function ScheduleRows({ schedules }: { schedules: HomeScheduleItem[] }) {
+function ScheduleRows({ schedules, maxRows = 3 }: { schedules: HomeScheduleItem[]; maxRows?: 3 | 7 }) {
+  const listClassName = maxRows === 7
+    ? "min-h-0 max-h-[426px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
+    : "min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto";
+
   return (
-    <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+    <div className={listClassName}>
       {schedules.length === 0 ? (
         <EmptyState title="이번 주 일정이 없습니다" description="개인, 전사, 팀공용 일정이 등록되면 이곳에 표시됩니다." />
       ) : (
@@ -353,7 +351,7 @@ function AttendancePanel({ data }: { data: HomeDashboardData }) {
   ];
 
   return (
-    <Panel title="오늘 출근 현황" icon={<UserCheck size={17} />} href="/attendance">
+    <Panel title="오늘 출근 현황" icon="🕐" href="/attendance">
       <div className="grid shrink-0 grid-cols-4 divide-x divide-[var(--border)] border-b border-[var(--border)]">
         {stats.map((stat) => (
           <div key={stat.label} className="px-2 py-2.5 text-center">
@@ -395,7 +393,7 @@ function AttendancePanel({ data }: { data: HomeDashboardData }) {
 function ReviewPanel({ data }: { data: HomeDashboardData }) {
   const [activeTab, setActiveTab] = useState<ReviewTab>("LEAVE_REQUEST");
   const [approvals, setApprovals] = useState(data.approvals);
-  const [reviewTasks, setReviewTasks] = useState(data.reviewTasks);
+  const [reviewTasks] = useState(data.reviewTasks);
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedReviewTask, setSelectedReviewTask] = useState<HomeTaskItem | null>(null);
@@ -475,31 +473,6 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
     }
   }
 
-  async function decideTask(event: React.MouseEvent<HTMLButtonElement>, id: string, decision: "APPROVE" | "REJECT") {
-    event.stopPropagation();
-    const action = decision === "APPROVE" ? "confirm" : "requestChanges";
-    const actionKey = `task:${id}:${action}`;
-    setPendingActionKey(actionKey);
-    setErrorMessage("");
-
-    try {
-      const response = await fetch(`/api/tasks/${id}/approval-decision`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ decision }),
-      });
-
-      if (!response.ok) {
-        setErrorMessage("업무 검토 처리에 실패했습니다. 프로젝트 상세에서 다시 시도해 주세요.");
-        return;
-      }
-
-      setReviewTasks((current) => current.filter((item) => item.id !== id));
-    } finally {
-      setPendingActionKey(null);
-    }
-  }
-
   function isActionPending(type: "approval" | "task", id: string, action: string) {
     return pendingActionKey === `${type}:${id}:${action}`;
   }
@@ -509,7 +482,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
   }
 
   return (
-    <Panel title="검토 대기" icon={<ClipboardCheck size={17} />}>
+    <Panel title="검토 대기" icon="⚠️">
       <div className="grid min-h-[244px] flex-1 grid-cols-[138px_minmax(0,1fr)] max-md:grid-cols-1">
         <nav className="border-r border-[var(--border-light)] bg-[#fafafa] py-2 max-md:border-b max-md:border-r-0 max-md:px-2">
           <div className="flex flex-col max-md:flex-row max-md:overflow-x-auto">
@@ -566,24 +539,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
                         {task.projectName} · {task.assigneeName} · {task.dueDateLabel}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1.5" onClick={(event) => event.stopPropagation()}>
-                      <button
-                        type="button"
-                        className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[#15803d] transition hover:bg-[var(--success-light)] disabled:cursor-not-allowed"
-                        disabled={isRowPending("task", task.id)}
-                        onClick={(event) => decideTask(event, task.id, "APPROVE")}
-                      >
-                        {isActionPending("task", task.id, "confirm") ? "처리 중" : "확인완료"}
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-md px-1.5 py-1 text-[11px] font-semibold text-[var(--danger)] transition hover:bg-[var(--danger-light)] disabled:cursor-not-allowed"
-                        disabled={isRowPending("task", task.id)}
-                        onClick={(event) => decideTask(event, task.id, "REJECT")}
-                      >
-                        {isActionPending("task", task.id, "requestChanges") ? "처리 중" : "수정요청"}
-                      </button>
-                    </div>
+                    <span className="shrink-0 text-[11px] font-semibold text-[var(--accent)]">검토하기</span>
                   </div>
                 ))
               : null}
@@ -661,7 +617,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 
 function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
   return (
-    <Panel title="내 연차·결재 현황" icon={<FileText size={17} />} href="/docs">
+    <Panel title="내 연차·결재 현황" icon="📄" href="/docs">
       <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
         {requests.length === 0 ? (
           <EmptyState title="최근 요청이 없습니다" description="연차나 결재 요청을 올리면 진행 상태가 표시됩니다." />
@@ -687,7 +643,7 @@ function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
 
 function NoticePanel({ notices }: { notices: HomeNoticeItem[] }) {
   return (
-    <Panel title="팀 공지" icon={<Megaphone size={17} />} href="/notices">
+    <Panel title="팀 공지" icon="📢" href="/notices">
       <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
         {notices.length === 0 ? (
           <EmptyState title="등록된 공지가 없습니다" description="팀 공지가 올라오면 최신순으로 보여드립니다." />
@@ -726,12 +682,12 @@ export function HomeDashboardClient({ data }: { data: HomeDashboardData }) {
         <section className="flex min-h-0 flex-col gap-4">
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
             <ReviewPanel data={data} />
-            <Panel title="이번 주 일정" icon={<CalendarDays size={17} />} href="/calendar">
+            <Panel title="이번 주 일정" icon="📅" href="/calendar">
               <ScheduleRows schedules={data.schedules} />
             </Panel>
           </div>
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
-            <Panel title="팀 업무 현황" icon={<FolderKanban size={17} />} href="/projects">
+            <Panel title="팀 업무 현황" icon="✅" href="/projects">
               <TaskRows tasks={data.tasks} emptyTitle="진행 중인 팀 업무가 없습니다" />
             </Panel>
             <AttendancePanel data={data} />
@@ -740,11 +696,11 @@ export function HomeDashboardClient({ data }: { data: HomeDashboardData }) {
       ) : (
         <section className="flex min-h-0 flex-col gap-4">
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
-            <Panel title="내 진행 업무" icon={<FolderKanban size={17} />} href="/projects">
-              <TaskRows tasks={data.tasks} emptyTitle="진행 중인 내 업무가 없습니다" limitRows={true} />
+            <Panel title="내 진행 업무" icon="✅" href="/projects">
+              <TaskRows tasks={data.tasks} emptyTitle="진행 중인 내 업무가 없습니다" maxRows={7} />
             </Panel>
-            <Panel title="이번 주 일정" icon={<CalendarDays size={17} />} href="/calendar">
-              <ScheduleRows schedules={data.schedules} />
+            <Panel title="이번 주 일정" icon="📅" href="/calendar">
+              <ScheduleRows schedules={data.schedules} maxRows={7} />
             </Panel>
           </div>
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
