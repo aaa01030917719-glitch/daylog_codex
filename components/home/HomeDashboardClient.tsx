@@ -114,7 +114,17 @@ const REVIEW_TABS: Array<{ key: ReviewTab; label: string; description: string }>
   { key: "IMPORTANT_EVENT", label: "일정 승인", description: "중요 일정 승인" },
 ];
 
-const APPROVAL_TYPES = new Set(["DEADLINE_CHANGE", "BUDGET_TASK"]);
+function isLeaveApprovalType(type: string) {
+  return type === "LEAVE_REQUEST";
+}
+
+function isEventApprovalType(type: string) {
+  return type === "IMPORTANT_EVENT";
+}
+
+function isDocumentApprovalType(type: string) {
+  return !isLeaveApprovalType(type) && !isEventApprovalType(type);
+}
 
 const statusTone: Record<string, string> = {
   PENDING: "status-badge--warning",
@@ -402,17 +412,17 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 
   const counts = useMemo(
     () => ({
-      LEAVE_REQUEST: approvals.filter((item) => item.type === "LEAVE_REQUEST").length,
-      APPROVAL: approvals.filter((item) => APPROVAL_TYPES.has(item.type)).length,
-      PROJECT_REVIEW: reviewTasks.length + approvals.filter((item) => item.type === "PROJECT_REVIEW").length,
-      IMPORTANT_EVENT: approvals.filter((item) => item.type === "IMPORTANT_EVENT").length,
+      LEAVE_REQUEST: approvals.filter((item) => isLeaveApprovalType(item.type)).length,
+      APPROVAL: approvals.filter((item) => isDocumentApprovalType(item.type)).length,
+      PROJECT_REVIEW: reviewTasks.length,
+      IMPORTANT_EVENT: approvals.filter((item) => isEventApprovalType(item.type)).length,
     }),
     [approvals, reviewTasks]
   );
 
   const visibleApprovals = approvals.filter((item) => {
-    if (activeTab === "APPROVAL") return APPROVAL_TYPES.has(item.type);
-    if (activeTab === "PROJECT_REVIEW") return item.type === "PROJECT_REVIEW";
+    if (activeTab === "APPROVAL") return isDocumentApprovalType(item.type);
+    if (activeTab === "PROJECT_REVIEW") return false;
     return item.type === activeTab;
   });
 
@@ -597,6 +607,8 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
           onClose={() => setSelectedReviewTask(null)}
           taskId={selectedReviewTask.id}
           projectName={selectedReviewTask.projectName}
+          isAdmin={data.isAdmin}
+          currentUserId={data.currentUserId}
         />
       ) : null}
       {selectedApproval ? (
