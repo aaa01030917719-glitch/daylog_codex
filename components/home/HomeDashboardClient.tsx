@@ -315,9 +315,12 @@ function ScheduleRows({ schedules, maxRows = 3 }: { schedules: HomeScheduleItem[
   const listClassName = maxRows === 7
     ? "min-h-0 max-h-[426px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
     : "min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto";
+  const emptyClassName = maxRows === 7
+    ? "flex min-h-[426px] flex-1 items-center justify-center"
+    : "flex min-h-[183px] flex-1 items-center justify-center";
 
   return (
-    <div className={listClassName}>
+    <div className={schedules.length === 0 ? emptyClassName : listClassName}>
       {schedules.length === 0 ? (
         <EmptyState title="이번 주 일정이 없습니다" description="개인, 전사, 팀공용 일정이 등록되면 이곳에 표시됩니다." />
       ) : (

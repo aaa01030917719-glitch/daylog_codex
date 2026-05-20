@@ -1121,7 +1121,7 @@ export function TaskDetailModal({
           </div>
           {approvalSection}
           {task && !canEditTask ? (
-            <p className="mt-3 inline-flex rounded-full border border-[var(--border-light)] bg-[var(--surface-2)] px-3 py-1 text-[12px] font-medium text-[var(--text-muted)]">
+            <p className="mt-2 text-[12px] font-medium text-[var(--text-muted)]">
               이 업무는 작성자만 수정할 수 있어요.
             </p>
           ) : null}

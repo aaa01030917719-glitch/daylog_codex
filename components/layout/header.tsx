@@ -222,10 +222,13 @@ export function Header({ onMenuClick, title, userRole }: HeaderProps) {
                 <div className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[320px] rounded-[18px] border border-[var(--border)] bg-white p-3 shadow-[var(--shadow-lg)]">
                   <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
                     <div>
-                      <div className="text-sm font-semibold text-[var(--text-primary)]">알림</div>
-                      <div className="text-xs text-[var(--text-muted)]">최근 받은 알림을 빠르게 확인할 수 있어요.</div>
+                      <div className="text-[15px] font-bold text-[var(--text-primary)]">알림</div>
                     </div>
-                    <button type="button" className="primary-button btn--sm" onClick={() => void updateAllReadState(true)}>
+                    <button
+                      type="button"
+                      className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent-light)]"
+                      onClick={() => void updateAllReadState(true)}
+                    >
                       모두 읽음
                     </button>
                   </div>
@@ -243,13 +246,13 @@ export function Header({ onMenuClick, title, userRole }: HeaderProps) {
                           onClick={() => {
                             window.location.href = "/notifications";
                           }}
-                          className="w-full rounded-[14px] border border-[var(--border)] px-3 py-3 text-left transition hover:bg-[var(--surface-2)]"
+                          className="w-full rounded-[14px] border border-[var(--border)] px-3 py-2.5 text-left transition hover:bg-[var(--surface-2)]"
                         >
                           <div className="flex items-center justify-between gap-3">
-                            <div className="line-clamp-1 text-sm font-semibold text-[var(--text-primary)]">{notification.title}</div>
-                            {!notification.isRead ? <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[var(--accent)]" /> : null}
+                            <div className="line-clamp-1 text-[15px] font-semibold leading-5 text-[var(--text-primary)]">{notification.title}</div>
+                            {!notification.isRead ? <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" /> : null}
                           </div>
-                          <div className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-secondary)]">{notification.body}</div>
+                          <div className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">{notification.body}</div>
                         </button>
                       ))
                     )}

@@ -70,10 +70,11 @@ export function MinuteWriteModal({
   }
 
   return (
-    <div className="modal-shell" onClick={requestClose}>
-      <div className="modal-overlay" />
+    <div className="modal-shell">
+      <div className="modal-overlay" onClick={requestClose} />
       <div
         className="modal-card pointer-events-auto flex w-full max-w-[600px] flex-col overflow-hidden rounded-[18px] bg-white shadow-[0_24px_64px_rgba(0,0,0,0.18),0_0_0_1px_rgba(255,255,255,0.6)]"
+        onMouseDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="border-b border-[var(--border-light)] px-6 pb-4 pt-5">
@@ -121,7 +122,7 @@ export function MinuteWriteModal({
                 id="minute-write-content"
                 value={content}
                 onChange={(event) => setContent(event.target.value)}
-                className="form-textarea min-h-[180px]"
+                className="form-textarea min-h-[300px]"
                 placeholder="회의 내용을 적어 주세요"
                 required
               />
