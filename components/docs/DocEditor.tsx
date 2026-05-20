@@ -69,6 +69,7 @@ export function DocEditor({ page, currentUserId, isAdmin, source }: Props) {
     source === "notices" || source === "meeting-note" ? source : null;
   const backHref =
     noticeSource === "meeting-note" ? "/notices?tab=meeting-notes" : noticeSource ? "/notices" : "/docs";
+  const backLabel = noticeSource === "meeting-note" ? "회의록 목록" : "문서";
 
   function buildDocHref(pageId: string) {
     if (!noticeSource) {
@@ -228,7 +229,7 @@ export function DocEditor({ page, currentUserId, isAdmin, source }: Props) {
                 className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[var(--text-secondary)] transition hover:bg-[var(--surface-2)] hover:text-[var(--text-primary)]"
               >
                 <ArrowLeft size={14} />
-                문서
+                {backLabel}
               </button>
               {page.parent ? (
                 <>
