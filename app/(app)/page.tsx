@@ -348,6 +348,8 @@ export default async function DashboardPage() {
           where: {
             project: { workspaceId },
             status: "IN_REVIEW",
+            approvedAt: null,
+            rejectedReason: null,
             OR: [{ requiresApproval: true }, { isApprovalRequested: true }],
           },
           select: {
@@ -357,6 +359,8 @@ export default async function DashboardPage() {
             progress: true,
             requiresApproval: true,
             isApprovalRequested: true,
+            approvedAt: true,
+            rejectedReason: true,
             dueDate: true,
             assignee: { select: { id: true, name: true } },
             project: { select: { id: true, name: true, color: true } },

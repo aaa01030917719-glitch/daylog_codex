@@ -76,6 +76,8 @@ export async function POST(
 
     const isPendingReview =
       task.status === TaskStatus.IN_REVIEW &&
+      !task.approvedAt &&
+      !task.rejectedReason &&
       (task.requiresApproval || task.isApprovalRequested);
     if (!isPendingReview) {
       return NextResponse.json(

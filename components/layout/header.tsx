@@ -25,6 +25,20 @@ interface HeaderNotificationItem {
   createdAt: string | Date;
 }
 
+function renderRejectedWordHighlight(value: string) {
+  const parts = value.split(/(거절|반려)/g);
+
+  return parts.map((part, index) =>
+    part === "거절" || part === "반려" ? (
+      <span key={`${part}-${index}`} className="text-red-600">
+        {part}
+      </span>
+    ) : (
+      part
+    )
+  );
+}
+
 function resolvePageTitle(pathname: string, title?: string, userRole?: string) {
   if (title) {
     return title;
@@ -219,41 +233,52 @@ export function Header({ onMenuClick, title, userRole }: HeaderProps) {
               </button>
 
               {previewOpen ? (
-                <div className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[320px] rounded-[18px] border border-[var(--border)] bg-white p-3 shadow-[var(--shadow-lg)]">
-                  <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
+                <div className="absolute right-0 top-[calc(100%+10px)] z-[70] w-[320px] rounded-[14px] border border-[var(--border)] bg-white p-2.5 shadow-[var(--shadow-lg)]">
+                  <div className="flex items-center justify-between gap-2 border-b border-[var(--border-light)] px-1 pb-2.5">
                     <div>
                       <div className="text-[15px] font-bold text-[var(--text-primary)]">알림</div>
                     </div>
                     <button
                       type="button"
-                      className="rounded-md px-2 py-1 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent-light)]"
+                      className="rounded-[var(--radius-sm)] px-1.5 py-1 text-xs font-semibold text-[var(--accent)] transition hover:bg-[var(--accent-light)]"
                       onClick={() => void updateAllReadState(true)}
                     >
                       모두 읽음
                     </button>
                   </div>
 
-                  <div className="mt-3 max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                  <div className="mt-2 max-h-[320px] space-y-1.5 overflow-y-auto pr-1">
                     {loadingPreview ? (
                       <div className="px-2 py-6 text-center text-sm text-[var(--text-muted)]">알림을 불러오는 중입니다.</div>
                     ) : notifications.length === 0 ? (
                       <div className="px-2 py-6 text-center text-sm text-[var(--text-muted)]">표시할 알림이 없습니다.</div>
                     ) : (
                       notifications.slice(0, 6).map((notification) => (
-                        <button
-                          key={notification.id}
-                          type="button"
-                          onClick={() => {
-                            window.location.href = "/notifications";
-                          }}
-                          className="w-full rounded-[14px] border border-[var(--border)] px-3 py-2.5 text-left transition hover:bg-[var(--surface-2)]"
-                        >
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="line-clamp-1 text-[15px] font-semibold leading-5 text-[var(--text-primary)]">{notification.title}</div>
-                            {!notification.isRead ? <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--accent)]" /> : null}
-                          </div>
-                          <div className="mt-1 line-clamp-2 text-xs leading-5 text-[var(--text-muted)]">{notification.body}</div>
-                        </button>
+                          <button
+                            key={notification.id}
+                            type="button"
+                            onClick={() => {
+                              window.location.href = "/notifications";
+                            }}
+                            className="w-full rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-3 py-2 text-left transition hover:border-[#d1d5db] hover:bg-[var(--surface-2)]"
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px] bg-[var(--accent-light)] text-[var(--accent)]">
+                                <Bell size={14} />
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="line-clamp-1 text-[13px] font-semibold leading-5 text-[var(--text-primary)]">
+                                    {renderRejectedWordHighlight(notification.title)}
+                                  </div>
+                                  {!notification.isRead ? <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--accent)]" /> : null}
+                                </div>
+                                <div className="line-clamp-2 text-[11.5px] leading-4 text-[var(--text-muted)]">
+                                  {renderRejectedWordHighlight(notification.body)}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
                       ))
                     )}
                   </div>

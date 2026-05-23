@@ -6,22 +6,30 @@ import { useDirtyLeaveGuard } from "@/hooks/useDirtyLeaveGuard";
 
 interface MinuteWriteModalProps {
   open: boolean;
+  mode?: "create" | "edit";
   submitting: boolean;
   error: string | null;
+  initialValues?: { title: string; content: string } | null;
   onClose: () => void;
   onSubmit: (payload: { title: string; content: string }) => Promise<void> | void;
 }
 
 export function MinuteWriteModal({
   open,
+  mode = "create",
   submitting,
   error,
+  initialValues = null,
   onClose,
   onSubmit,
 }: MinuteWriteModalProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const isDirty = open && (title.trim().length > 0 || content.trim().length > 0);
+  const initialTitle = initialValues?.title ?? "";
+  const initialContent = initialValues?.content ?? "";
+  const isDirty =
+    open &&
+    (title.trim() !== initialTitle.trim() || content.trim() !== initialContent.trim());
   const { requestClose } = useDirtyLeaveGuard({
     isDirty,
     onDiscard: onClose,
@@ -33,9 +41,9 @@ export function MinuteWriteModal({
       return;
     }
 
-    setTitle("");
-    setContent("");
-  }, [open]);
+    setTitle(initialTitle);
+    setContent(initialContent);
+  }, [initialContent, initialTitle, open]);
 
   useEffect(() => {
     if (!open) {
@@ -80,9 +88,11 @@ export function MinuteWriteModal({
         <div className="border-b border-[var(--border-light)] px-6 pb-4 pt-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-[20px] font-bold text-[var(--text-primary)]">회의록 작성</h2>
+              <h2 className="text-[20px] font-bold text-[var(--text-primary)]">
+                {mode === "edit" ? "회의록 수정" : "회의록 작성"}
+              </h2>
               <p className="mt-2 text-sm text-[var(--text-muted)]">
-                회의 제목과 내용을 남기면 회의록 탭에 바로 반영돼요.
+                회의 제목과 내용을 정리해 회의록 목록에 반영합니다.
               </p>
             </div>
             <button
@@ -144,7 +154,7 @@ export function MinuteWriteModal({
               className="btn-modal btn-modal-primary"
               disabled={submitting || !title.trim() || !content.trim()}
             >
-              {submitting ? "저장 중..." : "회의록 저장"}
+              {submitting ? "저장 중..." : mode === "edit" ? "수정 저장" : "회의록 저장"}
             </button>
           </div>
         </form>

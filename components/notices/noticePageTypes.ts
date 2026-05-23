@@ -41,6 +41,7 @@ export interface NoticePageLeaveStatus {
 export interface NoticeMinuteSummary {
   id: string;
   title: string;
+  content: string;
   updatedAt: string;
   authorName: string;
 }

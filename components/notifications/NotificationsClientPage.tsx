@@ -414,12 +414,6 @@ function groupItemsByDate(items: InboxItem[]) {
   return groups;
 }
 
-const TAB_LABELS: Record<InboxTab, string> = {
-  all: "전체",
-  approval: "결재 요청",
-  notification: "알림",
-};
-
 const FILTER_LABELS: Record<InboxFilter, string> = {
   all: "전체",
   request: "결재 요청",
@@ -427,11 +421,6 @@ const FILTER_LABELS: Record<InboxFilter, string> = {
   approved: "승인",
   rejected: "반려",
 };
-
-const TAB_ITEMS = (Object.keys(TAB_LABELS) as InboxTab[]).map((tab) => ({
-  value: tab,
-  label: TAB_LABELS[tab],
-}));
 
 const FILTER_ITEMS = (Object.keys(FILTER_LABELS) as InboxFilter[]).map((filter) => ({
   value: filter,
@@ -839,28 +828,7 @@ export function NotificationsClientPage({
           </aside>
 
           <section className="flex min-w-0 flex-1 flex-col">
-            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border)] px-4 py-3 md:px-5">
-              <FilterChipGroup
-                aria-label="알림 유형 필터"
-                items={TAB_ITEMS}
-                activeValue={activeTab}
-                onChange={activateTab}
-                size="sm"
-              />
-              <div className="ml-auto">
-                {unreadCount > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => void markAllRead()}
-                    className="inline-flex h-[28px] items-center rounded-[var(--radius-sm)] border border-[var(--border)] bg-[var(--surface)] px-3 text-[11.5px] font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--surface-2)]"
-                  >
-                    모두 읽음
-                  </button>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="shrink-0 border-b border-[var(--border-light)] px-4 py-3 md:px-5">
+            <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-[var(--border-light)] px-4 py-3 md:px-5">
               <FilterChipGroup
                 aria-label="알림 상태 필터"
                 items={FILTER_ITEMS}
@@ -868,6 +836,17 @@ export function NotificationsClientPage({
                 onChange={setActiveFilter}
                 size="sm"
               />
+              <div className="ml-auto">
+                {unreadCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => void markAllRead()}
+                    className="inline-flex h-7 items-center rounded-[var(--radius-sm)] px-2 text-[11.5px] font-semibold text-[var(--accent)] transition hover:bg-[var(--accent-light)]"
+                  >
+                    모두 읽음
+                  </button>
+                ) : null}
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 md:px-5 md:pb-5">

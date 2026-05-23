@@ -116,6 +116,7 @@ export function NoticePage({
   const [error, setError] = useState<string | null>(null);
   const [minutes, setMinutes] = useState(initialMinutes);
   const [minuteModalOpen, setMinuteModalOpen] = useState(false);
+  const [editingMinuteId, setEditingMinuteId] = useState<string | null>(null);
   const [minuteSubmitting, setMinuteSubmitting] = useState(false);
   const [minuteError, setMinuteError] = useState<string | null>(null);
   const [confirmingReadId, setConfirmingReadId] = useState<string | null>(null);
@@ -130,6 +131,9 @@ export function NoticePage({
   }, [categoryFilter, notices]);
 
   const selectedNotice = notices.find((notice) => notice.id === selectedNoticeId) ?? null;
+  const editingMinute = editingMinuteId
+    ? minutes.find((minute) => minute.id === editingMinuteId) ?? null
+    : null;
   const unreadCount = notices.filter((notice) => !notice.isRead).length;
   const importantCount = notices.filter(
     (notice) => notice.priority === "important" || notice.priority === "urgent"
@@ -182,15 +186,67 @@ export function NoticePage({
         {
           id: page.id,
           title: page.title,
+          content: payload.content,
           updatedAt: page.updatedAt ?? new Date().toISOString(),
           authorName: page.author?.name ?? "이름 없음",
         },
         ...current,
       ]);
       setMinuteModalOpen(false);
-      window.location.href = `/docs/${page.id}?source=meeting-note`;
     } catch (requestError) {
       console.error("[MINUTE_CREATE]", requestError);
+      setMinuteError("회의록을 저장하지 못했어요.");
+    } finally {
+      setMinuteSubmitting(false);
+    }
+  }
+
+  async function handleUpdateMinute(payload: { title: string; content: string }) {
+    if (!editingMinute) {
+      return;
+    }
+
+    setMinuteSubmitting(true);
+    setMinuteError(null);
+
+    try {
+      const response = await fetch(`/api/pages/${editingMinute.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: payload.title,
+          content: payload.content,
+          emoji: "📝",
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setMinuteError(data?.error ?? "회의록을 저장하지 못했어요.");
+        return;
+      }
+
+      const page = data.page as {
+        id: string;
+        title: string;
+        updatedAt?: string;
+      };
+
+      setMinutes((current) =>
+        current.map((minute) =>
+          minute.id === editingMinute.id
+            ? {
+                ...minute,
+                title: page.title,
+                content: payload.content,
+                updatedAt: page.updatedAt ?? new Date().toISOString(),
+              }
+            : minute
+        )
+      );
+      setEditingMinuteId(null);
+    } catch (requestError) {
+      console.error("[MINUTE_UPDATE]", requestError);
       setMinuteError("회의록을 저장하지 못했어요.");
     } finally {
       setMinuteSubmitting(false);
@@ -615,6 +671,7 @@ export function NoticePage({
                 type="button"
                 onClick={() => {
                   setMinuteError(null);
+                  setEditingMinuteId(null);
                   setMinuteModalOpen(true);
                 }}
                 className="primary-button"
@@ -634,7 +691,9 @@ export function NoticePage({
                     key={minute.id}
                     type="button"
                     onClick={() => {
-                      window.location.href = `/docs/${minute.id}?source=meeting-note`;
+                      setMinuteError(null);
+                      setMinuteModalOpen(false);
+                      setEditingMinuteId(minute.id);
                     }}
                     className="w-full rounded-[14px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-4 text-left transition hover:bg-[var(--surface-2)]"
                   >
@@ -687,11 +746,20 @@ export function NoticePage({
         onDelete={handleDeleteNotice}
       />
       <MinuteWriteModal
-        open={minuteModalOpen}
+        open={minuteModalOpen || editingMinute !== null}
+        mode={editingMinute ? "edit" : "create"}
         submitting={minuteSubmitting}
         error={minuteError}
-        onClose={() => setMinuteModalOpen(false)}
-        onSubmit={handleCreateMinute}
+        initialValues={
+          editingMinute
+            ? { title: editingMinute.title, content: editingMinute.content }
+            : null
+        }
+        onClose={() => {
+          setMinuteModalOpen(false);
+          setEditingMinuteId(null);
+        }}
+        onSubmit={editingMinute ? handleUpdateMinute : handleCreateMinute}
       />
     </>
   );

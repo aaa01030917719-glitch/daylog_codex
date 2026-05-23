@@ -23,6 +23,24 @@ function parseNoticeTab(value?: string | string[]) {
   return tab === "meeting-notes" ? "MINUTES" : "NOTICES";
 }
 
+function pageContentToText(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!content || typeof content !== "object") {
+    return "";
+  }
+
+  const node = content as { text?: unknown; content?: unknown };
+  const text = typeof node.text === "string" ? node.text : "";
+  const children = Array.isArray(node.content)
+    ? node.content.map(pageContentToText).filter(Boolean).join("\n")
+    : "";
+
+  return [text, children].filter(Boolean).join("\n");
+}
+
 export default async function NoticesPage({
   searchParams,
 }: {
@@ -224,6 +242,7 @@ export default async function NoticesPage({
     initialMinutes = minuteRows.map((page) => ({
       id: page.id,
       title: page.title,
+      content: pageContentToText(page.content),
       updatedAt: page.updatedAt.toISOString(),
       authorName: page.author.name ?? "이름 없음",
     }));

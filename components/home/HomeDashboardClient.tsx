@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowRight,
@@ -175,7 +176,7 @@ function Panel({
 
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
-    <div className="flex min-h-[104px] flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
+    <div className="flex flex-col items-center justify-center gap-1.5 px-4 py-5 text-center">
       <AlertCircle size={20} className="text-[var(--text-muted)]" />
       <p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p>
       <p className="text-xs leading-5 text-[var(--text-muted)]">{description}</p>
@@ -261,9 +262,12 @@ function TaskRows({
   const listClassName = maxRows === 7
     ? "min-h-0 max-h-[426px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
     : "min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto";
+  const emptyClassName = maxRows === 7
+    ? "flex min-h-[426px] flex-1 items-center justify-center"
+    : "flex min-h-[183px] flex-1 items-center justify-center";
 
   return (
-    <div className={listClassName}>
+    <div className={tasks.length === 0 ? emptyClassName : listClassName}>
       {tasks.length === 0 ? (
         <EmptyState title={emptyTitle} description="표시할 업무가 생기면 이곳에 compact하게 정리됩니다." />
       ) : (
@@ -373,7 +377,13 @@ function AttendancePanel({ data }: { data: HomeDashboardData }) {
           </div>
         ))}
       </div>
-      <div className="min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+      <div
+        className={
+          data.attendanceRows.length === 0
+            ? "flex min-h-[183px] flex-1 items-center justify-center"
+            : "min-h-0 flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
+        }
+      >
         {data.attendanceRows.length === 0 ? (
           <EmptyState title="출근 기록이 없습니다" description="오늘 기록이 생기면 멤버별 상태를 바로 볼 수 있습니다." />
         ) : (
@@ -404,14 +414,19 @@ function AttendancePanel({ data }: { data: HomeDashboardData }) {
 }
 
 function ReviewPanel({ data }: { data: HomeDashboardData }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<ReviewTab>("LEAVE_REQUEST");
   const [approvals, setApprovals] = useState(data.approvals);
-  const [reviewTasks] = useState(data.reviewTasks);
+  const [reviewTasks, setReviewTasks] = useState(data.reviewTasks);
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [selectedReviewTask, setSelectedReviewTask] = useState<HomeTaskItem | null>(null);
   const [selectedApproval, setSelectedApproval] = useState<HomeApprovalItem | null>(null);
   const [detailSubmitting, setDetailSubmitting] = useState(false);
+
+  useEffect(() => {
+    setReviewTasks(data.reviewTasks);
+  }, [data.reviewTasks]);
 
   const counts = useMemo(
     () => ({
@@ -530,7 +545,13 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
               {errorMessage}
             </div>
           ) : null}
-          <div className="max-h-[183px] divide-y divide-[var(--border-light)] overflow-y-auto">
+          <div
+            className={
+              counts[activeTab] === 0
+                ? "flex min-h-[183px] items-center justify-center"
+                : "max-h-[183px] divide-y divide-[var(--border-light)] overflow-y-auto"
+            }
+          >
             {activeTab === "PROJECT_REVIEW"
               ? reviewTasks.map((task) => (
                   <div
@@ -607,7 +628,10 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
       {selectedReviewTask ? (
         <TaskDetailModal
           isOpen={true}
-          onClose={() => setSelectedReviewTask(null)}
+          onClose={() => {
+            setSelectedReviewTask(null);
+            router.refresh();
+          }}
           taskId={selectedReviewTask.id}
           projectName={selectedReviewTask.projectName}
           isAdmin={data.isAdmin}
@@ -633,7 +657,13 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
   return (
     <Panel title="내 연차·결재 현황" icon="📄" href="/docs">
-      <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+      <div
+        className={
+          requests.length === 0
+            ? "flex min-h-[183px] flex-1 items-center justify-center"
+            : "min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
+        }
+      >
         {requests.length === 0 ? (
           <EmptyState title="최근 요청이 없습니다" description="연차나 결재 요청을 올리면 진행 상태가 표시됩니다." />
         ) : (
@@ -659,7 +689,13 @@ function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
 function NoticePanel({ notices }: { notices: HomeNoticeItem[] }) {
   return (
     <Panel title="팀 공지" icon="📢" href="/notices">
-      <div className="min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto">
+      <div
+        className={
+          notices.length === 0
+            ? "flex min-h-[183px] flex-1 items-center justify-center"
+            : "min-h-0 max-h-[183px] flex-1 divide-y divide-[var(--border-light)] overflow-y-auto"
+        }
+      >
         {notices.length === 0 ? (
           <EmptyState title="등록된 공지가 없습니다" description="팀 공지가 올라오면 최신순으로 보여드립니다." />
         ) : (
