@@ -90,6 +90,12 @@ export interface HomeDashboardData {
   userRole?: HomeRole | null;
   isAdmin: boolean;
   dateLabel: string;
+  attendanceAction: {
+    hasCheckIn: boolean;
+    hasCheckOut: boolean;
+    checkInLabel: string;
+    checkOutLabel: string;
+  };
   approvals: HomeApprovalItem[];
   reviewTasks: HomeTaskItem[];
   tasks: HomeTaskItem[];
@@ -142,18 +148,24 @@ function Panel({
   icon,
   href,
   actionLabel = "보기",
+  borderless = false,
   children,
 }: {
   title: string;
   icon: React.ReactNode;
   href?: string;
   actionLabel?: string;
+  borderless?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="flex min-h-0 flex-col overflow-hidden rounded-[10px] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-sm)]">
+    <section
+      className={`flex min-h-0 flex-col overflow-hidden rounded-[10px] bg-[var(--surface)] shadow-[var(--shadow-sm)] ${
+        borderless ? "border border-transparent" : "border border-[var(--border)]"
+      }`}
+    >
       <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--border-light)] px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
+        <div className="flex min-w-0 items-center gap-1.5">
           <span className="shrink-0 text-base leading-none" aria-hidden="true">
             {icon}
           </span>
@@ -180,6 +192,128 @@ function EmptyState({ title, description }: { title: string; description: string
       <AlertCircle size={20} className="text-[var(--text-muted)]" />
       <p className="text-sm font-semibold text-[var(--text-primary)]">{title}</p>
       <p className="text-xs leading-5 text-[var(--text-muted)]">{description}</p>
+    </div>
+  );
+}
+
+function formatCurrentActionTime(value: Date) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(value);
+}
+
+function MemberAttendanceAction({
+  initialHasCheckIn,
+  initialHasCheckOut,
+  initialCheckInLabel,
+  initialCheckOutLabel,
+}: {
+  initialHasCheckIn: boolean;
+  initialHasCheckOut: boolean;
+  initialCheckInLabel: string;
+  initialCheckOutLabel: string;
+}) {
+  const [hasCheckIn, setHasCheckIn] = useState(initialHasCheckIn);
+  const [hasCheckOut, setHasCheckOut] = useState(initialHasCheckOut);
+  const [checkInLabel, setCheckInLabel] = useState(initialCheckInLabel);
+  const [checkOutLabel, setCheckOutLabel] = useState(initialCheckOutLabel);
+  const [now, setNow] = useState(() => new Date());
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    setHasCheckIn(initialHasCheckIn);
+    setHasCheckOut(initialHasCheckOut);
+    setCheckInLabel(initialCheckInLabel);
+    setCheckOutLabel(initialCheckOutLabel);
+  }, [initialCheckInLabel, initialCheckOutLabel, initialHasCheckIn, initialHasCheckOut]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  async function refreshTodayAttendance() {
+    const response = await fetch("/api/attendance/today");
+    const data = (await response.json()) as {
+      hasCheckIn?: boolean;
+      hasCheckOut?: boolean;
+      attendance?: {
+        checkIn?: string | null;
+        checkOut?: string | null;
+      } | null;
+      error?: string;
+    };
+
+    if (!response.ok) {
+      throw new Error(data.error ?? "출퇴근 상태를 다시 불러오지 못했습니다.");
+    }
+
+    setHasCheckIn(Boolean(data.hasCheckIn));
+    setHasCheckOut(Boolean(data.hasCheckOut));
+    setCheckInLabel(data.attendance?.checkIn ? formatCurrentActionTime(new Date(data.attendance.checkIn)) : "-");
+    setCheckOutLabel(data.attendance?.checkOut ? formatCurrentActionTime(new Date(data.attendance.checkOut)) : "-");
+  }
+
+  async function handleAttendanceAction() {
+    if (hasCheckOut) {
+      return;
+    }
+
+    setSubmitting(true);
+    setMessage(null);
+
+    try {
+      const response = await fetch(
+        hasCheckIn ? "/api/attendance/check-out" : "/api/attendance/check-in",
+        { method: "POST" }
+      );
+      const data = (await response.json().catch(() => ({}))) as { error?: string };
+
+      if (!response.ok) {
+        throw new Error(data.error ?? "출퇴근 처리에 실패했습니다.");
+      }
+
+      const successMessage = hasCheckIn ? "퇴근 처리가 완료되었습니다." : "출근 처리가 완료되었습니다.";
+      await refreshTodayAttendance();
+      setMessage(successMessage);
+      window.alert(successMessage);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "출퇴근 처리에 실패했습니다.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const currentTimeLabel = formatCurrentActionTime(now);
+  const statusLabel = hasCheckOut
+    ? `출근 ${checkInLabel} · 퇴근 ${checkOutLabel}`
+    : hasCheckIn
+      ? `출근 ${checkInLabel}`
+      : "아직 출근 전이에요";
+  const actionLabel = hasCheckOut
+    ? "오늘 근무 완료"
+    : `${hasCheckIn ? "퇴근하기" : "출근하기"} ${currentTimeLabel}`;
+
+  return (
+    <div className="flex w-full flex-wrap items-center justify-between gap-3 rounded-[10px] border border-[var(--border-light)] bg-[var(--surface)] px-4 py-3 shadow-[var(--shadow-sm)]">
+      <div className="min-w-0">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-muted)]">오늘 근무</p>
+        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">{statusLabel}</p>
+        {message ? (
+          <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">{message}</p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={() => void handleAttendanceAction()}
+        disabled={submitting || hasCheckOut}
+        className="inline-flex h-9 shrink-0 items-center justify-center rounded-[8px] border border-[var(--accent)] bg-[var(--accent)] px-3 text-xs font-bold text-white transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:border-[var(--border)] disabled:bg-[var(--surface-3)] disabled:text-[var(--text-muted)]"
+      >
+        {submitting ? "처리 중..." : actionLabel}
+      </button>
     </div>
   );
 }
@@ -368,7 +502,7 @@ function AttendancePanel({ data }: { data: HomeDashboardData }) {
   ];
 
   return (
-    <Panel title="오늘 출근 현황" icon="🕐" href="/attendance">
+    <Panel title="오늘 출근 현황" icon="🕐" href="/attendance" borderless>
       <div className="grid shrink-0 grid-cols-4 divide-x divide-[var(--border)] border-b border-[var(--border)]">
         {stats.map((stat) => (
           <div key={stat.label} className="px-2 py-2.5 text-center">
@@ -510,7 +644,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
   }
 
   return (
-    <Panel title="검토 대기" icon="⚠️">
+    <Panel title="검토 대기" icon="⚠️" borderless>
       <div className="grid min-h-[244px] flex-1 grid-cols-[138px_minmax(0,1fr)] max-md:grid-cols-1">
         <nav className="border-r border-[var(--border-light)] bg-[#fafafa] py-2 max-md:border-b max-md:border-r-0 max-md:px-2">
           <div className="flex flex-col max-md:flex-row max-md:overflow-x-auto">
@@ -656,7 +790,7 @@ function ReviewPanel({ data }: { data: HomeDashboardData }) {
 
 function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
   return (
-    <Panel title="내 연차·결재 현황" icon="📄" href="/docs">
+    <Panel title="내 연차·결재 현황" icon="📄" href="/docs" borderless>
       <div
         className={
           requests.length === 0
@@ -688,7 +822,7 @@ function RequestPanel({ requests }: { requests: HomeRequestItem[] }) {
 
 function NoticePanel({ notices }: { notices: HomeNoticeItem[] }) {
   return (
-    <Panel title="팀 공지" icon="📢" href="/notices">
+    <Panel title="팀 공지" icon="📢" href="/notices" borderless>
       <div
         className={
           notices.length === 0
@@ -733,12 +867,12 @@ export function HomeDashboardClient({ data }: { data: HomeDashboardData }) {
         <section className="flex min-h-0 flex-col gap-4">
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
             <ReviewPanel data={data} />
-            <Panel title="이번 주 일정" icon="📅" href="/calendar">
+            <Panel title="이번 주 일정" icon="📅" href="/calendar" borderless>
               <ScheduleRows schedules={data.schedules} />
             </Panel>
           </div>
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
-            <Panel title="팀 업무 현황" icon="✅" href="/projects">
+            <Panel title="팀 업무 현황" icon="✅" href="/projects" borderless>
               <TaskRows tasks={data.tasks} emptyTitle="진행 중인 팀 업무가 없습니다" />
             </Panel>
             <AttendancePanel data={data} />
@@ -746,11 +880,17 @@ export function HomeDashboardClient({ data }: { data: HomeDashboardData }) {
         </section>
       ) : (
         <section className="flex min-h-0 flex-col gap-4">
+          <MemberAttendanceAction
+            initialHasCheckIn={data.attendanceAction.hasCheckIn}
+            initialHasCheckOut={data.attendanceAction.hasCheckOut}
+            initialCheckInLabel={data.attendanceAction.checkInLabel}
+            initialCheckOutLabel={data.attendanceAction.checkOutLabel}
+          />
           <div className="grid min-h-0 grid-cols-[minmax(0,1fr)_330px] gap-4 max-xl:grid-cols-1">
-            <Panel title="내 진행 업무" icon="✅" href="/projects">
+            <Panel title="내 진행 업무" icon="✅" href="/projects" borderless>
               <TaskRows tasks={data.tasks} emptyTitle="진행 중인 내 업무가 없습니다" maxRows={7} />
             </Panel>
-            <Panel title="이번 주 일정" icon="📅" href="/calendar">
+            <Panel title="이번 주 일정" icon="📅" href="/calendar" borderless>
               <ScheduleRows schedules={data.schedules} maxRows={7} />
             </Panel>
           </div>
