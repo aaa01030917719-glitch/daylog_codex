@@ -3664,12 +3664,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.38);
+}
 
 .workspace-card-body--tight-top {
   padding-top: 0 !important;
-}
-  padding: 20px;
-  background: rgba(0, 0, 0, 0.38);
 }
 
 .detail-modal-card {
@@ -3780,6 +3780,7 @@ body {
   align-items: center;
   justify-content: flex-end;
   gap: 8px;
+}
 .desc-area {
   min-height: 180px;
   width: 100%;
